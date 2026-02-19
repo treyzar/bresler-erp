@@ -1,0 +1,10 @@
+from django.apps import AppConfig
+
+
+class DirectoryConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.directory"
+    verbose_name = "Directory"
+
+    def ready(self):
+        import apps.directory.signals  # noqa: F401

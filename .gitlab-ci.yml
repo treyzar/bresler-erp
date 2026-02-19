@@ -1,0 +1,109 @@
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+variables:
+  POSTGRES_DB: bresler_erp
+  POSTGRES_USER: bresler
+  POSTGRES_PASSWORD: test_password
+  DJANGO_SETTINGS_MODULE: config.settings.test
+
+# --- Lint ---
+
+lint-backend:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - cd backend
+    - pip install -r requirements/development.txt
+  script:
+    - ruff check .
+    - ruff format --check .
+  rules:
+    - changes:
+        - backend/**/*
+
+lint-frontend:
+  stage: lint
+  image: node:22-alpine
+  before_script:
+    - cd frontend && npm ci
+  script:
+    - npm run lint
+    - npx tsc --noEmit
+  rules:
+    - changes:
+        - frontend/**/*
+
+# --- Test ---
+
+test-backend:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - postgres:16-alpine
+  before_script:
+    - cd backend
+    - pip install -r requirements/test.txt
+  script:
+    - pytest --cov=apps --cov-report=term-missing --cov-fail-under=80
+  rules:
+    - changes:
+        - backend/**/*
+
+test-frontend:
+  stage: test
+  image: node:22-alpine
+  before_script:
+    - cd frontend && npm ci
+  script:
+    - npm run test -- --run
+  rules:
+    - changes:
+        - frontend/**/*
+
+# --- Build ---
+
+build-backend:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t bresler-erp-backend ./backend
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+build-frontend:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t bresler-erp-frontend ./frontend
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+# --- Deploy ---
+
+deploy-staging:
+  stage: deploy
+  script:
+    - echo "Deploy to staging"
+  environment:
+    name: staging
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+deploy-prod:
+  stage: deploy
+  script:
+    - echo "Deploy to production"
+  environment:
+    name: production
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
