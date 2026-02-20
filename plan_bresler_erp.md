@@ -113,8 +113,9 @@ bresler-erp/
 │   ├── manage.py
 │   ├── pytest.ini
 │   ├── pyproject.toml             # ruff, mypy config
-│   ├── Dockerfile
-│   └── .env.example
+│   ├── Dockerfile              # Multi-stage: dev + prod targets
+│   ├── .dockerignore
+│   └── entrypoint.sh           # wait-for-db, migrate, dispatch (gunicorn/daphne/celery)
 │
 ├── frontend/
 │   ├── src/
@@ -143,18 +144,25 @@ bresler-erp/
 │   ├── tailwind.config.ts
 │   ├── tsconfig.json
 │   ├── components.json            # shadcn/ui config
-│   └── Dockerfile
+│   ├── Dockerfile              # Dev-only target (npm ci, Vite dev server)
+│   └── .dockerignore
 │
 ├── docker/
 │   ├── nginx/
-│   │   └── default.conf           # SPA + API proxy + WebSocket
+│   │   ├── Dockerfile.prod     # Multi-stage: build React + nginx:1.27-alpine
+│   │   ├── nginx.prod.conf     # SSL, dual upstream (gunicorn+daphne), SPA fallback
+│   │   └── ssl/                # cert.pem + key.pem (not in git)
+│   │       └── .gitkeep
 │   └── postgres/
 │       └── init.sql
 │
-├── docker-compose.yml             # Production
-├── docker-compose.dev.yml         # Development (hot-reload)
+├── docker-compose.yml          # DEV (default: docker compose up)
+├── docker-compose.prod.yml     # PRODUCTION (docker compose -f ... up -d)
+├── .dockerignore               # Root level (for nginx prod build context)
+├── .env.example                # Dev env template (in git)
+├── .env.prod.example           # Prod env template (in git)
 ├── .gitlab-ci.yml
-├── Makefile                       # make dev, make test, make migrate, make lint
+├── Makefile                    # make dev, make test, make prod, make prod-build...
 ├── .gitignore
 └── README.md
 ```
@@ -300,47 +308,28 @@ GET    /api/redoc/                            # ReDoc
 
 ## 4. Docker-конфигурация
 
-### docker-compose.dev.yml
-```yaml
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: bresler_erp
-      POSTGRES_USER: bresler
-      POSTGRES_PASSWORD: bresler_dev
-    ports: ["5432:5432"]
-    volumes: [postgres_data:/var/lib/postgresql/data]
+### Два окружения
 
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
+**Dev** (`docker compose up` / `make dev`):
+- Сервисы: db, redis, backend, frontend, celery
+- backend: `target: dev`, runserver, код монтируется volume, порт 8000
+- frontend: `target: dev`, Vite dev server, код монтируется volume, порт 5173
+- db: postgres:16-alpine, порт 5433:5432, healthcheck
+- redis: redis:7-alpine, порт 6380:6379, healthcheck
+- Без nginx — Vite проксирует /api и /ws к backend
+- env_file: `.env` (из корня проекта)
 
-  backend:
-    build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes: [./backend:/app]
-    ports: ["8000:8000"]
-    env_file: ./backend/.env
-    depends_on: [db, redis]
-
-  frontend:
-    build: ./frontend
-    command: npm run dev -- --host 0.0.0.0
-    volumes: [./frontend:/app, /app/node_modules]
-    ports: ["5173:5173"]
-    depends_on: [backend]
-
-  celery:
-    build: ./backend
-    command: celery -A config worker -l info
-    volumes: [./backend:/app]
-    env_file: ./backend/.env
-    depends_on: [db, redis]
-
-volumes:
-  postgres_data:
-```
+**Production** (`docker compose -f docker-compose.prod.yml up -d` / `make prod`):
+- Сервисы: db, redis, backend (gunicorn), daphne, celery-worker, celery-beat, nginx
+- backend/Dockerfile `target: prod` — один образ, разные команды через entrypoint.sh
+- entrypoint.sh: wait-for-db/redis, migrate+collectstatic (только gunicorn), dispatch по команде
+- nginx: multi-stage build (React → nginx:1.27-alpine), SSL, dual upstream (gunicorn:8000 + daphne:8001)
+- Shared volumes: static_files, media_files
+- SSL через volume mount: `./docker/nginx/ssl:/etc/nginx/ssl:ro`
+- Только nginx выставляет порты наружу (80, 443)
+- Внутренняя сеть `internal`, restart: unless-stopped
+- YAML anchors `x-backend-common` для дедупликации
+- env_file: `.env.prod`
 
 ---
 
@@ -365,45 +354,45 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 ### Фаза 1: MVP — Заказы + Справочники (6 недель)
 
 **Неделя 1: Скаффолдинг проекта**
-- [ ] Создать `/home/serj/PyCharm/Projects/bresler-erp/`
-- [ ] Инициализировать git-репозиторий
-- [ ] Backend: `django-admin startproject config .`
-- [ ] Структура settings/ (base, development, production, test)
-- [ ] Установить зависимости: Django 5.2, DRF, simplejwt, drf-spectacular, cors-headers, simple-history, treebeard, django-filter, celery, channels, redis
-- [ ] Создать apps/core/ (BaseModel, pagination, permissions, exceptions)
-- [ ] Создать apps/users/ (User model, JWT auth endpoints, /api/users/me/)
-- [ ] Docker: docker-compose.dev.yml (PostgreSQL 16, Redis 7, backend)
-- [ ] pytest.ini, conftest.py, UserFactory
-- [ ] Тесты: auth endpoints (login, refresh, me)
-- [ ] pyproject.toml: ruff + mypy config
-- [ ] Makefile: dev, test, migrate, lint, shell
+- [x] Создать `/home/serj/PyCharm/Projects/bresler-erp/`
+- [x] Инициализировать git-репозиторий
+- [x] Backend: `django-admin startproject config .`
+- [x] Структура settings/ (base, development, production, test)
+- [x] Установить зависимости: Django 5.2, DRF, simplejwt, drf-spectacular, cors-headers, simple-history, treebeard, django-filter, celery, channels, redis
+- [x] Создать apps/core/ (BaseModel, pagination, permissions, exceptions)
+- [x] Создать apps/users/ (User model, JWT auth endpoints, /api/users/me/)
+- [x] Docker: docker-compose.yml (dev) + docker-compose.prod.yml (production)
+- [x] pytest.ini, conftest.py, UserFactory
+- [x] Тесты: auth endpoints (login, refresh, me)
+- [x] pyproject.toml: ruff + mypy config
+- [x] Makefile: dev, test, migrate, lint, shell, prod, prod-build, prod-logs...
 - [ ] Frontend: `npm create vite@latest frontend -- --template react-ts`
 - [ ] Установить: tailwindcss, shadcn/ui init, react-router, axios, tanstack-query, zustand
 - [ ] .gitlab-ci.yml: lint + test stages
-- [ ] README.md с инструкцией запуска
+- [x] README.md с инструкцией запуска
 
 **Неделя 2: Модуль Directory (backend)**
-- [ ] Создать apps/directory/ с моделями: Country, City, OrgUnit, Contact, Equipment, TypeOfWork, DeliveryType, Intermediary, Designer, PQ
-- [ ] Миграции
-- [ ] Сервисы: orgunit_service.py (tree ops), directory_service.py (CRUD + previous_names)
-- [ ] Сигналы: previous_names tracking (pre_save)
-- [ ] API: ViewSets для всех справочников
-- [ ] API: OrgUnit tree endpoints (children, ancestors, tree, search)
-- [ ] API: Filters (search by name, filter by parent/country)
-- [ ] Admin: TreeAdmin для OrgUnit, ModelAdmin для остальных
-- [ ] Фабрики: CountryFactory, OrgUnitFactory, ContactFactory и т.д.
-- [ ] Тесты: модели, сервисы, API (CRUD + tree ops)
+- [x] Создать apps/directory/ с моделями: Country, City, OrgUnit, Contact, Equipment, TypeOfWork, DeliveryType, Intermediary, Designer, PQ
+- [x] Миграции
+- [x] Сервисы: orgunit_service.py (tree ops), directory_service.py (CRUD + previous_names)
+- [x] Сигналы: previous_names tracking (pre_save)
+- [x] API: ViewSets для всех справочников
+- [x] API: OrgUnit tree endpoints (children, ancestors, tree, search)
+- [x] API: Filters (search by name, filter by parent/country)
+- [x] Admin: TreeAdmin для OrgUnit, ModelAdmin для остальных
+- [x] Фабрики: CountryFactory, OrgUnitFactory, ContactFactory и т.д.
+- [x] Тесты: модели, сервисы, API (CRUD + tree ops) — 130+ тестов
 - [ ] OpenAPI: проверить схему через /api/docs/
 
 **Неделя 3: Модуль Orders (backend)**
-- [ ] Создать apps/orders/ с моделями: Order, OrderOrgUnit, OrderPQ, Contract, OrderFile
-- [ ] Миграции
-- [ ] Сервисы: order_service.py (create, update, next_number), contract_service.py
-- [ ] API: OrderViewSet (list, create, retrieve, update, history, files)
-- [ ] API: ContractViewSet (get/update через order endpoint)
-- [ ] API: Filters (status, customer, date range, search)
-- [ ] WebSocket: OrderPresenceConsumer + routing
-- [ ] Admin: OrderAdmin с inlines
+- [x] Создать apps/orders/ с моделями: Order, OrderOrgUnit, OrderPQ, Contract, OrderFile
+- [x] Миграции
+- [x] Сервисы: order_service.py (create, update, next_number), contract_service.py
+- [x] API: OrderViewSet (list, create, retrieve, update, history, files)
+- [x] API: ContractViewSet (get/update через order endpoint)
+- [x] API: Filters (status, customer, date range, search)
+- [x] WebSocket: OrderPresenceConsumer + routing
+- [x] Admin: OrderAdmin с inlines
 - [ ] Фабрики: OrderFactory, ContractFactory
 - [ ] Тесты: модели, сервисы, API
 - [ ] OpenAPI: проверить полную схему
@@ -506,7 +495,7 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 После каждой недели:
 1. `make lint` — ruff + mypy (backend), eslint + tsc (frontend)
 2. `make test` — pytest --cov ≥80% (backend), vitest (frontend)
-3. `docker-compose up` — проверка в Docker-окружении
+3. `docker compose up` — проверка в Docker-окружении (dev)
 4. `/api/docs/` — OpenAPI-схема валидна и полна
 5. Ручное тестирование в браузере (React UI)
 
@@ -518,7 +507,7 @@ MVP-1 acceptance criteria:
 - [ ] Загрузка файлов к заказу
 - [ ] WebSocket: индикация активных пользователей на заказе
 - [ ] Backend: тесты ≥80% покрытия
-- [ ] Docker: `docker-compose up` запускает всё окружение
+- [ ] Docker: `docker compose up` (dev) и `docker compose -f docker-compose.prod.yml build` (prod) работают
 - [ ] CI: pipeline проходит (lint + test + build)
 
 ---
