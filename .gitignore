@@ -58,3 +58,9 @@ coverage.xml
 .env
 .env.local
 .env.production
+.env.prod
+
+# SSL certificates
+docker/nginx/ssl/*.pem
+docker/nginx/ssl/*.key
+docker/nginx/ssl/*.crt
