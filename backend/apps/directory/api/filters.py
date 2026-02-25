@@ -1,6 +1,6 @@
 from django_filters import rest_framework as filters
 
-from apps.directory.models import Contact, OrgUnit
+from apps.directory.models import Contact, Facility, OrgUnit
 
 
 class OrgUnitFilter(filters.FilterSet):
@@ -28,3 +28,12 @@ class ContactFilter(filters.FilterSet):
 
     def search_filter(self, queryset, name, value):
         return queryset.filter(full_name__icontains=value)
+
+
+class FacilityFilter(filters.FilterSet):
+    org_unit = filters.NumberFilter(field_name="org_unit_id")
+    is_active = filters.BooleanFilter()
+
+    class Meta:
+        model = Facility
+        fields = ["org_unit", "is_active"]

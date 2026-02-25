@@ -6,11 +6,13 @@ const navItems = [
   { to: "/orders", label: "Заказы" },
   { to: "/directory/orgunits", label: "Организации" },
   { to: "/directory/contacts", label: "Контакты" },
+  { to: "/directory/facilities", label: "Объекты" },
   { to: "/directory/countries", label: "Страны" },
+  { to: "/directory/cities", label: "Города" },
   { to: "/directory/equipment", label: "Оборудование" },
   { to: "/directory/works", label: "Виды работ" },
-  { to: "/directory/designers", label: "Проектанты" },
-  { to: "/directory/pqs", label: "ПКЗ" },
+  { to: "/directory/delivery-types", label: "Типы доставки" },
+  { to: "/profile", label: "Профиль" },
 ]
 
 export function Sidebar() {

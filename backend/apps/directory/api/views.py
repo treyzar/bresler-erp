@@ -7,26 +7,22 @@ from apps.directory.models import (
     Contact,
     Country,
     DeliveryType,
-    Designer,
     Equipment,
-    Intermediary,
+    Facility,
     OrgUnit,
-    PQ,
     TypeOfWork,
 )
 
-from .filters import ContactFilter, OrgUnitFilter
+from .filters import ContactFilter, FacilityFilter, OrgUnitFilter
 from .serializers import (
     CitySerializer,
     ContactSerializer,
     CountrySerializer,
     DeliveryTypeSerializer,
-    DesignerSerializer,
     EquipmentSerializer,
-    IntermediarySerializer,
+    FacilitySerializer,
     OrgUnitSerializer,
     OrgUnitTreeSerializer,
-    PQSerializer,
     TypeOfWorkSerializer,
 )
 
@@ -171,37 +167,14 @@ class DeliveryTypeViewSet(viewsets.ModelViewSet):
         return Response({"deleted": deleted})
 
 
-class IntermediaryViewSet(viewsets.ModelViewSet):
-    queryset = Intermediary.objects.all()
-    serializer_class = IntermediarySerializer
-    search_fields = ["name"]
+class FacilityViewSet(viewsets.ModelViewSet):
+    queryset = Facility.objects.select_related("org_unit").all()
+    serializer_class = FacilitySerializer
+    filterset_class = FacilityFilter
+    search_fields = ["name", "address"]
 
     @action(detail=False, methods=["delete"], url_path="bulk-delete")
     def bulk_delete(self, request):
         ids = request.data.get("ids", [])
-        deleted, _ = Intermediary.objects.filter(id__in=ids).delete()
-        return Response({"deleted": deleted})
-
-
-class DesignerViewSet(viewsets.ModelViewSet):
-    queryset = Designer.objects.all()
-    serializer_class = DesignerSerializer
-    search_fields = ["name"]
-
-    @action(detail=False, methods=["delete"], url_path="bulk-delete")
-    def bulk_delete(self, request):
-        ids = request.data.get("ids", [])
-        deleted, _ = Designer.objects.filter(id__in=ids).delete()
-        return Response({"deleted": deleted})
-
-
-class PQViewSet(viewsets.ModelViewSet):
-    queryset = PQ.objects.all()
-    serializer_class = PQSerializer
-    search_fields = ["name", "full_name"]
-
-    @action(detail=False, methods=["delete"], url_path="bulk-delete")
-    def bulk_delete(self, request):
-        ids = request.data.get("ids", [])
-        deleted, _ = PQ.objects.filter(id__in=ids).delete()
+        deleted, _ = Facility.objects.filter(id__in=ids).delete()
         return Response({"deleted": deleted})

@@ -6,11 +6,9 @@ from apps.directory.models import (
     Contact,
     Country,
     DeliveryType,
-    Designer,
     Equipment,
-    Intermediary,
+    Facility,
     OrgUnit,
-    PQ,
     TypeOfWork,
 )
 
@@ -19,11 +17,9 @@ from .factories import (
     ContactFactory,
     CountryFactory,
     DeliveryTypeFactory,
-    DesignerFactory,
     EquipmentFactory,
-    IntermediaryFactory,
+    FacilityFactory,
     OrgUnitFactory,
-    PQFactory,
     TypeOfWorkFactory,
 )
 
@@ -142,6 +138,16 @@ class TestOrgUnit:
         node.save()
         assert node.history.count() == 2
 
+    def test_unit_type_choices(self):
+        for type_val, _ in OrgUnit.UnitType.choices:
+            node = OrgUnitFactory(unit_type=type_val)
+            assert node.unit_type == type_val
+
+    def test_business_role_choices(self):
+        for role_val, _ in OrgUnit.BusinessRole.choices:
+            node = OrgUnitFactory(business_role=role_val)
+            assert node.business_role == role_val
+
 
 @pytest.mark.django_db
 class TestContact:
@@ -209,61 +215,38 @@ class TestDeliveryType:
 
 
 @pytest.mark.django_db
-class TestIntermediary:
+class TestFacility:
     def test_create(self):
-        interm = IntermediaryFactory()
-        assert interm.pk is not None
+        facility = FacilityFactory()
+        assert facility.pk is not None
+        assert facility.org_unit is not None
 
     def test_str(self):
-        interm = IntermediaryFactory(name="Агент")
-        assert str(interm) == "Агент"
+        facility = FacilityFactory(name="РП-10")
+        assert str(facility) == "РП-10"
 
-    def test_unique_name(self):
-        IntermediaryFactory(name="Агент")
-        with pytest.raises(IntegrityError):
-            IntermediaryFactory(name="Агент")
+    def test_without_org_unit(self):
+        facility = FacilityFactory(org_unit=None)
+        assert facility.pk is not None
+        assert facility.org_unit is None
 
-
-@pytest.mark.django_db
-class TestDesigner:
-    def test_create(self):
-        d = DesignerFactory()
-        assert d.pk is not None
-
-    def test_str(self):
-        d = DesignerFactory(name="НИИ")
-        assert str(d) == "НИИ"
-
-    def test_unique_name(self):
-        DesignerFactory(name="НИИ")
-        with pytest.raises(IntegrityError):
-            DesignerFactory(name="НИИ")
-
-
-@pytest.mark.django_db
-class TestPQ:
-    def test_create(self):
-        pq = PQFactory()
-        assert pq.pk is not None
-
-    def test_str(self):
-        pq = PQFactory(name="PQ-001")
-        assert str(pq) == "PQ-001"
-
-    def test_unique_name(self):
-        PQFactory(name="PQ-001")
-        with pytest.raises(IntegrityError):
-            PQFactory(name="PQ-001")
-
-    def test_previous_names_signal(self):
-        pq = PQFactory(name="Old PQ")
-        pq.name = "New PQ"
-        pq.save()
-        pq.refresh_from_db()
-        assert "Old PQ" in pq.previous_names
+    def test_is_active_default(self):
+        facility = FacilityFactory()
+        assert facility.is_active is True
 
     def test_history_tracking(self):
-        pq = PQFactory(name="Original")
-        pq.name = "Updated"
-        pq.save()
-        assert pq.history.count() == 2
+        facility = FacilityFactory(name="Old Name")
+        facility.name = "New Name"
+        facility.save()
+        assert facility.history.count() == 2
+
+    def test_org_unit_protect(self):
+        facility = FacilityFactory()
+        with pytest.raises(Exception):
+            facility.org_unit.delete()
+
+    def test_ordering(self):
+        FacilityFactory(name="Б-объект")
+        FacilityFactory(name="А-объект")
+        names = list(Facility.objects.values_list("name", flat=True))
+        assert names == sorted(names)

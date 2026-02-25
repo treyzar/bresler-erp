@@ -6,11 +6,16 @@ import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { EquipmentPage } from "@/features/directory/EquipmentPage"
 import { WorksPage } from "@/features/directory/WorksPage"
-import { DesignersPage } from "@/features/directory/DesignersPage"
 import { CountriesPage } from "@/features/directory/CountriesPage"
-import { PQPage } from "@/features/directory/PQPage"
+import { CitiesPage } from "@/features/directory/CitiesPage"
 import { OrgUnitsPage } from "@/features/directory/OrgUnitsPage"
 import { ContactsPage } from "@/features/directory/ContactsPage"
+import { FacilitiesPage } from "@/features/directory/FacilitiesPage"
+import { DeliveryTypesPage } from "@/features/directory/DeliveryTypesPage"
+import { OrdersPage } from "@/features/orders/OrdersPage"
+import { OrderFormPage } from "@/features/orders/OrderFormPage"
+import { OrderDetailPage } from "@/features/orders/OrderDetailPage"
+import { ProfilePage } from "@/features/profile/ProfilePage"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -26,34 +31,28 @@ function App() {
         />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/orders" element={<PlaceholderPage title="Заказы" />} />
-            <Route path="/orders/:id" element={<PlaceholderPage title="Заказ" />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders/new" element={<OrderFormPage />} />
+            <Route path="/orders/:orderNumber" element={<OrderDetailPage />} />
+            <Route path="/orders/:orderNumber/edit" element={<OrderFormPage />} />
             <Route path="/directory">
               <Route path="orgunits" element={<OrgUnitsPage />} />
               <Route path="contacts" element={<ContactsPage />} />
               <Route path="countries" element={<CountriesPage />} />
               <Route path="equipment" element={<EquipmentPage />} />
               <Route path="works" element={<WorksPage />} />
-              <Route path="designers" element={<DesignersPage />} />
-              <Route path="pqs" element={<PQPage />} />
+              <Route path="cities" element={<CitiesPage />} />
+              <Route path="facilities" element={<FacilitiesPage />} />
+              <Route path="delivery-types" element={<DeliveryTypesPage />} />
               <Route index element={<Navigate to="orgunits" replace />} />
             </Route>
-            <Route path="/profile" element={<PlaceholderPage title="Профиль" />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/" element={<Navigate to="/orders" replace />} />
           </Route>
         </Route>
       </Routes>
       <Toaster />
     </>
-  )
-}
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">{title}</h1>
-      <p className="text-muted-foreground mt-2">Страница в разработке</p>
-    </div>
   )
 }
 

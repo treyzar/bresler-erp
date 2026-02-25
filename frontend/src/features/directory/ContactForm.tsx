@@ -20,12 +20,12 @@ import { contactHooks } from "@/api/hooks/useContacts"
 
 const formSchema = z.object({
   full_name: z.string().min(1, "Обязательное поле"),
-  position: z.string().optional().default(""),
-  email: z.string().email("Некорректный email").or(z.literal("")).default(""),
-  phone: z.string().optional().default(""),
-  company: z.string().optional().default(""),
-  address: z.string().optional().default(""),
-  org_units: z.array(z.number()).default([]),
+  position: z.string(),
+  email: z.string().email("Некорректный email").or(z.literal("")),
+  phone: z.string(),
+  company: z.string(),
+  address: z.string(),
+  org_units: z.array(z.number()),
 })
 
 type FormValues = z.infer<typeof formSchema>

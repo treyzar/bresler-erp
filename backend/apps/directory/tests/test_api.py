@@ -11,11 +11,9 @@ from .factories import (
     ContactFactory,
     CountryFactory,
     DeliveryTypeFactory,
-    DesignerFactory,
     EquipmentFactory,
-    IntermediaryFactory,
+    FacilityFactory,
     OrgUnitFactory,
-    PQFactory,
     TypeOfWorkFactory,
 )
 
@@ -128,17 +126,19 @@ class TestOrgUnitAPI:
         OrgUnitFactory(name="Company", unit_type=OrgUnit.UnitType.COMPANY)
         OrgUnitFactory(name="Branch", unit_type=OrgUnit.UnitType.BRANCH)
         url = reverse("directory:orgunit-list")
-        response = self.client.get(url, {"unit_type": "COMPANY"})
+        response = self.client.get(url, {"unit_type": OrgUnit.UnitType.COMPANY})
         assert response.status_code == status.HTTP_200_OK
-        assert all(r["unit_type"] == "COMPANY" for r in response.data["results"])
+        assert all(r["unit_type"] == OrgUnit.UnitType.COMPANY for r in response.data["results"])
 
     def test_filter_by_business_role(self):
         OrgUnitFactory(name="Customer", business_role=OrgUnit.BusinessRole.CUSTOMER)
         OrgUnitFactory(name="Supplier", business_role=OrgUnit.BusinessRole.SUPPLIER)
         url = reverse("directory:orgunit-list")
-        response = self.client.get(url, {"business_role": "CUSTOMER"})
+        response = self.client.get(url, {"business_role": OrgUnit.BusinessRole.CUSTOMER})
         assert response.status_code == status.HTTP_200_OK
-        assert all(r["business_role"] == "CUSTOMER" for r in response.data["results"])
+        assert all(
+            r["business_role"] == OrgUnit.BusinessRole.CUSTOMER for r in response.data["results"]
+        )
 
     def test_unauthenticated(self):
         client = APIClient()
@@ -568,193 +568,98 @@ class TestDeliveryTypeAPI:
 
 
 # ---------------------------------------------------------------------------
-# Intermediary ViewSet
+# Facility ViewSet
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
-class TestIntermediaryAPI:
+class TestFacilityAPI:
     def setup_method(self):
         self.client = APIClient()
         self.user = UserFactory()
         self.client.force_authenticate(user=self.user)
 
     def test_list(self):
-        IntermediaryFactory.create_batch(3)
-        url = reverse("directory:intermediary-list")
+        FacilityFactory.create_batch(3)
+        url = reverse("directory:facility-list")
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 3
 
     def test_create(self):
-        url = reverse("directory:intermediary-list")
-        response = self.client.post(url, {"name": "Агент"})
+        org = OrgUnitFactory()
+        url = reverse("directory:facility-list")
+        response = self.client.post(url, {"name": "РП-10", "org_unit": org.pk})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["name"] == "РП-10"
+
+    def test_create_without_org_unit(self):
+        url = reverse("directory:facility-list")
+        response = self.client.post(url, {"name": "РП-10"})
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_retrieve(self):
-        interm = IntermediaryFactory(name="Агент")
-        url = reverse("directory:intermediary-detail", args=[interm.pk])
+        facility = FacilityFactory(name="РП-10")
+        url = reverse("directory:facility-detail", args=[facility.pk])
         response = self.client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["name"] == "Агент"
+        assert response.data["name"] == "РП-10"
 
     def test_update(self):
-        interm = IntermediaryFactory(name="Old")
-        url = reverse("directory:intermediary-detail", args=[interm.pk])
+        facility = FacilityFactory(name="Old")
+        url = reverse("directory:facility-detail", args=[facility.pk])
         response = self.client.patch(url, {"name": "New"})
         assert response.status_code == status.HTTP_200_OK
+        facility.refresh_from_db()
+        assert facility.name == "New"
 
     def test_delete(self):
-        interm = IntermediaryFactory()
-        url = reverse("directory:intermediary-detail", args=[interm.pk])
+        facility = FacilityFactory()
+        url = reverse("directory:facility-detail", args=[facility.pk])
         response = self.client.delete(url)
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_bulk_delete(self):
-        i1 = IntermediaryFactory()
-        i2 = IntermediaryFactory()
-        url = reverse("directory:intermediary-bulk-delete")
-        response = self.client.delete(url, {"ids": [i1.pk, i2.pk]}, format="json")
+        f1 = FacilityFactory()
+        f2 = FacilityFactory()
+        url = reverse("directory:facility-bulk-delete")
+        response = self.client.delete(url, {"ids": [f1.pk, f2.pk]}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["deleted"] == 2
 
     def test_search(self):
-        IntermediaryFactory(name="Агент Альфа")
-        IntermediaryFactory(name="Брокер Бета")
-        url = reverse("directory:intermediary-list")
-        response = self.client.get(url, {"search": "Агент"})
+        FacilityFactory(name="РП-10")
+        FacilityFactory(name="ТП-5")
+        url = reverse("directory:facility-list")
+        response = self.client.get(url, {"search": "РП"})
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
 
-    def test_unauthenticated(self):
-        client = APIClient()
-        url = reverse("directory:intermediary-list")
-        response = client.get(url)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-# ---------------------------------------------------------------------------
-# Designer ViewSet
-# ---------------------------------------------------------------------------
-@pytest.mark.django_db
-class TestDesignerAPI:
-    def setup_method(self):
-        self.client = APIClient()
-        self.user = UserFactory()
-        self.client.force_authenticate(user=self.user)
-
-    def test_list(self):
-        DesignerFactory.create_batch(3)
-        url = reverse("directory:designer-list")
-        response = self.client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["count"] == 3
-
-    def test_create(self):
-        url = reverse("directory:designer-list")
-        response = self.client.post(url, {"name": "НИИ"})
-        assert response.status_code == status.HTTP_201_CREATED
-
-    def test_retrieve(self):
-        d = DesignerFactory(name="НИИ")
-        url = reverse("directory:designer-detail", args=[d.pk])
-        response = self.client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["name"] == "НИИ"
-
-    def test_update(self):
-        d = DesignerFactory(name="Old")
-        url = reverse("directory:designer-detail", args=[d.pk])
-        response = self.client.patch(url, {"name": "New"})
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_delete(self):
-        d = DesignerFactory()
-        url = reverse("directory:designer-detail", args=[d.pk])
-        response = self.client.delete(url)
-        assert response.status_code == status.HTTP_204_NO_CONTENT
-
-    def test_bulk_delete(self):
-        d1 = DesignerFactory()
-        d2 = DesignerFactory()
-        url = reverse("directory:designer-bulk-delete")
-        response = self.client.delete(url, {"ids": [d1.pk, d2.pk]}, format="json")
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["deleted"] == 2
-
-    def test_search(self):
-        DesignerFactory(name="НИИ Проект")
-        DesignerFactory(name="КБ Инжиниринг")
-        url = reverse("directory:designer-list")
-        response = self.client.get(url, {"search": "НИИ"})
+    def test_filter_by_org_unit(self):
+        org = OrgUnitFactory()
+        FacilityFactory(org_unit=org)
+        FacilityFactory(org_unit=OrgUnitFactory())
+        url = reverse("directory:facility-list")
+        response = self.client.get(url, {"org_unit": org.pk})
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
 
-    def test_unauthenticated(self):
-        client = APIClient()
-        url = reverse("directory:designer-list")
-        response = client.get(url)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-# ---------------------------------------------------------------------------
-# PQ ViewSet
-# ---------------------------------------------------------------------------
-@pytest.mark.django_db
-class TestPQAPI:
-    def setup_method(self):
-        self.client = APIClient()
-        self.user = UserFactory()
-        self.client.force_authenticate(user=self.user)
-
-    def test_list(self):
-        PQFactory.create_batch(3)
-        url = reverse("directory:pq-list")
-        response = self.client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["count"] == 3
-
-    def test_create(self):
-        url = reverse("directory:pq-list")
-        response = self.client.post(url, {"name": "PQ-001"})
-        assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["name"] == "PQ-001"
-
-    def test_retrieve(self):
-        pq = PQFactory(name="PQ-001")
-        url = reverse("directory:pq-detail", args=[pq.pk])
-        response = self.client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["name"] == "PQ-001"
-
-    def test_update(self):
-        pq = PQFactory(name="Old")
-        url = reverse("directory:pq-detail", args=[pq.pk])
-        response = self.client.patch(url, {"name": "New"})
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_delete(self):
-        pq = PQFactory()
-        url = reverse("directory:pq-detail", args=[pq.pk])
-        response = self.client.delete(url)
-        assert response.status_code == status.HTTP_204_NO_CONTENT
-
-    def test_bulk_delete(self):
-        p1 = PQFactory()
-        p2 = PQFactory()
-        url = reverse("directory:pq-bulk-delete")
-        response = self.client.delete(url, {"ids": [p1.pk, p2.pk]}, format="json")
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["deleted"] == 2
-
-    def test_search(self):
-        PQFactory(name="PQ Alpha")
-        PQFactory(name="PQ Beta")
-        url = reverse("directory:pq-list")
-        response = self.client.get(url, {"search": "Alpha"})
+    def test_filter_by_is_active(self):
+        FacilityFactory(is_active=True)
+        FacilityFactory(is_active=False)
+        url = reverse("directory:facility-list")
+        response = self.client.get(url, {"is_active": "true"})
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 1
 
+    def test_org_unit_name_in_response(self):
+        org = OrgUnitFactory(name="ООО Нефтехим")
+        facility = FacilityFactory(org_unit=org)
+        url = reverse("directory:facility-detail", args=[facility.pk])
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["org_unit_name"] == "ООО Нефтехим"
+
     def test_unauthenticated(self):
         client = APIClient()
-        url = reverse("directory:pq-list")
+        url = reverse("directory:facility-list")
         response = client.get(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

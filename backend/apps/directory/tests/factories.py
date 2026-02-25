@@ -5,11 +5,9 @@ from apps.directory.models import (
     Contact,
     Country,
     DeliveryType,
-    Designer,
     Equipment,
-    Intermediary,
+    Facility,
     OrgUnit,
-    PQ,
     TypeOfWork,
 )
 
@@ -85,23 +83,10 @@ class DeliveryTypeFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f"Тип доставки {n}")
 
 
-class IntermediaryFactory(factory.django.DjangoModelFactory):
+class FacilityFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = Intermediary
+        model = Facility
 
-    name = factory.Sequence(lambda n: f"Посредник {n}")
-
-
-class DesignerFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = Designer
-
-    name = factory.Sequence(lambda n: f"Проектант {n}")
-
-
-class PQFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = PQ
-
-    name = factory.Sequence(lambda n: f"ПКЗ {n}")
-    full_name = factory.LazyAttribute(lambda obj: f"Полное {obj.name}")
+    name = factory.Sequence(lambda n: f"Объект {n}")
+    org_unit = factory.SubFactory(OrgUnitFactory)
+    is_active = True

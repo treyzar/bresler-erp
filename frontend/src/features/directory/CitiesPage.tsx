@@ -1,12 +1,11 @@
 import { useState } from "react"
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table"
 import { z } from "zod"
-import { Plus, X } from "lucide-react"
+import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Form,
   FormControl,
@@ -15,93 +14,82 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { DataTable } from "@/components/shared/DataTable"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EntityFormDialog } from "@/components/shared/EntityFormDialog"
 import { DataTableRowActions } from "@/components/shared/DataTableRowActions"
-import type { PQ, ListParams } from "@/api/types"
-import { pqHooks } from "@/api/hooks/usePQs"
+import type { City, ListParams } from "@/api/types"
+import { cityHooks } from "@/api/hooks/useCities"
+import { countryHooks } from "@/api/hooks/useCountries"
 
-const columns: ColumnDef<PQ, unknown>[] = [
-  { accessorKey: "id", header: "ID", size: 80 },
-  { accessorKey: "name", header: "Название" },
-  { accessorKey: "full_name", header: "Полное название" },
-  {
-    accessorKey: "previous_names",
-    header: "Предыдущие названия",
-    cell: ({ getValue }) => {
-      const names = getValue() as string[]
-      return names?.length ? names.join(", ") : "—"
-    },
-  },
-]
+const PAGE_SIZE = 20
 
 const formSchema = z.object({
   name: z.string().min(1, "Обязательное поле"),
-  full_name: z.string().optional().default(""),
-  previous_names: z.array(z.object({ value: z.string() })).default([]),
+  country: z.number().int().min(1, "Выберите страну"),
 })
 
 type FormValues = z.infer<typeof formSchema>
 
-export function PQPage() {
+const columns: ColumnDef<City, unknown>[] = [
+  { accessorKey: "id", header: "ID", size: 80 },
+  { accessorKey: "name", header: "Название" },
+  { accessorKey: "country_name", header: "Страна", size: 200 },
+]
+
+export function CitiesPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [selectedRows, setSelectedRows] = useState<RowSelectionState>({})
-  const [editingItem, setEditingItem] = useState<PQ | null>(null)
+  const [editingItem, setEditingItem] = useState<City | null>(null)
   const [formOpen, setFormOpen] = useState(false)
-  const [deleteItem, setDeleteItem] = useState<PQ | null>(null)
+  const [deleteItem, setDeleteItem] = useState<City | null>(null)
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[] | null>(null)
 
-  const pageSize = 20
-  const listParams: ListParams = { page, page_size: pageSize }
+  const listParams: ListParams = { page, page_size: PAGE_SIZE }
   if (search) listParams.search = search
 
-  const { data, isLoading } = pqHooks.useList(listParams)
-  const createMutation = pqHooks.useCreate()
-  const updateMutation = pqHooks.useUpdate()
-  const deleteMutation = pqHooks.useDelete()
-  const bulkDeleteMutation = pqHooks.useBulkDelete()
+  const { data, isLoading } = cityHooks.useList(listParams)
+  const createMutation = cityHooks.useCreate()
+  const updateMutation = cityHooks.useUpdate()
+  const deleteMutation = cityHooks.useDelete()
+  const bulkDeleteMutation = cityHooks.useBulkDelete()
+
+  const { data: countriesData } = countryHooks.useList({ page_size: 200 })
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", full_name: "", previous_names: [] },
-  })
-
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "previous_names",
+    defaultValues: { name: "", country: 0 },
   })
 
   const handleOpenCreate = () => {
     setEditingItem(null)
-    form.reset({ name: "", full_name: "", previous_names: [] })
+    form.reset({ name: "", country: 0 })
     setFormOpen(true)
   }
 
-  const handleOpenEdit = (item: PQ) => {
+  const handleOpenEdit = (item: City) => {
     setEditingItem(item)
-    form.reset({
-      name: item.name,
-      full_name: item.full_name,
-      previous_names: (item.previous_names ?? []).map((v) => ({ value: v })),
-    })
+    form.reset({ name: item.name, country: item.country })
     setFormOpen(true)
   }
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    const payload = {
-      name: values.name,
-      full_name: values.full_name,
-      previous_names: values.previous_names.map((p) => p.value).filter(Boolean),
-    }
     try {
       if (editingItem) {
-        await updateMutation.mutateAsync({ id: editingItem.id, data: payload as Partial<PQ> })
-        toast.success("Запись обновлена")
+        await updateMutation.mutateAsync({ id: editingItem.id, data: values as Partial<City> })
+        toast.success("Город обновлён")
       } else {
-        await createMutation.mutateAsync(payload as Partial<PQ>)
-        toast.success("Запись создана")
+        await createMutation.mutateAsync(values as Partial<City>)
+        toast.success("Город создан")
       }
       setFormOpen(false)
     } catch {
@@ -113,7 +101,7 @@ export function PQPage() {
     if (!deleteItem) return
     try {
       await deleteMutation.mutateAsync(deleteItem.id)
-      toast.success("Запись удалена")
+      toast.success("Город удалён")
       setDeleteItem(null)
     } catch {
       toast.error("Ошибка при удалении")
@@ -132,7 +120,7 @@ export function PQPage() {
     }
   }
 
-  const columnsWithActions: ColumnDef<PQ, unknown>[] = [
+  const columnsWithActions: ColumnDef<City, unknown>[] = [
     ...columns,
     {
       id: "actions",
@@ -151,7 +139,7 @@ export function PQPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">ПКЗ</h1>
+        <h1 className="text-2xl font-bold">Города</h1>
       </div>
 
       <DataTable
@@ -159,7 +147,7 @@ export function PQPage() {
         data={data?.results ?? []}
         totalCount={data?.count ?? 0}
         page={page}
-        pageSize={pageSize}
+        pageSize={PAGE_SIZE}
         onPageChange={(p) => { setPage(p); setSelectedRows({}) }}
         searchValue={search}
         onSearchChange={(val) => { setSearch(val); setPage(1); setSelectedRows({}) }}
@@ -178,7 +166,7 @@ export function PQPage() {
       <EntityFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        title={editingItem ? "Редактирование ПКЗ" : "Создание ПКЗ"}
+        title={editingItem ? "Редактирование города" : "Создание города"}
       >
         <Form {...form}>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -189,7 +177,7 @@ export function PQPage() {
                 <FormItem>
                   <FormLabel>Название</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} placeholder="Москва" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -197,52 +185,31 @@ export function PQPage() {
             />
             <FormField
               control={form.control}
-              name="full_name"
+              name="country"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Полное название</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
+                  <FormLabel>Страна</FormLabel>
+                  <Select
+                    onValueChange={(val) => field.onChange(Number(val))}
+                    value={field.value ? String(field.value) : undefined}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите страну" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {countriesData?.results.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Предыдущие названия</label>
-              {fields.map((item, index) => (
-                <div key={item.id} className="flex gap-2">
-                  <FormField
-                    control={form.control}
-                    name={`previous_names.${index}.value`}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <Input {...field} placeholder="Предыдущее название" />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => remove(index)}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ value: "" })}
-              >
-                <Plus className="size-4 mr-1" />
-                Добавить
-              </Button>
-            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
                 Отмена
@@ -258,15 +225,15 @@ export function PQPage() {
       <ConfirmDialog
         open={!!deleteItem}
         onOpenChange={(open) => { if (!open) setDeleteItem(null) }}
-        title="Удалить запись?"
-        description="Это действие нельзя отменить. Запись будет удалена безвозвратно."
+        title="Удалить город?"
+        description="Это действие нельзя отменить. Город будет удалён безвозвратно."
         onConfirm={handleDelete}
         loading={deleteMutation.isPending}
       />
       <ConfirmDialog
         open={!!bulkDeleteIds}
         onOpenChange={(open) => { if (!open) setBulkDeleteIds(null) }}
-        title="Удалить выбранные записи?"
+        title="Удалить выбранные города?"
         description={`Будет удалено записей: ${bulkDeleteIds?.length ?? 0}. Это действие нельзя отменить.`}
         onConfirm={handleBulkDelete}
         loading={bulkDeleteMutation.isPending}

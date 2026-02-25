@@ -1,5 +1,5 @@
 import apiClient from "./client"
-import type { BaseEntity, ListParams, OrgUnit, OrgUnitTreeNode, PaginatedResponse } from "./types"
+import type { BaseEntity, Facility, ListParams, OrgUnit, OrgUnitTreeNode, PaginatedResponse } from "./types"
 
 export interface DirectoryApi<T extends BaseEntity> {
   list: (params?: ListParams) => Promise<PaginatedResponse<T>>
@@ -47,9 +47,7 @@ export const contactsApi = createDirectoryApi<import("./types").Contact>("/direc
 export const equipmentApi = createDirectoryApi<import("./types").Equipment>("/directory/equipment/")
 export const worksApi = createDirectoryApi<import("./types").TypeOfWork>("/directory/works/")
 export const deliveryTypesApi = createDirectoryApi<import("./types").DeliveryType>("/directory/delivery-types/")
-export const intermediariesApi = createDirectoryApi<import("./types").Intermediary>("/directory/intermediaries/")
-export const designersApi = createDirectoryApi<import("./types").Designer>("/directory/designers/")
-export const pqsApi = createDirectoryApi<import("./types").PQ>("/directory/pqs/")
+export const facilitiesApi = createDirectoryApi<Facility>("/directory/facilities/")
 
 // OrgUnits API — extended with tree operations
 const baseOrgUnitsApi = createDirectoryApi<OrgUnit>("/directory/orgunits/")

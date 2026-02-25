@@ -6,11 +6,8 @@ from apps.core.models import BaseModel
 from apps.directory.models import (
     Contact,
     Country,
-    Designer,
     Equipment,
-    Intermediary,
     OrgUnit,
-    PQ,
     TypeOfWork,
 )
 
@@ -55,20 +52,20 @@ class Order(BaseModel):
         blank=True,
     )
     intermediary = models.ForeignKey(
-        Intermediary,
+        OrgUnit,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="orders",
+        related_name="intermediary_orders",
         verbose_name="Посредник",
     )
     designer = models.ForeignKey(
-        Designer,
+        OrgUnit,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="orders",
-        verbose_name="Проектант",
+        related_name="designer_orders",
+        verbose_name="Проектировщик",
     )
     country = models.ForeignKey(
         Country,
@@ -111,12 +108,12 @@ class Order(BaseModel):
         related_name="orders",
         verbose_name="Виды работ",
     )
-    pqs = models.ManyToManyField(
-        PQ,
-        through="OrderPQ",
-        related_name="orders",
+    participants = models.ManyToManyField(
+        OrgUnit,
+        through="OrderParticipant",
+        related_name="participant_orders",
         blank=True,
-        verbose_name="ПКЗ",
+        verbose_name="Участники ЦЗ",
     )
     related_orders = models.ManyToManyField(
         "self",
@@ -149,12 +146,14 @@ class OrderOrgUnit(models.Model):
         ordering = ["order_index"]
 
 
-class OrderPQ(models.Model):
-    """Through model for Order ↔ PQ with ordering."""
+class OrderParticipant(models.Model):
+    """Through model for Order ↔ OrgUnit participants (price request participants)."""
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    pq = models.ForeignKey(PQ, on_delete=models.CASCADE)
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.CASCADE)
     order_index = models.PositiveIntegerField("Порядок", default=0)
 
     class Meta:
         ordering = ["order_index"]
+        verbose_name = "Участник ЦЗ"
+        verbose_name_plural = "Участники ЦЗ"

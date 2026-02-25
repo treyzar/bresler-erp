@@ -10,10 +10,11 @@ import { useUIStore } from "@/stores/useUIStore"
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const theme = useUIStore((s) => s.theme)
+  const sonnerTheme = theme.includes("dark") ? "dark" : "light"
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={sonnerTheme}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

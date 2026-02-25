@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Contract, Order, OrderFile, OrderOrgUnit, OrderPQ
+from .models import Contract, Order, OrderFile, OrderOrgUnit, OrderParticipant
 
 
 class OrderOrgUnitInline(admin.TabularInline):
@@ -8,8 +8,8 @@ class OrderOrgUnitInline(admin.TabularInline):
     extra = 0
 
 
-class OrderPQInline(admin.TabularInline):
-    model = OrderPQ
+class OrderParticipantInline(admin.TabularInline):
+    model = OrderParticipant
     extra = 0
 
 
@@ -37,5 +37,5 @@ class OrderAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "country")
     search_fields = ("order_number", "tender_number", "note")
-    inlines = [ContractInline, OrderOrgUnitInline, OrderPQInline, OrderFileInline]
+    inlines = [ContractInline, OrderOrgUnitInline, OrderParticipantInline, OrderFileInline]
     filter_horizontal = ("contacts", "managers", "equipments", "works", "related_orders")

@@ -29,17 +29,17 @@ import { UNIT_TYPES, BUSINESS_ROLES } from "@/lib/constants"
 
 const formSchema = z.object({
   name: z.string().min(1, "Обязательное поле"),
-  full_name: z.string().optional().default(""),
+  full_name: z.string(),
   unit_type: z.string().min(1, "Обязательное поле"),
   business_role: z.string().min(1, "Обязательное поле"),
-  is_legal_entity: z.boolean().default(false),
-  country: z.coerce.number().nullable().default(null),
-  inn: z.string().optional().default(""),
-  kpp: z.string().optional().default(""),
-  ogrn: z.string().optional().default(""),
-  external_code: z.string().optional().default(""),
-  address: z.string().optional().default(""),
-  is_active: z.boolean().default(true),
+  is_legal_entity: z.boolean(),
+  country: z.number().nullable(),
+  inn: z.string(),
+  kpp: z.string(),
+  ogrn: z.string(),
+  external_code: z.string(),
+  address: z.string(),
+  is_active: z.boolean(),
 })
 
 type FormValues = z.infer<typeof formSchema>

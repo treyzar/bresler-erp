@@ -1,7 +1,7 @@
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
-from .models import OrgUnit, PQ
+from .models import OrgUnit
 
 
 def _track_name_changes(model_class, instance):
@@ -21,10 +21,4 @@ def _track_name_changes(model_class, instance):
 @receiver(pre_save, sender=OrgUnit)
 def track_orgunit_name_changes(sender, instance, **kwargs):
     """Track previous names of OrgUnit on name change."""
-    _track_name_changes(sender, instance)
-
-
-@receiver(pre_save, sender=PQ)
-def track_pq_name_changes(sender, instance, **kwargs):
-    """Track previous names of PQ on name change."""
     _track_name_changes(sender, instance)

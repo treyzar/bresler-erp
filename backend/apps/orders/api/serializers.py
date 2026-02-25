@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.orders.models import Contract, Order, OrderFile, OrderOrgUnit, OrderPQ
+from apps.orders.models import Contract, Order, OrderFile, OrderOrgUnit, OrderParticipant
 
 
 class OrderOrgUnitSerializer(serializers.ModelSerializer):
@@ -11,12 +11,12 @@ class OrderOrgUnitSerializer(serializers.ModelSerializer):
         fields = ("id", "org_unit", "org_unit_name", "role", "order_index", "note")
 
 
-class OrderPQSerializer(serializers.ModelSerializer):
-    pq_name = serializers.CharField(source="pq.name", read_only=True)
+class OrderParticipantSerializer(serializers.ModelSerializer):
+    org_unit_name = serializers.CharField(source="org_unit.name", read_only=True)
 
     class Meta:
-        model = OrderPQ
-        fields = ("id", "pq", "pq_name", "order_index")
+        model = OrderParticipant
+        fields = ("id", "org_unit", "org_unit_name", "order_index")
 
 
 class OrderFileSerializer(serializers.ModelSerializer):
@@ -80,6 +80,16 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         read_only=True,
         default="",
     )
+    intermediary_name = serializers.CharField(
+        source="intermediary.name",
+        read_only=True,
+        default="",
+    )
+    designer_name = serializers.CharField(
+        source="designer.name",
+        read_only=True,
+        default="",
+    )
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     contract = ContractSerializer(read_only=True)
     order_org_units = OrderOrgUnitSerializer(
@@ -87,8 +97,8 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True,
     )
-    order_pqs = OrderPQSerializer(
-        source="orderpq_set",
+    order_participants = OrderParticipantSerializer(
+        source="orderparticipant_set",
         many=True,
         read_only=True,
     )
@@ -128,11 +138,13 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "customer_org_unit",
             "customer_name",
             "intermediary",
+            "intermediary_name",
             "designer",
+            "designer_name",
             "country",
             "contract",
             "order_org_units",
-            "order_pqs",
+            "order_participants",
             "files",
             "manager_ids",
             "contact_ids",

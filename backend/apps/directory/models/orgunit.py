@@ -9,17 +9,26 @@ class OrgUnit(MP_Node):
     """Organizational unit — tree structure (company → branch → division → department → site)."""
 
     class UnitType(models.TextChoices):
-        COMPANY = "COMPANY", "Компания"
-        BRANCH = "BRANCH", "Филиал"
-        DIVISION = "DIVISION", "Подразделение"
-        DEPARTMENT = "DEPARTMENT", "Отдел"
-        SITE = "SITE", "Объект"
+        COMPANY = "company", "Головная компания / Холдинг"
+        BRANCH = "branch", "Филиал / Дочерняя компания"
+        DIVISION = "division", "Производственное отделение"
+        DEPARTMENT = "department", "Участок"
+        SITE = "site", "Площадка"
+        OTHER = "other", "Другое"
 
     class BusinessRole(models.TextChoices):
-        CUSTOMER = "CUSTOMER", "Заказчик"
-        SUPPLIER = "SUPPLIER", "Поставщик"
-        PARTNER = "PARTNER", "Партнер"
-        OWN = "OWN", "Собственная"
+        CUSTOMER = "customer", "Заказчик"
+        SUPPLIER = "supplier", "Поставщик"
+        PARTICIPANT = "participant", "Участник запроса"
+        INTERNAL = "internal", "Внутренняя компания"
+        PARTNER = "partner", "Партнёр / Посредник"
+        MANUFACTURER = "manufacturer", "Производитель оборудования"
+        CONTRACTOR = "contractor", "Генподрядчик"
+        DESIGNER = "designer", "Проектировщик"
+        EXPERTISE = "expertise", "Орган экспертизы"
+        BUYER_BRANCH = "buyer_branch", "Филиал-покупатель (Legacy)"
+        SHIPMENT_SITE = "shipment_site", "Площадка отгрузки (Legacy)"
+        OTHER = "other", "Другое"
 
     name = models.CharField("Название", max_length=255)
     full_name = models.CharField("Полное название", max_length=500, blank=True)
@@ -31,7 +40,7 @@ class OrgUnit(MP_Node):
     )
     business_role = models.CharField(
         "Бизнес-роль",
-        max_length=20,
+        max_length=30,
         choices=BusinessRole.choices,
         blank=True,
     )

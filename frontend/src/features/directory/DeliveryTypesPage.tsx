@@ -1,10 +1,10 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { z } from "zod"
-import type { Designer } from "@/api/types"
-import { designerHooks } from "@/api/hooks/useDesigners"
+import type { DeliveryType } from "@/api/types"
+import { deliveryTypeHooks } from "@/api/hooks/useDeliveryTypes"
 import { ReferenceTablePage, type FormFieldConfig } from "./shared/ReferenceTablePage"
 
-const columns: ColumnDef<Designer, unknown>[] = [
+const columns: ColumnDef<DeliveryType, unknown>[] = [
   { accessorKey: "id", header: "ID", size: 80 },
   { accessorKey: "name", header: "Название" },
 ]
@@ -12,14 +12,14 @@ const columns: ColumnDef<Designer, unknown>[] = [
 const formSchema = z.object({ name: z.string().min(1, "Обязательное поле") })
 const formFields: FormFieldConfig[] = [{ name: "name", label: "Название" }]
 
-export function DesignersPage() {
+export function DeliveryTypesPage() {
   return (
-    <ReferenceTablePage<Designer>
-      title="Проектанты"
+    <ReferenceTablePage<DeliveryType>
+      title="Типы доставки"
       columns={columns}
       formSchema={formSchema}
       formFields={formFields}
-      queryHooks={designerHooks}
+      queryHooks={deliveryTypeHooks}
       defaultValues={{ name: "" }}
     />
   )

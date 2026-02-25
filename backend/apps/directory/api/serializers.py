@@ -5,11 +5,9 @@ from apps.directory.models import (
     Contact,
     Country,
     DeliveryType,
-    Designer,
     Equipment,
-    Intermediary,
+    Facility,
     OrgUnit,
-    PQ,
     TypeOfWork,
 )
 
@@ -117,22 +115,20 @@ class DeliveryTypeSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "updated_at")
 
 
-class IntermediarySerializer(serializers.ModelSerializer):
+class FacilitySerializer(serializers.ModelSerializer):
+    org_unit_name = serializers.CharField(source="org_unit.name", read_only=True, default="")
+
     class Meta:
-        model = Intermediary
-        fields = ("id", "name", "created_at", "updated_at")
-        read_only_fields = ("id", "created_at", "updated_at")
-
-
-class DesignerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Designer
-        fields = ("id", "name", "created_at", "updated_at")
-        read_only_fields = ("id", "created_at", "updated_at")
-
-
-class PQSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PQ
-        fields = ("id", "name", "full_name", "previous_names", "created_at", "updated_at")
+        model = Facility
+        fields = (
+            "id",
+            "name",
+            "org_unit",
+            "org_unit_name",
+            "address",
+            "description",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
         read_only_fields = ("id", "created_at", "updated_at")

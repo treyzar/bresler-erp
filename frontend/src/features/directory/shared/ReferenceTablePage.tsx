@@ -66,7 +66,8 @@ export function ReferenceTablePage<T extends BaseEntity>({
   const bulkDeleteMutation = queryHooks.useBulkDelete()
 
   const form = useForm({
-    resolver: zodResolver(formSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(formSchema as any),
     defaultValues: defaultValues as Record<string, unknown>,
   })
 

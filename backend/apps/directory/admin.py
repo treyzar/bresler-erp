@@ -7,11 +7,9 @@ from .models import (
     Contact,
     Country,
     DeliveryType,
-    Designer,
     Equipment,
-    Intermediary,
+    Facility,
     OrgUnit,
-    PQ,
     TypeOfWork,
 )
 
@@ -62,19 +60,9 @@ class DeliveryTypeAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
-@admin.register(Intermediary)
-class IntermediaryAdmin(admin.ModelAdmin):
-    list_display = ("name",)
-    search_fields = ("name",)
-
-
-@admin.register(Designer)
-class DesignerAdmin(admin.ModelAdmin):
-    list_display = ("name",)
-    search_fields = ("name",)
-
-
-@admin.register(PQ)
-class PQAdmin(admin.ModelAdmin):
-    list_display = ("name", "full_name")
-    search_fields = ("name", "full_name")
+@admin.register(Facility)
+class FacilityAdmin(admin.ModelAdmin):
+    list_display = ("name", "org_unit", "address", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name", "address")
+    raw_id_fields = ("org_unit",)

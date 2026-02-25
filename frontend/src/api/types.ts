@@ -15,6 +15,8 @@ export interface User {
   company: string
   avatar: string | null
   is_active: boolean
+  last_login: string | null
+  date_joined: string
   groups?: string[]
 }
 
@@ -51,6 +53,30 @@ export interface City extends BaseEntity {
   name: string
   country: number
   country_name: string
+}
+
+export const ORG_UNIT_TYPES: Record<string, string> = {
+  company: "Головная компания / Холдинг",
+  branch: "Филиал / Дочерняя компания",
+  division: "Производственное отделение",
+  department: "Участок",
+  site: "Площадка",
+  other: "Другое",
+}
+
+export const ORG_UNIT_BUSINESS_ROLES: Record<string, string> = {
+  customer: "Заказчик",
+  supplier: "Поставщик",
+  participant: "Участник запроса",
+  internal: "Внутренняя компания",
+  partner: "Партнёр / Посредник",
+  manufacturer: "Производитель оборудования",
+  contractor: "Генподрядчик",
+  designer: "Проектировщик",
+  expertise: "Орган экспертизы",
+  buyer_branch: "Филиал-покупатель (Legacy)",
+  shipment_site: "Площадка отгрузки (Legacy)",
+  other: "Другое",
 }
 
 export interface OrgUnit extends BaseEntity {
@@ -92,17 +118,18 @@ export interface Contact extends BaseEntity {
   org_units: number[]
 }
 
-export interface PQ extends BaseEntity {
+export interface Facility extends BaseEntity {
   name: string
-  full_name: string
-  previous_names: string[]
+  org_unit: number | null
+  org_unit_name: string
+  address: string
+  description: string
+  is_active: boolean
 }
 
 export type Equipment = SimpleReference
 export type TypeOfWork = SimpleReference
 export type DeliveryType = SimpleReference
-export type Intermediary = SimpleReference
-export type Designer = SimpleReference
 
 export interface ListParams {
   page?: number
@@ -110,4 +137,104 @@ export interface ListParams {
   search?: string
   ordering?: string
   [key: string]: string | number | boolean | undefined
+}
+
+// Order types
+
+export const ORDER_STATUSES = {
+  N: "Новый",
+  P: "В работе",
+  C: "Завершён",
+  T: "Тендер",
+  A: "Архив",
+} as const
+
+export const CONTRACT_STATUSES = {
+  not_paid: "Не оплачен",
+  advance_paid: "Аванс оплачен",
+  intermediate: "Промежуточная оплата",
+  fully_paid: "Полностью оплачен",
+} as const
+
+export interface OrderListItem {
+  id: number
+  order_number: number
+  tender_number: string
+  status: string
+  status_display: string
+  customer_org_unit: number | null
+  customer_name: string
+  start_date: string | null
+  ship_date: string | null
+  note: string
+  created_at: string
+}
+
+export interface OrderOrgUnitEntry {
+  id: number
+  org_unit: number
+  org_unit_name: string
+  role: string
+  order_index: number
+  note: string
+}
+
+export interface OrderParticipantEntry {
+  id: number
+  org_unit: number
+  org_unit_name: string
+  order_index: number
+}
+
+export interface OrderFile {
+  id: number
+  file: string
+  original_name: string
+  file_size: number
+  created_at: string
+}
+
+export interface Contract extends BaseEntity {
+  contract_number: string
+  contract_date: string | null
+  status: string
+  advance_percent: string
+  intermediate_percent: string
+  post_payment_percent: string
+  amount: string | null
+  deadline_days: number | null
+}
+
+export interface OrderDetail extends BaseEntity {
+  order_number: number
+  tender_number: string
+  status: string
+  status_display: string
+  note: string
+  start_date: string | null
+  ship_date: string | null
+  customer_org_unit: number | null
+  customer_name: string
+  intermediary: number | null
+  intermediary_name: string
+  designer: number | null
+  designer_name: string
+  country: number | null
+  contract: Contract | null
+  order_org_units: OrderOrgUnitEntry[]
+  order_participants: OrderParticipantEntry[]
+  files: OrderFile[]
+  manager_ids: number[]
+  contact_ids: number[]
+  equipment_ids: number[]
+  work_ids: number[]
+  related_orders: number[]
+}
+
+export interface OrderHistoryRecord {
+  id: number
+  date: string
+  user: string | null
+  type: string
+  changes: { field: string; old: string; new: string }[]
 }

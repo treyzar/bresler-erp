@@ -16,6 +16,7 @@ from .serializers import (
 
 
 class OrderViewSet(viewsets.ModelViewSet):
+    lookup_field = "order_number"
     queryset = Order.objects.select_related(
         "customer_org_unit",
         "intermediary",
@@ -29,7 +30,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "works",
         "files",
         "orderorgunit_set__org_unit",
-        "orderpq_set__pq",
+        "orderparticipant_set__org_unit",
     )
     filterset_class = OrderFilter
     search_fields = ["order_number", "tender_number", "note"]
@@ -47,7 +48,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response({"next_number": get_next_order_number()})
 
     @action(detail=True, methods=["get"])
-    def history(self, request, pk=None):
+    def history(self, request, order_number=None):
         order = self.get_object()
         history = order.history.all()[:50]
         data = [
@@ -68,7 +69,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         url_path="upload-files",
         parser_classes=[parsers.MultiPartParser],
     )
-    def upload_files(self, request, pk=None):
+    def upload_files(self, request, order_number=None):
         order = self.get_object()
         files = request.FILES.getlist("files")
         created = []
@@ -84,19 +85,19 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"])
-    def files(self, request, pk=None):
+    def files(self, request, order_number=None):
         order = self.get_object()
         serializer = OrderFileSerializer(order.files.all(), many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=["delete"], url_path=r"files/(?P<file_id>\d+)")
-    def delete_file(self, request, pk=None, file_id=None):
+    def delete_file(self, request, order_number=None, file_id=None):
         order = self.get_object()
         order.files.filter(id=file_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get", "patch"])
-    def contract(self, request, pk=None):
+    def contract(self, request, order_number=None):
         order = self.get_object()
         if request.method == "GET":
             try:

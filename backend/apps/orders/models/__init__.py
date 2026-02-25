@@ -1,11 +1,11 @@
 from .contract import Contract
 from .files import OrderFile
-from .order import Order, OrderOrgUnit, OrderPQ
+from .order import Order, OrderOrgUnit, OrderParticipant
 
 __all__ = [
     "Order",
     "OrderOrgUnit",
-    "OrderPQ",
+    "OrderParticipant",
     "Contract",
     "OrderFile",
 ]

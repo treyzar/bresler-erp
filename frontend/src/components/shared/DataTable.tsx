@@ -37,6 +37,7 @@ interface DataTableProps<T> {
   onBulkDelete?: (ids: number[]) => void
   toolbar?: React.ReactNode
   getRowId?: (row: T) => string
+  onRowClick?: (row: T) => void
 }
 
 export function DataTable<T>({
@@ -55,6 +56,7 @@ export function DataTable<T>({
   onBulkDelete,
   toolbar,
   getRowId,
+  onRowClick,
 }: DataTableProps<T>) {
   const [localSearch, setLocalSearch] = useState(searchValue)
   const debouncedSearch = useDebounce(localSearch, 300)
@@ -169,7 +171,12 @@ export function DataTable<T>({
               ))
             ) : table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                  onClick={() => onRowClick?.(row.original)}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

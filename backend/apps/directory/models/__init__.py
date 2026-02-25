@@ -1,12 +1,10 @@
 from .contacts import Contact
+from .facility import Facility
 from .geography import City, Country
 from .orgunit import OrgUnit
 from .references import (
     DeliveryType,
-    Designer,
     Equipment,
-    Intermediary,
-    PQ,
     TypeOfWork,
 )
 
@@ -18,7 +16,5 @@ __all__ = [
     "Equipment",
     "TypeOfWork",
     "DeliveryType",
-    "Intermediary",
-    "Designer",
-    "PQ",
+    "Facility",
 ]

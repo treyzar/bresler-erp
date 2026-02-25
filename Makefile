@@ -3,7 +3,7 @@
 
 # ── Development ────────────────────────────────────────────
 dev:
-	docker compose up --build
+	docker compose up --build -V
 
 docker-up:
 	docker compose up -d
