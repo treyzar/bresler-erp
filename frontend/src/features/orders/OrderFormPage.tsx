@@ -24,6 +24,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OrgUnitCombobox } from "@/components/shared/OrgUnitCombobox"
+import { MultiSelect } from "@/components/shared/MultiSelect"
 import { ORDER_STATUSES } from "@/api/types"
 import {
   useOrder,
@@ -61,7 +62,12 @@ export function OrderFormPage() {
   const { data: nextNumber } = useNextOrderNumber()
   const createMutation = useCreateOrder()
   const updateMutation = useUpdateOrder()
-  const { intermediaries, designers, countries } = useReferenceOptions()
+  const { intermediaries, designers, countries, equipments, works, contacts, users } = useReferenceOptions()
+
+  const equipmentOptions = equipments.map((e) => ({ value: e.id, label: e.name }))
+  const worksOptions = works.map((w) => ({ value: w.id, label: w.name }))
+  const managerOptions = users.map((u) => ({ value: u.id, label: u.full_name || u.username }))
+  const contactOptions = contacts.map((c) => ({ value: c.id, label: c.full_name }))
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -309,6 +315,84 @@ export function OrderFormPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Дополнительно</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="equipments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Оборудование</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={equipmentOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Выберите оборудование..."
+                        searchPlaceholder="Поиск оборудования..."
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="works"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Виды работ</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={worksOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Выберите виды работ..."
+                        searchPlaceholder="Поиск видов работ..."
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="managers"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Менеджеры</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={managerOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Выберите менеджеров..."
+                        searchPlaceholder="Поиск по имени..."
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contacts"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Контакты</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={contactOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Выберите контакты..."
+                        searchPlaceholder="Поиск контактов..."
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

@@ -87,8 +87,9 @@ make prod-build         # Build and start production
 
 - **Service layer:** Business logic lives in `apps/<app>/services/`, not in views. Views are thin — delegate to services.
 - **Tree structures:** OrgUnit uses django-treebeard `MP_Node` (Materialized Path). Use `add_child()`, `move()`, not raw SQL.
-- **Audit trail:** `simple_history` on Order, Contract, OrgUnit, PQ. Tracking history of changes.
-- **previous_names:** OrgUnit and PQ track name changes via JSONField + pre_save signal.
+- **Unified OrgUnit:** All companies (customers, intermediaries, designers, etc.) stored in OrgUnit with `business_role` field. No separate Intermediary/Designer/PQ models.
+- **Audit trail:** `simple_history` on Order, Contract, OrgUnit. Tracking history of changes.
+- **previous_names:** OrgUnit tracks name changes via JSONField + pre_save signal.
 - **JWT auth:** SimpleJWT, 30-min access token, 7-day refresh. Tokens in Zustand store with localStorage persistence.
 - **API patterns:** All ViewSets use DRF ModelViewSet + django-filter. Pagination: 50 items/page default.
 - **Frontend data fetching:** TanStack React Query custom hooks per entity (`useContacts`, `useCountries`, etc.).
@@ -110,9 +111,7 @@ make prod-build         # Build and start production
 /api/directory/equipment/   # CRUD
 /api/directory/works/       # CRUD
 /api/directory/delivery-types/  # CRUD
-/api/directory/intermediaries/  # CRUD
-/api/directory/designers/   # CRUD
-/api/directory/pqs/         # CRUD
+/api/directory/facilities/     # CRUD
 /api/orders/               # CRUD + history, files, next-number
 /api/orders/{id}/contract/ # GET/PATCH
 /api/schema/               # OpenAPI JSON schema
@@ -171,12 +170,14 @@ See `.env.example`. Key variables:
 - **User** (AbstractUser) — patronymic, phone, position, department, company, avatar
 - **OrgUnit** (MP_Node tree) — company/branch/division/department/site with business roles
 - **Contact** — persons linked M2M to OrgUnit
-- **Order** — order with statuses (NEW/IN_PROGRESS/COMPLETED/TENDER/ARCHIVED), M2M to OrgUnit, Contact, User (managers), Equipment, PQ
+- **Facility** — site/facility linked to OrgUnit
+- **Order** — order with statuses (NEW/IN_PROGRESS/COMPLETED/TENDER/ARCHIVED), FK to OrgUnit (customer, intermediary, designer), M2M to Contact, User (managers), Equipment
 - **Contract** — OneToOne to Order, payment statuses and amounts
-- **Reference entities** — Equipment, TypeOfWork, DeliveryType, Intermediary, Designer, PQ
+- **Reference entities** — Equipment, TypeOfWork, DeliveryType
 
 ## Current status
 
-Backend: apps core, users, directory, orders — models, services, API all implemented. Directory has comprehensive tests (~130+). Orders backend ready but tests not yet written.
-Frontend: auth flow, layout, directory CRUD pages implemented. Orders UI not started.
+Backend: apps core, users, directory, orders — models, services, API all implemented. Directory tests (~130+), Orders tests (66). All backend complete.
+Frontend: auth flow, layout, directory CRUD pages, orders (list, detail, form, history, contract, files) implemented. Remaining: MultiSelect в OrderForm, WebSocket presence indicator, frontend tests (Vitest).
+EDO module: разрабатывается отдельным разработчиком, будет интегрирован позже. Legacy: `/home/serj/PyCharm/Projects/marketing` (модуль edo).
 See `plan_bresler_erp.md` section 6 for detailed weekly plan with checkboxes.

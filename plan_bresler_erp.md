@@ -60,7 +60,7 @@ bresler-erp/
 │   │   │   │   ├── geography.py   # Country, City
 │   │   │   │   ├── orgunit.py     # OrgUnit (MP_Node tree)
 │   │   │   │   ├── contacts.py    # Contact (M2M to OrgUnit)
-│   │   │   │   └── references.py  # Equipment, TypeOfWork, DeliveryType, Intermediary, Designer, PQ
+│   │   │   │   └── references.py  # Equipment, TypeOfWork, DeliveryType
 │   │   │   ├── api/
 │   │   │   │   ├── serializers.py
 │   │   │   │   ├── views.py       # ViewSets для всех справочников
@@ -103,7 +103,7 @@ bresler-erp/
 │   │   │
 │   │   ├── devices/               # (Фаза 2) Каталог терминалов
 │   │   ├── specs/                 # (Фаза 2) Спецификации и ТКП
-│   │   └── edo/                   # (Фаза 3) Электронный документооборот
+│   │   └── edo/                   # Электронный документооборот (разрабатывается отдельным разработчиком, интеграция позже)
 │   │
 │   ├── requirements/
 │   │   ├── base.txt
@@ -125,8 +125,8 @@ bresler-erp/
 │   │   │   └── hooks/             # useOrders(), useDirectory() etc.
 │   │   ├── components/
 │   │   │   ├── ui/                # shadcn/ui компоненты
-│   │   │   ├── layout/            # AppLayout, Sidebar, Header, Breadcrumbs
-│   │   │   └── shared/            # DataTable, TreeView, SearchCombobox, FileUpload
+│   │   │   ├── layout/            # AppLayout, Sidebar, Header
+│   │   │   └── shared/            # DataTable, OrgUnitCombobox, EntityFormDialog, ConfirmDialog
 │   │   ├── features/
 │   │   │   ├── auth/              # LoginPage, useAuth, ProtectedRoute, jwt-manager
 │   │   │   ├── orders/            # OrderList, OrderDetail, OrderForm, OrderHistory
@@ -217,21 +217,20 @@ class User(AbstractUser):
 - `Equipment(BaseModel)` — name
 - `TypeOfWork(BaseModel)` — name
 - `DeliveryType(BaseModel)` — name
-- `Intermediary(BaseModel)` — name
-- `Designer(BaseModel)` — name
-- `PQ(BaseModel)` — name, full_name, previous_names (JSONField), History
+
+> **Архитектурное решение:** Модели Intermediary, Designer, PQ удалены. Все компании хранятся в OrgUnit, взаимодействие определяется через `business_role` (CUSTOMER, SUPPLIER, PARTNER, DESIGNER, PARTICIPANT и др.).
 
 ### 2.4 orders/models/ — Заказы
 
 **order.py:**
 - `Order(BaseModel)` — order_number (unique, auto-increment), tender_number, status (N/P/C/T/A), note, start_date, ship_date
-  - FK: customer_org_unit→OrgUnit, intermediary→Intermediary, designer→Designer, country→Country
-  - M2M: org_units (through OrderOrgUnit with role), contacts, managers→User, equipments, works, pqs (through OrderPQ with order_index), files→OrderFile, related_orders→self
-  - History: simple_history с M2M tracking
+  - FK: customer_org_unit→OrgUnit, intermediary→OrgUnit (business_role=partner), designer→OrgUnit (business_role=designer), country→Country
+  - M2M: org_units (through OrderOrgUnit with role), contacts, managers→User, equipments, works, participants (through OrderParticipant), related_orders→self
+  - History: simple_history
 
 - `OrderOrgUnit` (through) — order→FK, org_unit→FK, role, order_index, note. Unique: (order, org_unit, role)
 
-- `OrderPQ` (through) — order→FK, pq→FK, order_index
+- `OrderParticipant` (through) — order→FK, org_unit→FK, order_index (участники ЦЗ)
 
 **contract.py:**
 - `Contract(BaseModel)` — order→OneToOne, contract_number (unique), contract_date, status (not_paid/advance_paid/intermediate/fully_paid), advance%, intermediate%, post_payment%, amount (Decimal), deadline_days
@@ -268,7 +267,7 @@ GET    /api/directory/orgunits/tree/          # Full tree (compact)
 GET    /api/directory/orgunits/search/        # Search across tree
 
 # For each reference entity (countries, cities, contacts, equipment, works,
-# delivery-types, intermediaries, designers, pqs):
+# delivery-types, facilities):
 GET    /api/directory/{entity}/               # List (paginated, filterable, searchable)
 POST   /api/directory/{entity}/               # Create
 GET    /api/directory/{entity}/{id}/          # Detail
@@ -366,13 +365,14 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 - [x] Тесты: auth endpoints (login, refresh, me)
 - [x] pyproject.toml: ruff + mypy config
 - [x] Makefile: dev, test, migrate, lint, shell, prod, prod-build, prod-logs...
-- [ ] Frontend: `npm create vite@latest frontend -- --template react-ts`
-- [ ] Установить: tailwindcss, shadcn/ui init, react-router, axios, tanstack-query, zustand
-- [ ] .gitlab-ci.yml: lint + test stages
+- [x] Frontend: Vite 7 + React 19 + TypeScript 5.9
+- [x] Установить: tailwindcss 4, shadcn/ui, react-router 7, axios, tanstack-query, zustand
+- [x] .gitlab-ci.yml: lint + test + build + deploy stages
 - [x] README.md с инструкцией запуска
 
 **Неделя 2: Модуль Directory (backend)**
-- [x] Создать apps/directory/ с моделями: Country, City, OrgUnit, Contact, Equipment, TypeOfWork, DeliveryType, Intermediary, Designer, PQ
+- [x] Создать apps/directory/ с моделями: Country, City, OrgUnit, Contact, Facility, Equipment, TypeOfWork, DeliveryType
+- [x] Рефакторинг: удалены модели Intermediary, Designer, PQ — заменены бизнес-ролями OrgUnit
 - [x] Миграции
 - [x] Сервисы: orgunit_service.py (tree ops), directory_service.py (CRUD + previous_names)
 - [x] Сигналы: previous_names tracking (pre_save)
@@ -382,10 +382,10 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 - [x] Admin: TreeAdmin для OrgUnit, ModelAdmin для остальных
 - [x] Фабрики: CountryFactory, OrgUnitFactory, ContactFactory и т.д.
 - [x] Тесты: модели, сервисы, API (CRUD + tree ops) — 130+ тестов
-- [ ] OpenAPI: проверить схему через /api/docs/
+- [x] OpenAPI: /api/docs/ (Swagger UI) и /api/redoc/ работают через drf-spectacular
 
 **Неделя 3: Модуль Orders (backend)**
-- [x] Создать apps/orders/ с моделями: Order, OrderOrgUnit, OrderPQ, Contract, OrderFile
+- [x] Создать apps/orders/ с моделями: Order, OrderOrgUnit, OrderParticipant, Contract, OrderFile
 - [x] Миграции
 - [x] Сервисы: order_service.py (create, update, next_number), contract_service.py
 - [x] API: OrderViewSet (list, create, retrieve, update, history, files)
@@ -393,41 +393,45 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 - [x] API: Filters (status, customer, date range, search)
 - [x] WebSocket: OrderPresenceConsumer + routing
 - [x] Admin: OrderAdmin с inlines
-- [ ] Фабрики: OrderFactory, ContractFactory
-- [ ] Тесты: модели, сервисы, API
-- [ ] OpenAPI: проверить полную схему
+- [x] Фабрики: OrderFactory, ContractFactory, OrderFileFactory, OrderOrgUnitFactory, OrderParticipantFactory
+- [x] Тесты: модели, сервисы, API — 66 тестов
+- [x] OpenAPI: /api/docs/ (Swagger UI) и /api/redoc/ работают
 
 **Неделя 4: React — Auth + Layout + API-клиент**
-- [ ] Сгенерировать TypeScript-типы из OpenAPI: `npx openapi-typescript`
-- [ ] Axios instance с JWT interceptor (auto-refresh)
-- [ ] Zustand: useAuthStore (token, user, login, logout)
-- [ ] LoginPage (shadcn/ui: Card, Input, Button, Form)
-- [ ] ProtectedRoute (redirect to login if no token)
-- [ ] AppLayout: Sidebar (навигация), Header (профиль, logout), Breadcrumbs
-- [ ] React Router: /login, /orders, /orders/:id, /directory/*, /profile
-- [ ] Общие компоненты: DataTable (TanStack Table + shadcn), SearchCombobox, ConfirmDialog
-- [ ] Тёмная/светлая тема (shadcn/ui theme)
+- [x] TypeScript-типы (ручные в api/types.ts, автогенерация доступна через `make types`)
+- [x] Axios instance с JWT interceptor (auto-refresh на 401)
+- [x] Zustand: useAuthStore (token, user, login, logout) + localStorage persistence
+- [x] LoginPage (shadcn/ui: Card, Input, Button)
+- [x] ProtectedRoute (redirect to login if no token)
+- [x] AppLayout: Sidebar (навигация, collapsible), Header (профиль, тема, logout)
+- [x] React Router: /login, /orders, /orders/:orderNumber, /directory/*, /profile
+- [x] Общие компоненты: DataTable (TanStack Table + shadcn), OrgUnitCombobox, ConfirmDialog, EntityFormDialog
+- [x] Тёмная/светлая тема (4 варианта: light, dark, orange-light, orange-dark)
 
 **Неделя 5: React — Справочники**
-- [ ] OrgUnitTree — react-arborist или кастомный tree на shadcn
-- [ ] OrgUnit CRUD (Sheet/Dialog формы)
-- [ ] Справочник стран (DataTable + CRUD)
-- [ ] Справочник контактов (DataTable + CRUD + привязка к OrgUnit)
-- [ ] Остальные справочники: Equipment, TypeOfWork, Intermediary, Designer, PQ
-- [ ] Bulk delete для всех справочников
-- [ ] Search/Filter на каждой таблице
+- [x] OrgUnit — drill-down таблица с навигацией по иерархии (breadcrumb ancestors)
+- [ ] OrgUnit — визуализация в виде дерева (react-arborist или кастомный tree на shadcn Collapsible)
+- [x] OrgUnit CRUD (EntityFormDialog с полной формой)
+- [x] Справочник стран (ReferenceTablePage + CRUD)
+- [x] Справочник контактов (DataTable + CRUD + привязка M2M к OrgUnit через OrgUnitCombobox)
+- [x] Остальные справочники: Equipment, TypeOfWork, DeliveryType, Cities, Facilities
+- [x] Bulk delete для всех справочников
+- [x] Search/Filter на каждой таблице (debounced server-side search)
 
 **Неделя 6: React — Заказы + Полировка**
-- [ ] OrderList — TanStack Table с фильтрами (статус, клиент, даты), поиск
-- [ ] OrderDetail — полная карточка заказа (read + edit mode)
-- [ ] OrderForm — создание/редактирование (React Hook Form + Zod)
-  - Combobox для выбора OrgUnit, клиента, менеджера
-  - MultiSelect для оборудования, работ, ПКЗ
-  - File upload
-- [ ] OrderHistory — timeline изменений (из simple_history)
-- [ ] Contract — секция в карточке заказа (inline edit)
-- [ ] WebSocket: индикатор «кто просматривает заказ»
-- [ ] Финальные тесты, lint, code review
+- [x] OrderList — TanStack Table с фильтром по статусу, поиск, пагинация
+- [ ] OrderList — дополнительные фильтры (клиент, диапазон дат)
+- [x] OrderDetail — карточка заказа с вкладками (Инфо, Контракт, Файлы, История)
+- [x] OrderForm — создание/редактирование (React Hook Form + Zod)
+  - [x] OrgUnitCombobox для выбора заказчика, посредника, проектировщика
+  - [ ] MultiSelect для оборудования, работ
+  - [ ] Выбор менеджеров (нужен хук useUsers для списка пользователей)
+  - [ ] Выбор контактов и участников ЦЗ
+- [x] OrderHistory — timeline изменений (из simple_history)
+- [x] Contract — секция в карточке заказа (inline edit, React Hook Form + Zod)
+- [x] Загрузка файлов (upload, список, удаление) — отдельная вкладка
+- [ ] WebSocket: индикатор «кто просматривает заказ» (backend готов, нужен frontend)
+- [ ] Финальные тесты frontend (Vitest), lint, code review
 - [ ] **MVP-1 Ready** — деплой на staging
 
 ### Фаза 2: Устройства + Спецификации + ТКП (4-5 недель)
@@ -438,8 +442,9 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 
 ### Фаза 3: ЭДО + Миграция данных (3-4 недели)
 
-**Неделя 12:** apps/edo/ — Document, DocumentFile, DRF ViewSets
-**Неделя 13:** React: модуль ЭДО
+> **Примечание:** Модуль ЭДО (apps/edo/) разрабатывается отдельным разработчиком на аналогичном стеке (Django + DRF + React). Код будет интегрирован в данный проект. Legacy-модуль: `/home/serj/PyCharm/Projects/marketing` (модуль edo).
+
+**Неделя 12-13:** Интеграция apps/edo/ (Document, DocumentFile, DRF ViewSets, React UI) от внешнего разработчика
 **Неделя 14-15:** Скрипты миграции данных из старой PostgreSQL → новая. Mapping таблиц, трансформации, верификация.
 
 ### Фаза 4: Production + Аналитика (2-3 недели)
@@ -482,7 +487,8 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 | **Selectors pattern** | Сложные запросы в selectors/ — views остаются тонкими |
 | **JWT + LDAP** | Stateless auth для SPA, корпоративная аутентификация |
 | **drf-spectacular** | Автогенерация OpenAPI → автогенерация TypeScript-типов |
-| **simple_history** | Аудит на Order, Contract, OrgUnit, PQ — как в старой системе |
+| **Единый OrgUnit** | Все компании (заказчики, посредники, проектировщики и др.) хранятся в OrgUnit, роль определяется через business_role |
+| **simple_history** | Аудит на Order, Contract, OrgUnit — как в старой системе |
 | **treebeard MP_Node** | OrgUnit, ProductCategory, Parameter — проверенное решение |
 | **TanStack Table** | Замена jQuery DataTables — серверная пагинация, сортировка, фильтры |
 | **Zustand (не Redux)** | Простой, минимальный boilerplate, достаточен для ERP |
@@ -500,15 +506,15 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 5. Ручное тестирование в браузере (React UI)
 
 MVP-1 acceptance criteria:
-- [ ] Авторизация через JWT (login, refresh, protected routes)
-- [ ] CRUD для всех справочников (OrgUnit tree, Countries, Contacts, etc.)
-- [ ] CRUD для заказов (создание, редактирование, список, фильтры, история)
-- [ ] Контракты (создание/редактирование в карточке заказа)
-- [ ] Загрузка файлов к заказу
-- [ ] WebSocket: индикация активных пользователей на заказе
-- [ ] Backend: тесты ≥80% покрытия
-- [ ] Docker: `docker compose up` (dev) и `docker compose -f docker-compose.prod.yml build` (prod) работают
-- [ ] CI: pipeline проходит (lint + test + build)
+- [x] Авторизация через JWT (login, refresh, protected routes)
+- [x] CRUD для всех справочников (OrgUnit, Countries, Cities, Contacts, Facilities, Equipment, TypeOfWork, DeliveryType)
+- [x] CRUD для заказов (создание, редактирование, список, фильтры, история) — доработка формы в процессе
+- [x] Контракты (создание/редактирование в карточке заказа)
+- [x] Загрузка файлов к заказу
+- [ ] WebSocket: индикация активных пользователей на заказе (backend готов, frontend не реализован)
+- [x] Backend: тесты ≥80% покрытия (CI настроен на --cov-fail-under=80)
+- [x] Docker: `docker compose up` (dev) и `docker compose -f docker-compose.prod.yml build` (prod) работают
+- [x] CI: pipeline проходит (lint + test + build + deploy)
 
 ---
 

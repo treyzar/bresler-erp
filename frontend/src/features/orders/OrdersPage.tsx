@@ -12,8 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { DataTable } from "@/components/shared/DataTable"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { OrgUnitCombobox } from "@/components/shared/OrgUnitCombobox"
 import type { ListParams, OrderListItem } from "@/api/types"
 import { ORDER_STATUSES } from "@/api/types"
 import { useOrderList, useDeleteOrder } from "@/api/hooks/useOrders"
@@ -63,12 +66,22 @@ export function OrdersPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [customerFilter, setCustomerFilter] = useState<number | null>(null)
+  const [startDateFrom, setStartDateFrom] = useState("")
+  const [startDateTo, setStartDateTo] = useState("")
+  const [shipDateFrom, setShipDateFrom] = useState("")
+  const [shipDateTo, setShipDateTo] = useState("")
   const [selectedRows, setSelectedRows] = useState<RowSelectionState>({})
   const [deleteItem, setDeleteItem] = useState<OrderListItem | null>(null)
 
   const listParams: ListParams = { page, page_size: PAGE_SIZE }
   if (search) listParams.search = search
   if (statusFilter && statusFilter !== "all") listParams.status = statusFilter
+  if (customerFilter) listParams.customer = customerFilter
+  if (startDateFrom) listParams.start_date_from = startDateFrom
+  if (startDateTo) listParams.start_date_to = startDateTo
+  if (shipDateFrom) listParams.ship_date_from = shipDateFrom
+  if (shipDateTo) listParams.ship_date_to = shipDateTo
 
   const { data, isLoading } = useOrderList(listParams)
   const deleteMutation = useDeleteOrder()
@@ -123,21 +136,68 @@ export function OrdersPage() {
         <h1 className="text-2xl font-bold">Заказы</h1>
       </div>
 
-      <div className="flex items-center gap-3">
-        <Select
-          value={statusFilter}
-          onValueChange={(val) => { setStatusFilter(val); setPage(1) }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Все статусы" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все статусы</SelectItem>
-            {Object.entries(ORDER_STATUSES).map(([key, label]) => (
-              <SelectItem key={key} value={key}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Статус</Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => { setStatusFilter(val); setPage(1) }}
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Все статусы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              {Object.entries(ORDER_STATUSES).map(([key, label]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[240px]">
+          <Label className="text-xs text-muted-foreground mb-1 block">Заказчик</Label>
+          <OrgUnitCombobox
+            mode="single"
+            value={customerFilter}
+            onChange={(val) => { setCustomerFilter(val); setPage(1) }}
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Дата начала от</Label>
+          <Input
+            type="date"
+            className="w-[150px]"
+            value={startDateFrom}
+            onChange={(e) => { setStartDateFrom(e.target.value); setPage(1) }}
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">до</Label>
+          <Input
+            type="date"
+            className="w-[150px]"
+            value={startDateTo}
+            onChange={(e) => { setStartDateTo(e.target.value); setPage(1) }}
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Отгрузка от</Label>
+          <Input
+            type="date"
+            className="w-[150px]"
+            value={shipDateFrom}
+            onChange={(e) => { setShipDateFrom(e.target.value); setPage(1) }}
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">до</Label>
+          <Input
+            type="date"
+            className="w-[150px]"
+            value={shipDateTo}
+            onChange={(e) => { setShipDateTo(e.target.value); setPage(1) }}
+          />
+        </div>
       </div>
 
       <DataTable

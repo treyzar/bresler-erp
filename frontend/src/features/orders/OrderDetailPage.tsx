@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { ORDER_STATUSES } from "@/api/types"
 import { useOrder, useDeleteOrder } from "@/api/hooks/useOrders"
+import { useOrderPresence } from "@/hooks/useOrderPresence"
 import { ContractSection } from "./ContractSection"
 import { OrderFilesSection } from "./OrderFilesSection"
 import { OrderHistorySection } from "./OrderHistorySection"
@@ -20,6 +21,7 @@ export function OrderDetailPage() {
   const orderNum = Number(orderNumber)
   const { data: order, isLoading } = useOrder(orderNum)
   const deleteMutation = useDeleteOrder()
+  const activeUsers = useOrderPresence(orderNumber)
   const [showDelete, setShowDelete] = useState(false)
 
   const handleDelete = async () => {
@@ -62,6 +64,16 @@ export function OrderDetailPage() {
           </Button>
           <h1 className="text-2xl font-bold">Заказ #{order.order_number}</h1>
           <Badge>{statusLabel}</Badge>
+          {activeUsers.size > 0 && (
+            <div className="flex items-center gap-1 ml-2">
+              <span className="text-xs text-muted-foreground">Сейчас смотрят:</span>
+              {[...activeUsers].map((username) => (
+                <Badge key={username} variant="outline" className="text-xs">
+                  {username}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(`/orders/${orderNum}/edit`)}>
