@@ -410,7 +410,7 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 
 **Неделя 5: React — Справочники**
 - [x] OrgUnit — drill-down таблица с навигацией по иерархии (breadcrumb ancestors)
-- [ ] OrgUnit — визуализация в виде дерева (react-arborist или кастомный tree на shadcn Collapsible)
+- [x] OrgUnit — визуализация в виде дерева (кастомный OrgUnitTreeView на shadcn Collapsible)
 - [x] OrgUnit CRUD (EntityFormDialog с полной формой)
 - [x] Справочник стран (ReferenceTablePage + CRUD)
 - [x] Справочник контактов (DataTable + CRUD + привязка M2M к OrgUnit через OrgUnitCombobox)
@@ -420,18 +420,18 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 
 **Неделя 6: React — Заказы + Полировка**
 - [x] OrderList — TanStack Table с фильтром по статусу, поиск, пагинация
-- [ ] OrderList — дополнительные фильтры (клиент, диапазон дат)
+- [x] OrderList — дополнительные фильтры (клиент, диапазон дат, fuzzy search с pg_trgm)
 - [x] OrderDetail — карточка заказа с вкладками (Инфо, Контракт, Файлы, История)
 - [x] OrderForm — создание/редактирование (React Hook Form + Zod)
   - [x] OrgUnitCombobox для выбора заказчика, посредника, проектировщика
-  - [ ] MultiSelect для оборудования, работ
-  - [ ] Выбор менеджеров (нужен хук useUsers для списка пользователей)
-  - [ ] Выбор контактов и участников ЦЗ
+  - [x] MultiSelect для оборудования, работ
+  - [x] Выбор менеджеров (useUserList хук)
+  - [x] Выбор контактов и участников ЦЗ
 - [x] OrderHistory — timeline изменений (из simple_history)
 - [x] Contract — секция в карточке заказа (inline edit, React Hook Form + Zod)
 - [x] Загрузка файлов (upload, список, удаление) — отдельная вкладка
-- [ ] WebSocket: индикатор «кто просматривает заказ» (backend готов, нужен frontend)
-- [ ] Финальные тесты frontend (Vitest), lint, code review
+- [x] WebSocket: индикатор «кто просматривает заказ» (useOrderPresence + OrderDetailPage)
+- [x] Финальные тесты frontend (Vitest): 55 тестов (useDebounce, useAuthStore, useUIStore, API client, ConfirmDialog, MultiSelect, useOrderPresence, useDirectoryQuery)
 - [ ] **MVP-1 Ready** — деплой на staging
 
 ### Фаза 2: Устройства + Спецификации + ТКП (4-5 недель)
@@ -511,7 +511,7 @@ MVP-1 acceptance criteria:
 - [x] CRUD для заказов (создание, редактирование, список, фильтры, история) — доработка формы в процессе
 - [x] Контракты (создание/редактирование в карточке заказа)
 - [x] Загрузка файлов к заказу
-- [ ] WebSocket: индикация активных пользователей на заказе (backend готов, frontend не реализован)
+- [x] WebSocket: индикация активных пользователей на заказе (useOrderPresence + badges в OrderDetailPage)
 - [x] Backend: тесты ≥80% покрытия (CI настроен на --cov-fail-under=80)
 - [x] Docker: `docker compose up` (dev) и `docker compose -f docker-compose.prod.yml build` (prod) работают
 - [x] CI: pipeline проходит (lint + test + build + deploy)
