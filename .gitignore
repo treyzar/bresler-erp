@@ -64,3 +64,5 @@ coverage.xml
 docker/nginx/ssl/*.pem
 docker/nginx/ssl/*.key
 docker/nginx/ssl/*.crt
+
+edo_backend/

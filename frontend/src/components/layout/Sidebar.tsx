@@ -12,6 +12,7 @@ const navItems = [
   { to: "/directory/equipment", label: "Оборудование" },
   { to: "/directory/works", label: "Виды работ" },
   { to: "/directory/delivery-types", label: "Типы доставки" },
+  { to: "/edo", label: "ЭДО" },
   { to: "/profile", label: "Профиль" },
 ]
 
