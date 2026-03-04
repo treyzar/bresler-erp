@@ -86,3 +86,11 @@ export function useUpdateContract() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   })
 }
+
+export function useOrderFuzzySearch(query: string) {
+  return useQuery({
+    queryKey: [KEY, "fuzzy", query],
+    queryFn: () => ordersApi.fuzzySearch(query),
+    enabled: !!query && query.length >= 3,
+  })
+}

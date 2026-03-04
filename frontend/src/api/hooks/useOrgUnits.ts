@@ -29,6 +29,13 @@ export function useOrgUnitSearch(query: string) {
   })
 }
 
+export function useOrgUnitTree() {
+  return useQuery<import("../types").OrgUnitTreeNode[]>({
+    queryKey: ["orgunits", "tree"],
+    queryFn: () => orgUnitsApi.tree(),
+  })
+}
+
 export function useOrgUnitList(params?: ListParams) {
   return useQuery<PaginatedResponse<OrgUnit>>({
     queryKey: ["orgunits", "list", params],

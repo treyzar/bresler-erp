@@ -1,12 +1,13 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
   type ColumnDef,
   type RowSelectionState,
+  type VisibilityState,
 } from "@tanstack/react-table"
-import { Search, Trash2 } from "lucide-react"
+import { Search, Trash2, Settings2 } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -19,6 +20,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useDebounce } from "@/hooks/useDebounce"
 
 interface DataTableProps<T> {
@@ -32,6 +41,7 @@ interface DataTableProps<T> {
   onSearchChange: (value: string) => void
   isLoading?: boolean
   enableSelection?: boolean
+  enableSearch?: boolean
   selectedRows?: RowSelectionState
   onSelectedRowsChange?: (rows: RowSelectionState) => void
   onBulkDelete?: (ids: number[]) => void
@@ -51,6 +61,7 @@ export function DataTable<T>({
   onSearchChange,
   isLoading = false,
   enableSelection = true,
+  enableSearch = true,
   selectedRows = {},
   onSelectedRowsChange,
   onBulkDelete,
@@ -59,12 +70,21 @@ export function DataTable<T>({
   onRowClick,
 }: DataTableProps<T>) {
   const [localSearch, setLocalSearch] = useState(searchValue)
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const debouncedSearch = useDebounce(localSearch, 300)
 
-  // Sync debounced value to parent
-  if (debouncedSearch !== searchValue) {
-    onSearchChange(debouncedSearch)
-  }
+  // Sync from outside (parent -> local)
+  useEffect(() => {
+    setLocalSearch(searchValue)
+  }, [searchValue])
+
+  // Sync to outside (local -> parent)
+  // ONLY if enableSearch is true, otherwise the parent is in full control
+  useEffect(() => {
+    if (enableSearch && debouncedSearch !== searchValue) {
+      onSearchChange(debouncedSearch)
+    }
+  }, [debouncedSearch, searchValue, onSearchChange, enableSearch])
 
   const selectionColumn: ColumnDef<T, unknown> = {
     id: "select",
@@ -87,6 +107,7 @@ export function DataTable<T>({
     ),
     size: 40,
     enableSorting: false,
+    enableHiding: false,
   }
 
   const allColumns = enableSelection ? [selectionColumn, ...columns] : columns
@@ -97,8 +118,10 @@ export function DataTable<T>({
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
     pageCount: Math.ceil(totalCount / pageSize),
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       rowSelection: selectedRows,
+      columnVisibility,
       pagination: { pageIndex: page - 1, pageSize },
     },
     onRowSelectionChange: (updater) => {
@@ -115,15 +138,20 @@ export function DataTable<T>({
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск..."
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        {enableSearch ? (
+          <div className="flex items-center flex-1 gap-2 max-w-sm">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск..."
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+        ) : <div className="flex-1" />}
+        
         <div className="flex items-center gap-2">
           {selectedCount > 0 && onBulkDelete && (
             <Button
@@ -138,12 +166,47 @@ export function DataTable<T>({
               Удалить ({selectedCount})
             </Button>
           )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="ml-auto flex h-9">
+                <Settings2 className="mr-2 h-4 w-4" />
+                Вид
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[180px]">
+              <DropdownMenuLabel>Отображение колонок</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {table
+                .getAllColumns()
+                .filter(
+                  (column) =>
+                    typeof column.accessorFn !== "undefined" && column.getCanHide()
+                )
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    >
+                      {/* Try to get a string header, otherwise use ID */}
+                      {typeof column.columnDef.header === "string" 
+                        ? column.columnDef.header 
+                        : column.id}
+                    </DropdownMenuCheckboxItem>
+                  )
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {toolbar}
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -162,7 +225,7 @@ export function DataTable<T>({
             {isLoading ? (
               Array.from({ length: pageSize }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`}>
-                  {allColumns.map((_, j) => (
+                  {table.getVisibleFlatColumns().map((_, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-5 w-full" />
                     </TableCell>
@@ -186,7 +249,7 @@ export function DataTable<T>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={allColumns.length} className="h-24 text-center">
+                <TableCell colSpan={table.getVisibleFlatColumns().length} className="h-24 text-center">
                   Нет данных
                 </TableCell>
               </TableRow>

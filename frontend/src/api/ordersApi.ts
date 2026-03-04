@@ -9,6 +9,12 @@ import type {
   PaginatedResponse,
 } from "./types"
 
+export interface FuzzySuggestion {
+  text: string
+  order_number: number
+  similarity: number
+}
+
 export const ordersApi = {
   list: async (params?: ListParams) => {
     const { data } = await apiClient.get<PaginatedResponse<OrderListItem>>("/orders/", { params })
@@ -69,6 +75,14 @@ export const ordersApi = {
 
   updateContract: async (id: number, payload: Partial<Contract>) => {
     const { data } = await apiClient.patch<Contract>(`/orders/${id}/contract/`, payload)
+    return data
+  },
+
+  fuzzySearch: async (q: string): Promise<FuzzySuggestion[]> => {
+    const { data } = await apiClient.get<FuzzySuggestion[]>(
+      "/orders/fuzzy-search/",
+      { params: { q } }
+    )
     return data
   },
 }

@@ -162,8 +162,14 @@ export interface OrderListItem {
   tender_number: string
   status: string
   status_display: string
-  customer_org_unit: number | null
+  country_name: string
   customer_name: string
+  branch_name: string
+  division_name: string
+  facility_names: string
+  equipment_names: string
+  work_names: string
+  participant_names: string
   start_date: string | null
   ship_date: string | null
   note: string

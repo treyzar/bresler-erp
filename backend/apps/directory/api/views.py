@@ -36,7 +36,12 @@ class OrgUnitViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         if self.action == "list":
-            # Return root nodes by default
+            # Filter parameters that should trigger a global search (ignoring depth)
+            filter_params = ["search", "unit_type", "business_role", "country", "is_active"]
+            if any(self.request.query_params.get(p) for p in filter_params):
+                return qs
+
+            # Return root nodes by default if no parent is specified
             parent = self.request.query_params.get("parent")
             if parent is None:
                 return qs.filter(depth=1)

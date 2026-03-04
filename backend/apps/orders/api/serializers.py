@@ -46,14 +46,26 @@ class ContractSerializer(serializers.ModelSerializer):
 
 
 class OrderListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for order lists."""
+    """Lightweight serializer for order lists with enhanced info."""
 
     customer_name = serializers.CharField(
         source="customer_org_unit.name",
         read_only=True,
         default="",
     )
+    country_name = serializers.CharField(
+        source="country.name",
+        read_only=True,
+        default="",
+    )
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    
+    branch_name = serializers.SerializerMethodField()
+    division_name = serializers.SerializerMethodField()
+    facility_names = serializers.SerializerMethodField()
+    equipment_names = serializers.SerializerMethodField()
+    work_names = serializers.SerializerMethodField()
+    participant_names = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -63,13 +75,43 @@ class OrderListSerializer(serializers.ModelSerializer):
             "tender_number",
             "status",
             "status_display",
-            "customer_org_unit",
+            "country_name",
             "customer_name",
+            "branch_name",
+            "division_name",
+            "facility_names",
+            "equipment_names",
+            "work_names",
+            "participant_names",
             "start_date",
             "ship_date",
             "note",
             "created_at",
         )
+
+    def get_branch_name(self, obj):
+        for ou in obj.org_units.all():
+            if ou.unit_type == "branch":
+                return ou.name
+        return ""
+
+    def get_division_name(self, obj):
+        for ou in obj.org_units.all():
+            if ou.unit_type == "division":
+                return ou.name
+        return ""
+
+    def get_facility_names(self, obj):
+        return ", ".join(ou.name for ou in obj.org_units.all() if ou.unit_type == "site")
+
+    def get_equipment_names(self, obj):
+        return ", ".join(e.name for e in obj.equipments.all())
+
+    def get_work_names(self, obj):
+        return ", ".join(w.name for w in obj.works.all())
+
+    def get_participant_names(self, obj):
+        return ", ".join(p.name for p in obj.participants.all())
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
