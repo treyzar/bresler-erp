@@ -16,6 +16,7 @@ import { OrdersPage } from "@/features/orders/OrdersPage"
 import { OrderFormPage } from "@/features/orders/OrderFormPage"
 import { OrderDetailPage } from "@/features/orders/OrderDetailPage"
 import { ProfilePage } from "@/features/profile/ProfilePage"
+import { EdoPage } from "@/features/edo/EdoPage"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -47,6 +48,7 @@ function App() {
               <Route index element={<Navigate to="orgunits" replace />} />
             </Route>
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/edo" element={<EdoPage />} />
             <Route path="/" element={<Navigate to="/orders" replace />} />
           </Route>
         </Route>

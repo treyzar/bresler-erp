@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/users/", include("apps.users.api.urls_users")),
     path("api/directory/", include("apps.directory.api.urls")),
     path("api/orders/", include("apps.orders.api.urls")),
+    path("api/edo/", include("apps.edo.urls")),
     # OpenAPI
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
