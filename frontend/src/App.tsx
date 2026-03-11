@@ -16,7 +16,10 @@ import { OrdersPage } from "@/features/orders/OrdersPage"
 import { OrderFormPage } from "@/features/orders/OrderFormPage"
 import { OrderDetailPage } from "@/features/orders/OrderDetailPage"
 import { ProfilePage } from "@/features/profile/ProfilePage"
-import { EdoPage } from "@/features/edo/EdoPage"
+import Dashboard from "@/features/edo/pages/Dashboard"
+import MainEditor from "@/features/edo/pages/MainEditor"
+import Parser from "@/features/edo/pages/Parser"
+import RenderTemplate from "@/features/edo/pages/RenderTemplate"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -48,7 +51,12 @@ function App() {
               <Route index element={<Navigate to="orgunits" replace />} />
             </Route>
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/edo" element={<EdoPage />} />
+            <Route path="/edo">
+              <Route index element={<Dashboard />} />
+              <Route path="builder" element={<MainEditor />} />
+              <Route path="parser" element={<Parser />} />
+              <Route path="templates" element={<RenderTemplate />} />
+            </Route>
             <Route path="/" element={<Navigate to="/orders" replace />} />
           </Route>
         </Route>
