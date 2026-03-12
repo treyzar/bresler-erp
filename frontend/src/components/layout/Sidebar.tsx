@@ -18,7 +18,6 @@ const navItems: NavItem[] = [
     subItems: [
       { to: "/edo/builder", label: "Конструктор" },
       { to: "/edo/parser", label: "Парсер" },
-      { to: "/edo/templates", label: "Шаблоны" },
     ]
   },
   { to: "/profile", label: "Профиль" },

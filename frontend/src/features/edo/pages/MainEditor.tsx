@@ -28,6 +28,7 @@ import Canvas from "../components/editor/Canvas";
 import CanvasToolbar from "../components/editor/CanvasToolbar";
 import ElementsPanel from "../components/editor/ElementsPanel";
 import PropertiesPanel from "../components/editor/PropertiesPanel";
+import Modal from "../components/editor/documentation/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -56,7 +57,6 @@ export default function Editor() {
     | IEditorElement[]
     | undefined;
   const importedTitle = state?.title as string | undefined;
-  const templateToEdit = state?.templateToEdit as any | undefined;
   const editingTemplateId = state?.templateId as number | undefined;
 
   /* ---------- состояние ---------- */
@@ -74,9 +74,16 @@ export default function Editor() {
 
   const [gridVisible, setGridVisible] = useState(true);
   const [gridStep, setGridStep] = useState(20);
+  const [currentPage, setCurrentPage] = useState(0);
 
   /* ---------- история ---------- */
   const { saveToHistory, undo, redo, canUndo, canRedo } = useHistory(elements);
+
+  /* подпись: редактирование */
+  const [isSigOpen, setIsSigOpen] = useState(false);
+  const [sigEditId, setSigEditId] = useState<string | null>(null);
+  const sigCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sigDrawing = useRef(false);
 
   /* ---------- зум ---------- */
   const canvasContainerRef = useRef<HTMLDivElement>(null!);
@@ -117,10 +124,27 @@ export default function Editor() {
     [elements, saveToHistory],
   );
 
-  const handleOpenSignatureEditor = (_id: string) => {
-    // Реализация открытия модалки для подписи была удалена,
-    // так как теперь мы редактируем свойства прямо в панели свойств.
-    // Если нужно, можно добавить здесь логику для вызова внешнего редактора.
+  const handleOpenSignatureEditor = (id: string) => {
+    setSigEditId(id);
+    setIsSigOpen(true);
+    setTimeout(() => {
+      const el = elements.find((i) => i.id === id);
+      const props = (el?.properties || {}) as any;
+      const canvas = sigCanvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (props.image) {
+        const img = new Image();
+        img.onload = () =>
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        img.src = props.image;
+      }
+    }, 50);
   };
 
   const deleteElement = useCallback(
@@ -297,7 +321,7 @@ export default function Editor() {
       }
 
       localStorage.removeItem(LOCALSTORAGE_KEY);
-      navigate("/dashboard");
+      navigate("/edo/templates");
     } catch (err: any) {
       setError(err.response?.data?.error || "Ошибка сохранения");
     } finally {
@@ -309,50 +333,79 @@ export default function Editor() {
   useEffect(() => {
     /* 1. ПРИОРИТЕТ: Импорт из парсера (PDF/DOCX/HTML) */
     if (importedElements && importedElements.length > 0) {
-      setElements(importedElements);
-      saveToHistory(importedElements);
+      const adjustedElements = importedElements.map((el) => {
+        if (el.type === "text") {
+          const p = el.properties as any;
+          if (p.content) {
+            const fontSize = p.fontSize || 14;
+            const width = el.width || 300;
+            const charsPerLine = Math.max(10, width / (fontSize * 0.6));
+            const explicitLines = (p.content as string).split("\n");
+            let totalLines = 0;
+            for (const line of explicitLines) {
+              totalLines += Math.max(1, Math.ceil(line.length / charsPerLine));
+            }
+            const estimatedHeight = totalLines * fontSize * 1.5;
+            return {
+              ...el,
+              height: Math.max(el.height, estimatedHeight + 40),
+            };
+          }
+        } else if (el.type === "table") {
+          const p = el.properties as any;
+          const cols = p.cols || 1;
+          const rows = p.rows || 1;
+          const estimatedWidth = Math.max(el.width || 400, cols * 80);
+          const estimatedHeight = Math.max(el.height || 200, rows * 40);
+          return {
+            ...el,
+            width: estimatedWidth,
+            height: estimatedHeight,
+          };
+        }
+        return el;
+      });
+
+      setElements(adjustedElements);
+      saveToHistory(adjustedElements);
       if (importedTitle) setTitle(importedTitle);
       localStorage.removeItem(LOCALSTORAGE_KEY);
       return;
     }
 
     /* 2. ПРИОРИТЕТ: Редактирование существующего шаблона */
-    if (templateToEdit) {
-      const {
-        html_content,
-        editor_content, // Получаем данные из файла (JSON)
-        title: tplTitle,
-        description: tplDesc,
-        visibility: tplVis,
-        template_type: tplType,
-      } = templateToEdit;
-
-      setTitle(tplTitle || "");
-      setDescription(tplDesc || "");
-      setVisibility(tplVis || "PUBLIC");
-      if (tplType) setTemplateType(tplType);
-
-      // Если есть JSON-структура (из файла), используем её
-      if (
-        editor_content &&
-        Array.isArray(editor_content) &&
-        editor_content.length > 0
-      ) {
-        setElements(editor_content);
-        saveToHistory(editor_content);
-      }
-      // Если файла нет (старый шаблон), пробуем парсить HTML
-      else if (html_content) {
+    if (editingTemplateId) {
+      const fetchTemplate = async () => {
         try {
-          const parsed = parseHtmlToElements(html_content as string);
-          if (parsed && parsed.length) {
-            setElements(parsed);
-            saveToHistory(parsed);
+          const tpl = await templatesApi.get(editingTemplateId);
+          setTitle(tpl.title || "");
+          setDescription(tpl.description || "");
+          setVisibility(tpl.visibility || "PUBLIC");
+          if (tpl.template_type) setTemplateType(tpl.template_type as any);
+
+          if (
+            tpl.editor_content &&
+            Array.isArray(tpl.editor_content) &&
+            tpl.editor_content.length > 0
+          ) {
+            setElements(tpl.editor_content as any[]);
+            saveToHistory(tpl.editor_content as any[]);
+          } else if (tpl.html_content) {
+            try {
+              const parsed = parseHtmlToElements(tpl.html_content as string);
+              if (parsed && parsed.length) {
+                setElements(parsed);
+                saveToHistory(parsed);
+              }
+            } catch (e) {
+              /* fallback */
+            }
           }
         } catch (e) {
-          /* fallback */
+          setError("Ошибка загрузки шаблона: " + e);
         }
-      }
+      };
+      fetchTemplate();
       return;
     }
 
@@ -375,6 +428,22 @@ export default function Editor() {
     if (prefill) {
       const el = createDefaultElement("text", generateId(), snapToGrid);
       el.properties = { ...(el.properties as any), content: prefill };
+      
+      // Делаем ширину больше для длинного текста по умолчанию
+      el.width = 700;
+      el.x = snapToGrid(47); // (794 - 700) / 2 = 47
+
+      const p = el.properties as any;
+      const fontSize = p.fontSize || 14;
+      const charsPerLine = Math.max(10, el.width / (fontSize * 0.6));
+      const explicitLines = (prefill as string).split("\n");
+      let totalLines = 0;
+      for (const line of explicitLines) {
+        totalLines += Math.max(1, Math.ceil(line.length / charsPerLine));
+      }
+      const estimatedHeight = totalLines * fontSize * 1.5;
+      el.height = Math.max(el.height, estimatedHeight + 40);
+
       const next = [el];
       setElements(next);
       saveToHistory(next);
@@ -420,6 +489,14 @@ export default function Editor() {
     },
     [elements, snapToGrid],
   );
+
+  const saveSignatureFromModal = () => {
+    if (!sigEditId || !sigCanvasRef.current) return;
+    const data = sigCanvasRef.current.toDataURL("image/png");
+    updateProperties(sigEditId, { image: data });
+    setIsSigOpen(false);
+    setSigEditId(null);
+  };
 
   const handleUndo = () => {
     const res = undo();
@@ -488,6 +565,21 @@ export default function Editor() {
     saveToHistory,
     stopDragResize,
   ]);
+
+  // Вычисляем общее количество страниц
+  const totalPages = React.useMemo(() => {
+    if (elements.length === 0) return 1;
+    const maxY = Math.max(...elements.map((el) => {
+      let h = el.height;
+      if (el.type === "table") {
+         const props = el.properties as any;
+         const rows = props.rows || 1;
+         h = Math.max(h, rows * 40); 
+      }
+      return el.y + h;
+    }));
+    return Math.max(1, Math.ceil(maxY / 1123)); // 1123 is PAGE_HEIGHT from Canvas
+  }, [elements]);
 
   /* ---------- RENDER ---------- */
   return (
@@ -619,6 +711,9 @@ export default function Editor() {
                 gridStep={gridStep}
                 onToggleGrid={setGridVisible}
                 onGridStepChange={setGridStep}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
               />
           </div>
           <div className="flex-1 overflow-auto p-8 flex items-start justify-center relative bg-muted/20">
@@ -628,6 +723,7 @@ export default function Editor() {
                 selectedId={selectedId}
                 gridVisible={gridVisible}
                 zoom={zoom}
+                templateType={templateType}
                 onSelect={setSelectedId}
                 onElementMoveStart={(id, offsetX, offsetY) => {
                   startDrag(id, offsetX, offsetY);
@@ -638,6 +734,7 @@ export default function Editor() {
                 onUpdateProp={updateProperties}
                 onImageUpload={handleImageUpload}
                 onEditSignature={handleOpenSignatureEditor}
+                currentPage={currentPage}
               />
             </div>
         </div>
@@ -657,6 +754,105 @@ export default function Editor() {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно ПОДПИСИ */}
+      <Modal
+        isOpen={isSigOpen}
+        onClose={() => {
+          setIsSigOpen(false);
+          setSigEditId(null);
+        }}
+        title="Редактор подписи"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="bg-card text-card-foreground border rounded-md" style={{ padding: 8 }}>
+            <canvas
+              ref={sigCanvasRef}
+              width={800}
+              height={200}
+              style={{
+                width: "100%",
+                height: 200,
+                background: "#fff",
+                touchAction: "none",
+                cursor: "crosshair",
+                borderRadius: 4,
+                border: "1px dashed #ccc",
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                sigDrawing.current = true;
+                const c = sigCanvasRef.current;
+                if (!c) return;
+                const rect = c.getBoundingClientRect();
+                const scaleX = c.width / rect.width || 1;
+                const scaleY = c.height / rect.height || 1;
+
+                const ctx = c.getContext("2d");
+                if (!ctx) return;
+                ctx.beginPath();
+                ctx.moveTo(
+                  (e.clientX - rect.left) * scaleX,
+                  (e.clientY - rect.top) * scaleY,
+                );
+              }}
+              onMouseMove={(e) => {
+                if (!sigDrawing.current) return;
+                const c = sigCanvasRef.current;
+                if (!c) return;
+                const rect = c.getBoundingClientRect();
+                const scaleX = c.width / rect.width || 1;
+                const scaleY = c.height / rect.height || 1;
+
+                const ctx = c.getContext("2d");
+                if (!ctx) return;
+                ctx.lineWidth = 2;
+                ctx.lineCap = "round";
+                ctx.strokeStyle = "#000";
+                ctx.lineTo(
+                  (e.clientX - rect.left) * scaleX,
+                  (e.clientY - rect.top) * scaleY,
+                );
+                ctx.stroke();
+              }}
+              onMouseUp={() => (sigDrawing.current = false)}
+              onMouseLeave={() => (sigDrawing.current = false)}
+            />
+          </div>
+          <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const canvas = sigCanvasRef.current;
+                if (canvas) {
+                  const ctx = canvas.getContext("2d");
+                  ctx?.clearRect(0, 0, canvas.width, canvas.height);
+                  if (ctx) {
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  }
+                }
+              }}
+            >
+              Очистить
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsSigOpen(false);
+                setSigEditId(null);
+              }}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={saveSignatureFromModal}
+            >
+              Сохранить
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

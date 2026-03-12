@@ -29,6 +29,7 @@ export interface Template {
   owner_id: number;
   allowed_users: number[];
   html_content: string;
+  editor_content?: unknown[];
   docx_file: string | null;
   placeholders: string[];
   share_links: ShareLink[];

@@ -1,7 +1,7 @@
 // src/pages/RenderTemplate.tsx
 
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router";
+import { useParams, Link, useLocation } from "react-router";
 import { templatesApi } from "../api/client";
 import type { Template } from "../api/types";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,10 @@ import { ChevronLeft, FileText, Download, CheckCircle, Loader2, AlertCircle, Eye
 
 export default function RenderTemplate() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  
+  const templateIdFromState = location.state?.templateId;
+  const actualId = id || templateIdFromState;
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -22,19 +26,19 @@ export default function RenderTemplate() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      loadTemplate();
+    if (actualId) {
+      loadTemplate(actualId);
     } else {
       setError("Template ID is missing");
       setLoading(false);
     }
-  }, [id]);
+  }, [actualId]);
 
-  const loadTemplate = async () => {
-    if (!id) return;
+  const loadTemplate = async (templateId: string | number) => {
+    if (!templateId) return;
     
     try {
-      const data = await templatesApi.get(Number(id));
+      const data = await templatesApi.get(Number(templateId));
       setTemplate(data);
       const initialValues: Record<string, string> = {};
       data.placeholders.forEach((p) => {

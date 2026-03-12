@@ -1,4 +1,4 @@
-import axios from "axios";
+import api from "@/api/client";
 import type {
   Template,
   TemplateListItem,
@@ -16,30 +16,23 @@ import type {
   UpdateDocumentProjectPayload,
 } from "./types";
 
-const api = axios.create({
-  baseURL: "/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
 export const templatesApi = {
   list: async (
     scope: "public" | "my" | "shared" | "all" = "all"
   ): Promise<TemplateListItem[]> => {
-    const response = await api.get<TemplateListItem[]>("/templates/", {
+    const response = await api.get<any>("/edo/templates/templates/", {
       params: { scope },
     });
-    return response.data;
+    return response.data.results || response.data;
   },
 
   get: async (id: number): Promise<Template> => {
-    const response = await api.get<Template>(`/templates/${id}/`);
+    const response = await api.get<Template>(`/edo/templates/templates/${id}/`);
     return response.data;
   },
 
   create: async (data: CreateTemplatePayload): Promise<Template> => {
-    const response = await api.post<Template>("/templates/", data);
+    const response = await api.post<Template>("/edo/templates/templates/", data);
     return response.data;
   },
 
@@ -47,28 +40,28 @@ export const templatesApi = {
     id: number,
     data: UpdateTemplatePayload
   ): Promise<Template> => {
-    const response = await api.patch<Template>(`/templates/${id}/`, data);
+    const response = await api.patch<Template>(`/edo/templates/templates/${id}/`, data);
     return response.data;
   },
 
   uploadDocx: async (id: number, file: File): Promise<Template> => {
     const formData = new FormData();
     formData.append("docx_file", file);
-    const response = await api.patch<Template>(`/templates/${id}/`, formData, {
+    const response = await api.patch<Template>(`/edo/templates/templates/${id}/`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/templates/${id}/`);
+    await api.delete(`/edo/templates/templates/${id}/`);
   },
 
   getVersions: async (id: number): Promise<TemplateVersion[]> => {
-    const response = await api.get<TemplateVersion[]>(
-      `/templates/${id}/versions/`
+    const response = await api.get<any>(
+      `/edo/templates/templates/${id}/versions/`
     );
-    return response.data;
+    return response.data.results || response.data;
   },
 
   restoreVersion: async (
@@ -76,7 +69,7 @@ export const templatesApi = {
     versionId: number
   ): Promise<Template> => {
     const response = await api.post<Template>(
-      `/templates/${templateId}/versions/restore/${versionId}/`
+      `/edo/templates/templates/${templateId}/versions/restore/${versionId}/`
     );
     return response.data;
   },
@@ -86,14 +79,14 @@ export const templatesApi = {
     data: CreateShareLinkPayload = {}
   ): Promise<ShareLink> => {
     const response = await api.post<ShareLink>(
-      `/templates/${id}/share-links/`,
+      `/edo/templates/templates/${id}/share-links/`,
       data
     );
     return response.data;
   },
 
   render: async (id: number, data: RenderPayload): Promise<Blob> => {
-    const response = await api.post(`/templates/${id}/render/`, data, {
+    const response = await api.post(`/edo/templates/templates/${id}/render/`, data, {
       responseType: "blob",
     });
     return response.data;
@@ -104,7 +97,7 @@ export const templatesApi = {
     format: "pdf" | "html" | "docx" | "json"
   ) => {
     const response = await api.get(
-      `/templates/${id}/download-source/?format=${format}`,
+      `/edo/templates/templates/${id}/download-source/?format=${format}`,
       {
         responseType: "blob",
       }
@@ -115,12 +108,12 @@ export const templatesApi = {
 
 export const shareApi = {
   getInfo: async (token: string): Promise<ShareInfo> => {
-    const response = await api.get<ShareInfo>(`/share/${token}/`);
+    const response = await api.get<ShareInfo>(`/edo/templates/share/${token}/`);
     return response.data;
   },
 
   render: async (token: string, data: RenderPayload): Promise<Blob> => {
-    const response = await api.post(`/share/${token}/render/`, data, {
+    const response = await api.post(`/edo/templates/share/${token}/render/`, data, {
       responseType: "blob",
     });
     return response.data;
@@ -131,29 +124,29 @@ export const parserApi = {
   parse: async (file: File): Promise<ParsedDocument> => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post<ParsedDocument>("/parse/", formData, {
+    const response = await api.post<ParsedDocument>("/edo/parser/parse/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   },
 
   get: async (id: number): Promise<ParsedDocument> => {
-    const response = await api.get<ParsedDocument>(`/parse/${id}/`);
+    const response = await api.get<ParsedDocument>(`/edo/parser/parse/${id}/`);
     return response.data;
   },
 };
 
 export const docBuilderApi = {
   list: async (): Promise<DocumentProjectListItem[]> => {
-    const response = await api.get<DocumentProjectListItem[]>(
-      "/doc-builder/projects/"
+    const response = await api.get<any>(
+      "/edo/doc-builder/projects/"
     );
-    return response.data;
+    return response.data.results || response.data;
   },
 
   get: async (id: number): Promise<DocumentProject> => {
     const response = await api.get<DocumentProject>(
-      `/doc-builder/projects/${id}/`
+      `/edo/doc-builder/projects/${id}/`
     );
     return response.data;
   },
@@ -162,7 +155,7 @@ export const docBuilderApi = {
     data: CreateDocumentProjectPayload
   ): Promise<DocumentProject> => {
     const response = await api.post<DocumentProject>(
-      "/doc-builder/projects/",
+      "/edo/doc-builder/projects/",
       data
     );
     return response.data;
@@ -173,18 +166,18 @@ export const docBuilderApi = {
     data: UpdateDocumentProjectPayload
   ): Promise<DocumentProject> => {
     const response = await api.patch<DocumentProject>(
-      `/doc-builder/projects/${id}/`,
+      `/edo/doc-builder/projects/${id}/`,
       data
     );
     return response.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/doc-builder/projects/${id}/`);
+    await api.delete(`/edo/doc-builder/projects/${id}/`);
   },
 
   exportJson: async (id: number): Promise<Blob> => {
-    const response = await api.get(`/doc-builder/projects/${id}/export/json/`, {
+    const response = await api.get(`/edo/doc-builder/projects/${id}/export/json/`, {
       responseType: "blob",
     });
     return response.data;
@@ -194,7 +187,7 @@ export const docBuilderApi = {
     const formData = new FormData();
     formData.append("file", file);
     const response = await api.post<DocumentProject>(
-      "/doc-builder/import/json/",
+      "/edo/doc-builder/import/json/",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -205,7 +198,7 @@ export const docBuilderApi = {
 
   exportDocx: async (id: number): Promise<Blob> => {
     const response = await api.post(
-      `/doc-builder/projects/${id}/export/docx/`,
+      `/edo/doc-builder/projects/${id}/export/docx/`,
       {},
       {
         responseType: "blob",
@@ -216,7 +209,7 @@ export const docBuilderApi = {
 
   exportPdf: async (id: number): Promise<Blob> => {
     const response = await api.post(
-      `/doc-builder/projects/${id}/export/pdf/`,
+      `/edo/doc-builder/projects/${id}/export/pdf/`,
       {},
       {
         responseType: "blob",
@@ -229,7 +222,7 @@ export const docBuilderApi = {
     const formData = new FormData();
     formData.append("file", file);
     const response = await api.post<DocumentProject>(
-      "/doc-builder/import/docx/",
+      "/edo/doc-builder/import/docx/",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -242,7 +235,7 @@ export const docBuilderApi = {
     const formData = new FormData();
     formData.append("file", file);
     const response = await api.post<DocumentProject>(
-      "/doc-builder/import/pdf/",
+      "/edo/doc-builder/import/pdf/",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },

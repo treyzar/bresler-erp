@@ -159,15 +159,15 @@ export default function Dashboard() {
                     )}
                   </CardContent>
                   
-                  <CardFooter className="pt-0 flex gap-2 border-t mt-4 p-4 bg-muted/10">
-                    <Button asChild variant="outline" className="w-full" size="sm">
+                  <CardFooter className="pt-0 flex flex-col sm:flex-row gap-2 border-t mt-4 p-4 bg-muted/10">
+                    <Button asChild variant="outline" className="w-full sm:flex-1" size="sm">
                       <Link to={`/edo/builder`} state={{ templateToEdit: template, templateId: template.id }}>
-                        Редактировать
+                        <span className="truncate">Редактировать</span>
                       </Link>
                     </Button>
-                    <Button asChild className="w-full" size="sm">
+                    <Button asChild className="w-full sm:flex-1" size="sm">
                       <Link to={`/edo/templates`} state={{ templateId: template.id }}>
-                        Сгенерировать
+                        <span className="truncate">Сгенерировать</span>
                       </Link>
                     </Button>
                   </CardFooter>

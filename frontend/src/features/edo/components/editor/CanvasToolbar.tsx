@@ -15,6 +15,9 @@ interface Props {
   gridStep: number;
   onToggleGrid: (v: boolean) => void;
   onGridStepChange: (s: number) => void;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }
 
 const CanvasToolbar: React.FC<Props> = ({
@@ -30,6 +33,9 @@ const CanvasToolbar: React.FC<Props> = ({
   gridStep,
   onToggleGrid,
   onGridStepChange,
+  currentPage,
+  totalPages,
+  onPageChange,
 }) => (
   <div className="flex items-center justify-between w-full">
     <div className="flex gap-2">
@@ -55,6 +61,34 @@ const CanvasToolbar: React.FC<Props> = ({
       </Button>
     </div>
     
+    <div className="flex gap-2 items-center flex-1 justify-center">
+      {totalPages > 1 && (
+        <div className="flex items-center gap-2 bg-muted/50 rounded-md p-1 border">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            disabled={currentPage <= 0}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            ←
+          </Button>
+          <span className="text-sm font-medium px-2 whitespace-nowrap">
+            Стр. {currentPage + 1} из {totalPages}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            disabled={currentPage >= totalPages - 1}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            →
+          </Button>
+        </div>
+      )}
+    </div>
+
     <div className="flex gap-2 items-center">
       <div className="flex items-center gap-2 border-r pr-3 mr-1">
         <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
