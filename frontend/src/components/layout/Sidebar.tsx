@@ -1,8 +1,8 @@
-import { NavLink } from "react-router"
 import { useUIStore } from "@/stores/useUIStore"
 import { cn } from "@/lib/utils"
+import { type NavItem, SidebarNavItem } from "./SidebarNavItem"
 
-const navItems = [
+const navItems: NavItem[] = [
   { to: "/orders", label: "Заказы" },
   { to: "/directory/orgunits", label: "Организации" },
   { to: "/directory/contacts", label: "Контакты" },
@@ -12,7 +12,14 @@ const navItems = [
   { to: "/directory/equipment", label: "Оборудование" },
   { to: "/directory/works", label: "Виды работ" },
   { to: "/directory/delivery-types", label: "Типы доставки" },
-  { to: "/edo", label: "ЭДО" },
+  {
+    to: "/edo",
+    label: "ЭДО",
+    subItems: [
+      { to: "/edo/builder", label: "Конструктор" },
+      { to: "/edo/parser", label: "Парсер" },
+    ]
+  },
   { to: "/profile", label: "Профиль" },
 ]
 
@@ -29,22 +36,9 @@ export function Sidebar() {
       <div className="flex h-14 items-center border-b px-4">
         <span className="text-lg font-semibold">Bresler ERP</span>
       </div>
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
         {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                "block rounded-md px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "hover:bg-sidebar-accent/50",
-              )
-            }
-          >
-            {item.label}
-          </NavLink>
+          <SidebarNavItem key={item.to} item={item} />
         ))}
       </nav>
     </aside>
