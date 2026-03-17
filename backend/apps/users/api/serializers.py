@@ -30,6 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     groups = serializers.StringRelatedField(many=True, read_only=True)
+    allowed_modules = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -48,5 +49,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             "company",
             "avatar",
             "groups",
+            "allowed_modules",
         )
-        read_only_fields = ("id", "username", "groups")
+        read_only_fields = ("id", "username", "groups", "allowed_modules")
+
+    def get_allowed_modules(self, user) -> list[str]:
+        if user.is_superuser:
+            from apps.users.models import ALL_MODULES
+            return ALL_MODULES
+        modules: set[str] = set()
+        for group in user.groups.select_related("profile").all():
+            try:
+                modules.update(group.profile.allowed_modules)
+            except Exception:
+                pass
+        return sorted(modules)

@@ -42,8 +42,15 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """List and retrieve users (for manager selection, etc.)."""
 
-    queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [SearchFilter]
     search_fields = ["username", "first_name", "last_name", "patronymic"]
+
+    def get_queryset(self):
+        qs = User.objects.filter(is_active=True)
+        if self.request.query_params.get("same_group"):
+            from apps.edo.registry.services.registry_service import get_department_user_ids
+            ids = get_department_user_ids(self.request.user)
+            qs = qs.filter(id__in=ids)
+        return qs

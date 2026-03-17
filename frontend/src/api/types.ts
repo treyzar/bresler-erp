@@ -18,6 +18,7 @@ export interface User {
   last_login: string | null
   date_joined: string
   groups?: string[]
+  allowed_modules?: string[]
 }
 
 export interface TokenResponse {

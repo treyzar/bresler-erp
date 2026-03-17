@@ -48,6 +48,7 @@ LOCAL_APPS = [
     "apps.edo.doc_builder",
     "apps.edo.parser_app",
     "apps.edo.templates_app",
+    "apps.edo.registry",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

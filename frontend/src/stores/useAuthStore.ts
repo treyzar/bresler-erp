@@ -10,11 +10,12 @@ interface AuthState {
   setTokens: (access: string, refresh: string) => void
   setUser: (user: User) => void
   logout: () => void
+  hasModuleAccess: (module: string) => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       accessToken: null,
       refreshToken: null,
       user: null,
@@ -29,6 +30,12 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
         }),
+      hasModuleAccess: (module: string) => {
+        const user = get().user
+        if (!user) return false
+        if (user.allowed_modules === undefined) return false
+        return user.allowed_modules.includes(module)
+      },
     }),
     {
       name: "bresler-auth",
@@ -36,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
+        user: state.user,
       }),
     },
   ),

@@ -3,7 +3,7 @@
 
 # ── Development ────────────────────────────────────────────
 dev:
-	docker compose up --build -V
+	docker compose up --build -V -d
 
 docker-up:
 	docker compose up -d
@@ -21,14 +21,26 @@ frontend:
 migrate:
 	cd backend && python manage.py migrate
 
+docker-migrate:
+	docker compose exec backend python manage.py migrate
+
 makemigrations:
 	cd backend && python manage.py makemigrations
+
+docker-makemigrations:
+	docker compose exec backend python manage.py makemigrations
 
 createsuperuser:
 	cd backend && python manage.py createsuperuser
 
+docker-createsuperuser:
+	docker compose exec backend python manage.py createsuperuser
+
 shell:
 	cd backend && python manage.py shell_plus
+
+docker-shell:
+	docker compose exec backend python manage.py shell_plus
 
 # ── Testing ────────────────────────────────────────────────
 test:

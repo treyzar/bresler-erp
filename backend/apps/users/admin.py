@@ -1,7 +1,16 @@
 from django.contrib import admin
+from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
 
-from .models import User
+from .models import GroupProfile, User
+
+
+class GroupProfileInline(admin.StackedInline):
+    model = GroupProfile
+    can_delete = False
+    verbose_name_plural = "Доступ к модулям"
+    fields = ("description", "allowed_modules")
 
 
 @admin.register(User)
@@ -34,3 +43,11 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
+
+
+admin.site.unregister(Group)
+
+
+@admin.register(Group)
+class GroupAdmin(BaseGroupAdmin):
+    inlines = [GroupProfileInline]

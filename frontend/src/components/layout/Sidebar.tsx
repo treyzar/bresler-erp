@@ -1,30 +1,44 @@
+import { useAuthStore } from "@/stores/useAuthStore"
 import { useUIStore } from "@/stores/useUIStore"
 import { cn } from "@/lib/utils"
 import { type NavItem, SidebarNavItem } from "./SidebarNavItem"
 
-const navItems: NavItem[] = [
-  { to: "/orders", label: "Заказы" },
-  { to: "/directory/orgunits", label: "Организации" },
-  { to: "/directory/contacts", label: "Контакты" },
-  { to: "/directory/facilities", label: "Объекты" },
-  { to: "/directory/countries", label: "Страны" },
-  { to: "/directory/cities", label: "Города" },
-  { to: "/directory/equipment", label: "Оборудование" },
-  { to: "/directory/works", label: "Виды работ" },
-  { to: "/directory/delivery-types", label: "Типы доставки" },
+type NavItemWithModule = NavItem & {
+  module?: string
+  subItems?: (NavItem & { module?: string })[]
+}
+
+const navItems: NavItemWithModule[] = [
+  { to: "/orders", label: "Заказы", module: "orders" },
+  { to: "/directory/orgunits", label: "Организации", module: "directory" },
+  { to: "/directory/contacts", label: "Контакты", module: "directory" },
+  { to: "/directory/facilities", label: "Объекты", module: "directory" },
+  { to: "/directory/countries", label: "Страны", module: "directory" },
+  { to: "/directory/cities", label: "Города", module: "directory" },
+  { to: "/directory/equipment", label: "Оборудование", module: "directory" },
+  { to: "/directory/works", label: "Виды работ", module: "directory" },
+  { to: "/directory/delivery-types", label: "Типы доставки", module: "directory" },
   {
     to: "/edo",
     label: "ЭДО",
+    module: "edo",
     subItems: [
+      { to: "/edo/registry", label: "Реестр писем" },
+      { to: "/edo/templates", label: "Шаблоны" },
       { to: "/edo/builder", label: "Конструктор" },
       { to: "/edo/parser", label: "Парсер" },
-    ]
+    ],
   },
   { to: "/profile", label: "Профиль" },
 ]
 
 export function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
+  const hasModuleAccess = useAuthStore((s) => s.hasModuleAccess)
+
+  const visibleItems = navItems.filter(
+    (item) => !item.module || hasModuleAccess(item.module),
+  )
 
   return (
     <aside
@@ -37,7 +51,7 @@ export function Sidebar() {
         <span className="text-lg font-semibold">Bresler ERP</span>
       </div>
       <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
-        {navItems.map((item) => (
+        {visibleItems.map((item) => (
           <SidebarNavItem key={item.to} item={item} />
         ))}
       </nav>
