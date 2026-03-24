@@ -87,6 +87,14 @@ export function useUpdateContract() {
   })
 }
 
+export function useMissingOrderNumbers(enabled: boolean) {
+  return useQuery({
+    queryKey: [KEY, "missing-numbers"],
+    queryFn: () => ordersApi.missingNumbers(),
+    enabled,
+  })
+}
+
 export function useOrderFuzzySearch(query: string) {
   return useQuery({
     queryKey: [KEY, "fuzzy", query],

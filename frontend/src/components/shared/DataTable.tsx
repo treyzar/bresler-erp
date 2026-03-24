@@ -7,7 +7,7 @@ import {
   type RowSelectionState,
   type VisibilityState,
 } from "@tanstack/react-table"
-import { Search, Trash2, Settings2 } from "lucide-react"
+import { Search, Trash2, Settings2, ArrowRight } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -28,7 +28,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useDebounce } from "@/hooks/useDebounce"
+
+const PAGE_SIZE_OPTIONS = [20, 50, 100]
 
 interface DataTableProps<T> {
   columns: ColumnDef<T, unknown>[]
@@ -48,6 +57,9 @@ interface DataTableProps<T> {
   toolbar?: React.ReactNode
   getRowId?: (row: T) => string
   onRowClick?: (row: T) => void
+  fixedLayout?: boolean
+  onPageSizeChange?: (size: number) => void
+  pageSizeOptions?: number[]
 }
 
 export function DataTable<T>({
@@ -68,6 +80,9 @@ export function DataTable<T>({
   toolbar,
   getRowId,
   onRowClick,
+  fixedLayout = false,
+  onPageSizeChange,
+  pageSizeOptions = PAGE_SIZE_OPTIONS,
 }: DataTableProps<T>) {
   const [localSearch, setLocalSearch] = useState(searchValue)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -133,25 +148,46 @@ export function DataTable<T>({
 
   const totalPages = Math.ceil(totalCount / pageSize)
   const selectedCount = Object.keys(selectedRows).length
+  const [gotoPage, setGotoPage] = useState("")
 
   return (
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4">
-        {enableSearch ? (
-          <div className="flex items-center flex-1 gap-2 max-w-sm">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Поиск..."
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                className="pl-9"
-              />
+        <div className="flex items-center gap-4">
+          {enableSearch ? (
+            <div className="flex items-center flex-1 gap-2 max-w-sm">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск..."
+                  value={localSearch}
+                  onChange={(e) => setLocalSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
-          </div>
-        ) : <div className="flex-1" />}
-        
+          ) : null}
+          {onPageSizeChange && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Показывать:</span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => onPageSizeChange(Number(val))}
+              >
+                <SelectTrigger className="w-[70px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageSizeOptions.map((size) => (
+                    <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center gap-2">
           {selectedCount > 0 && onBulkDelete && (
             <Button
@@ -207,12 +243,23 @@ export function DataTable<T>({
 
       {/* Table */}
       <div className="rounded-md border bg-card">
-        <Table>
+        <Table className={fixedLayout ? "table-fixed" : undefined}>
+          <colgroup>
+            {table.getVisibleFlatColumns().map((col) => {
+              const size = col.getSize()
+              return (
+                <col
+                  key={col.id}
+                  style={size !== 150 ? { width: size } : undefined}
+                />
+              )
+            })}
+          </colgroup>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>
+                  <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -261,7 +308,9 @@ export function DataTable<T>({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Всего: {totalCount}
+          {totalCount > 0
+            ? `Записи с ${(page - 1) * pageSize + 1} до ${Math.min(page * pageSize, totalCount)} из ${totalCount.toLocaleString("ru")} записей`
+            : "Нет записей"}
         </p>
         <div className="flex items-center gap-2">
           <Button
@@ -283,6 +332,42 @@ export function DataTable<T>({
           >
             Вперёд
           </Button>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1 ml-2">
+              <Input
+                type="number"
+                min={1}
+                max={totalPages}
+                placeholder="№"
+                value={gotoPage}
+                onChange={(e) => setGotoPage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const p = Number(gotoPage)
+                    if (p >= 1 && p <= totalPages) {
+                      onPageChange(p)
+                      setGotoPage("")
+                    }
+                  }
+                }}
+                className="w-[60px] h-8 text-center"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  const p = Number(gotoPage)
+                  if (p >= 1 && p <= totalPages) {
+                    onPageChange(p)
+                    setGotoPage("")
+                  }
+                }}
+              >
+                <ArrowRight className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

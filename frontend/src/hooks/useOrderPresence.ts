@@ -38,6 +38,11 @@ export function useOrderPresence(orderNumber: string | undefined) {
       }
     }
 
+    ws.onerror = () => {
+      // WebSocket not available (e.g. no Channels backend in dev) — silently ignore
+      ws.close()
+    }
+
     ws.onclose = () => {
       wsRef.current = null
     }

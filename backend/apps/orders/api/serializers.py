@@ -117,6 +117,12 @@ class OrderListSerializer(serializers.ModelSerializer):
 class OrderDetailSerializer(serializers.ModelSerializer):
     """Full serializer for order detail view."""
 
+    related_orders = serializers.SlugRelatedField(
+        slug_field="order_number",
+        read_only=True,
+        many=True,
+    )
+
     customer_name = serializers.CharField(
         source="customer_org_unit.name",
         read_only=True,
@@ -150,20 +156,35 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True,
     )
+    manager_names = serializers.SerializerMethodField()
     contact_ids = serializers.PrimaryKeyRelatedField(
         source="contacts",
         many=True,
         read_only=True,
     )
+    contact_names = serializers.SerializerMethodField()
     equipment_ids = serializers.PrimaryKeyRelatedField(
         source="equipments",
         many=True,
         read_only=True,
     )
+    equipment_names = serializers.SerializerMethodField()
     work_ids = serializers.PrimaryKeyRelatedField(
         source="works",
         many=True,
         read_only=True,
+    )
+    work_names = serializers.SerializerMethodField()
+    facility_ids = serializers.PrimaryKeyRelatedField(
+        source="facilities",
+        many=True,
+        read_only=True,
+    )
+    facility_names = serializers.SerializerMethodField()
+    country_name = serializers.CharField(
+        source="country.name",
+        read_only=True,
+        default="",
     )
 
     class Meta:
@@ -184,22 +205,66 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "designer",
             "designer_name",
             "country",
+            "country_name",
             "contract",
             "order_org_units",
             "order_participants",
             "files",
             "manager_ids",
+            "manager_names",
             "contact_ids",
+            "contact_names",
             "equipment_ids",
+            "equipment_names",
             "work_ids",
+            "work_names",
+            "facility_ids",
+            "facility_names",
             "related_orders",
             "created_at",
             "updated_at",
         )
 
+    def get_manager_names(self, obj):
+        return [
+            {"id": u.id, "name": u.get_full_name() or u.username}
+            for u in obj.managers.all()
+        ]
+
+    def get_contact_names(self, obj):
+        return [
+            {"id": c.id, "name": c.full_name}
+            for c in obj.contacts.all()
+        ]
+
+    def get_equipment_names(self, obj):
+        return [{"id": e.id, "name": e.name} for e in obj.equipments.all()]
+
+    def get_work_names(self, obj):
+        return [{"id": w.id, "name": w.name} for w in obj.works.all()]
+
+    def get_facility_names(self, obj):
+        return [
+            {"id": f.id, "name": f.name, "org_unit_name": f.org_unit.name if f.org_unit else ""}
+            for f in obj.facilities.select_related("org_unit").all()
+        ]
+
 
 class OrderCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating orders."""
+
+    related_orders = serializers.SlugRelatedField(
+        slug_field="order_number",
+        queryset=Order.objects.all(),
+        many=True,
+        required=False,
+    )
+
+    org_units_data = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        write_only=True,
+    )
 
     class Meta:
         model = Order
@@ -218,5 +283,31 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "managers",
             "equipments",
             "works",
+            "facilities",
             "related_orders",
+            "org_units_data",
         )
+
+    def create(self, validated_data):
+        org_units_data = validated_data.pop("org_units_data", [])
+        order = super().create(validated_data)
+        self._save_org_units(order, org_units_data)
+        return order
+
+    def update(self, instance, validated_data):
+        org_units_data = validated_data.pop("org_units_data", None)
+        order = super().update(instance, validated_data)
+        if org_units_data is not None:
+            self._save_org_units(order, org_units_data)
+        return order
+
+    @staticmethod
+    def _save_org_units(order, org_units_data):
+        order.orderorgunit_set.all().delete()
+        for i, entry in enumerate(org_units_data):
+            OrderOrgUnit.objects.create(
+                order=order,
+                org_unit_id=entry["org_unit"],
+                role=entry.get("role", ""),
+                order_index=i,
+            )

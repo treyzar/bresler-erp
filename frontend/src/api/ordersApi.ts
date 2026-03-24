@@ -78,6 +78,13 @@ export const ordersApi = {
     return data
   },
 
+  missingNumbers: async () => {
+    const { data } = await apiClient.get<{ missing_formatted: string[]; total: number }>(
+      "/orders/missing-numbers/"
+    )
+    return data
+  },
+
   fuzzySearch: async (q: string): Promise<FuzzySuggestion[]> => {
     const { data } = await apiClient.get<FuzzySuggestion[]>(
       "/orders/fuzzy-search/",

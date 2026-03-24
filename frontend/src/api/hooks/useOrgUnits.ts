@@ -43,6 +43,14 @@ export function useOrgUnitList(params?: ListParams) {
   })
 }
 
+export function useFacilitiesByOrgUnits(ids: number[]) {
+  return useQuery<{ id: number; name: string; org_unit_name: string }[]>({
+    queryKey: ["orgunits", "facilities-by-orgunits", ids],
+    queryFn: () => orgUnitsApi.facilitiesByOrgUnits(ids),
+    enabled: ids.length > 0,
+  })
+}
+
 export function useOrgUnitCreate() {
   const qc = useQueryClient()
   return useMutation({

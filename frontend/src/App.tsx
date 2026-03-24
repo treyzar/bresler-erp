@@ -25,6 +25,7 @@ import Parser from "@/features/edo/pages/Parser"
 import RenderTemplate from "@/features/edo/pages/RenderTemplate"
 import { LetterRegistryPage } from "@/features/edo/pages/LetterRegistryPage"
 import { LetterDetailPage } from "@/features/edo/pages/LetterDetailPage"
+import { DashboardPage } from "@/features/dashboard/DashboardPage"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -35,7 +36,7 @@ function App() {
         <Route
           path="/login"
           element={
-            isAuthenticated ? <Navigate to="/orders" replace /> : <LoginPage />
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
           }
         />
         <Route element={<ProtectedRoute />}>
@@ -77,7 +78,8 @@ function App() {
               </Route>
             </Route>
 
-            <Route path="/" element={<Navigate to="/orders" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Route>
       </Routes>

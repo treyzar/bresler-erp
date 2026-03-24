@@ -227,14 +227,21 @@ export interface OrderDetail extends BaseEntity {
   designer: number | null
   designer_name: string
   country: number | null
+  country_name: string
   contract: Contract | null
   order_org_units: OrderOrgUnitEntry[]
   order_participants: OrderParticipantEntry[]
   files: OrderFile[]
   manager_ids: number[]
+  manager_names: { id: number; name: string }[]
   contact_ids: number[]
+  contact_names: { id: number; name: string }[]
   equipment_ids: number[]
+  equipment_names: { id: number; name: string }[]
   work_ids: number[]
+  work_names: { id: number; name: string }[]
+  facility_ids: number[]
+  facility_names: { id: number; name: string; org_unit_name: string }[]
   related_orders: number[]
 }
 

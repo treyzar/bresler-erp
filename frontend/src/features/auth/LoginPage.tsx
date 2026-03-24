@@ -33,7 +33,7 @@ export function LoginPage() {
       const profileRes = await apiClient.get<User>("/users/me/")
       setUser(profileRes.data)
 
-      navigate("/orders", { replace: true })
+      navigate("/dashboard", { replace: true })
     } catch {
       setError("Неверное имя пользователя или пароль")
     } finally {

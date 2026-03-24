@@ -7,6 +7,7 @@ from apps.directory.models import (
     Contact,
     Country,
     Equipment,
+    Facility,
     OrgUnit,
     TypeOfWork,
 )
@@ -107,6 +108,12 @@ class Order(BaseModel):
         blank=True,
         related_name="orders",
         verbose_name="Виды работ",
+    )
+    facilities = models.ManyToManyField(
+        Facility,
+        blank=True,
+        related_name="orders",
+        verbose_name="Объекты",
     )
     participants = models.ManyToManyField(
         OrgUnit,

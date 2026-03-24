@@ -81,6 +81,32 @@ class OrgUnitViewSet(viewsets.ModelViewSet):
         serializer = OrgUnitTreeSerializer(roots, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], url_path="facilities-by-orgunits")
+    def facilities_by_orgunits(self, request):
+        """Get Facility objects linked to given OrgUnit IDs and their descendants."""
+        from apps.directory.models import Facility
+
+        ids = request.query_params.getlist("ids")
+        if not ids:
+            return Response([])
+        all_orgunit_ids = set()
+        for uid in ids:
+            try:
+                node = OrgUnit.objects.get(pk=uid)
+            except OrgUnit.DoesNotExist:
+                continue
+            all_orgunit_ids.add(node.pk)
+            for desc in node.get_descendants():
+                all_orgunit_ids.add(desc.pk)
+        facilities = Facility.objects.filter(
+            org_unit_id__in=all_orgunit_ids, is_active=True
+        ).select_related("org_unit")
+        data = [
+            {"id": f.id, "name": f.name, "org_unit_name": f.org_unit.name if f.org_unit else ""}
+            for f in facilities
+        ]
+        return Response(data)
+
     @action(detail=False, methods=["get"])
     def search(self, request):
         query = request.query_params.get("q", "")

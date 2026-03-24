@@ -1,38 +1,87 @@
 import { useNavigate, useParams } from "react-router"
-import { useState } from "react"
-import { Pencil, Trash2, ArrowLeft } from "lucide-react"
-import { toast } from "sonner"
+import { Pencil, ArrowLeft, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import { ORDER_STATUSES } from "@/api/types"
-import { useOrder, useDeleteOrder } from "@/api/hooks/useOrders"
+import { ORDER_STATUSES, ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
+import { useOrder } from "@/api/hooks/useOrders"
 import { useOrderPresence } from "@/hooks/useOrderPresence"
+import { OrgUnitBreadcrumb } from "@/components/shared/OrgUnitBreadcrumb"
 import { ContractSection } from "./ContractSection"
 import { OrderFilesSection } from "./OrderFilesSection"
 import { OrderHistorySection } from "./OrderHistorySection"
+
+const STATUS_STEPS = [
+  { key: "N", label: "Создан" },
+  { key: "P", label: "Производство" },
+  { key: "C", label: "Собран" },
+  { key: "T", label: "Отгружен" },
+] as const
+
+function getStatusStep(status: string): number {
+  const map: Record<string, number> = { N: 0, P: 1, C: 2, T: 3, A: 3 }
+  return map[status] ?? 0
+}
+
+function OrderStatusProgress({ status }: { status: string }) {
+  const currentStep = getStatusStep(status)
+  const totalSteps = STATUS_STEPS.length
+
+  return (
+    <div className="flex items-center gap-0">
+      {STATUS_STEPS.map((step, i) => {
+        const isDone = i < currentStep
+        const isActive = i === currentStep
+        const isLast = i === totalSteps - 1
+        return (
+          <div key={step.key} className="flex items-center flex-1 last:flex-none">
+            {/* Step */}
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`flex items-center justify-center size-8 rounded-full text-xs font-bold transition-all ${
+                  isDone
+                    ? "bg-primary text-primary-foreground"
+                    : isActive
+                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {isDone ? <Check className="size-4" /> : i + 1}
+              </div>
+              <span
+                className={`text-[11px] font-medium whitespace-nowrap ${
+                  isActive ? "text-primary" : isDone ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {/* Connector line */}
+            {!isLast && (
+              <div className="flex-1 mx-2 mb-5">
+                <div
+                  className={`h-0.5 w-full rounded transition-all ${
+                    isDone ? "bg-primary" : "bg-border"
+                  }`}
+                />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export function OrderDetailPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>()
   const navigate = useNavigate()
   const orderNum = Number(orderNumber)
   const { data: order, isLoading } = useOrder(orderNum)
-  const deleteMutation = useDeleteOrder()
   const activeUsers = useOrderPresence(orderNumber)
-  const [showDelete, setShowDelete] = useState(false)
-
-  const handleDelete = async () => {
-    try {
-      await deleteMutation.mutateAsync(orderNum)
-      toast.success("Заказ удалён")
-      navigate("/orders", { replace: true })
-    } catch {
-      toast.error("Ошибка при удалении")
-    }
-  }
 
   if (isLoading) {
     return (
@@ -75,21 +124,22 @@ export function OrderDetailPage() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate(`/orders/${orderNum}/edit`)}>
-            <Pencil className="size-4 mr-1" />
-            Редактировать
-          </Button>
-          <Button variant="destructive" size="sm" onClick={() => setShowDelete(true)}>
-            <Trash2 className="size-4 mr-1" />
-            Удалить
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/orders/${orderNum}/edit`)}>
+          <Pencil className="size-4 mr-1" />
+          Редактировать
+        </Button>
       </div>
+
+      {/* Status progress */}
+      <Card>
+        <CardContent className="py-5 px-8">
+          <OrderStatusProgress status={order.status} />
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="info">
         <TabsList>
-          <TabsTrigger value="info">Информация</TabsTrigger>
+          <TabsTrigger value="info">Основная информация</TabsTrigger>
           <TabsTrigger value="contract">Контракт</TabsTrigger>
           <TabsTrigger value="files">
             Файлы {order.files.length > 0 && `(${order.files.length})`}
@@ -98,36 +148,153 @@ export function OrderDetailPage() {
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader><CardTitle>Основная информация</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow label="Номер заказа" value={String(order.order_number)} />
-                <InfoRow label="Номер тендера" value={order.tender_number} />
-                <InfoRow label="Статус" value={statusLabel} />
-                <InfoRow label="Дата начала" value={order.start_date} />
-                <InfoRow label="Дата отгрузки" value={order.ship_date} />
-                <InfoRow label="Создан" value={new Date(order.created_at).toLocaleString("ru")} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Связи</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <InfoRow label="Заказчик" value={order.customer_name} />
-                <InfoRow label="Посредник" value={order.intermediary_name} />
-                <InfoRow label="Проектант" value={order.designer_name} />
-                <InfoRow label="Организации" value={order.order_org_units.map((o) => o.org_unit_name).join(", ")} />
-                <InfoRow label="Участники ЦЗ" value={order.order_participants.map((p) => p.org_unit_name).join(", ")} />
-              </CardContent>
-            </Card>
-            {order.note && (
-              <Card className="md:col-span-2">
-                <CardHeader><CardTitle>Примечание</CardTitle></CardHeader>
-                <CardContent>
-                  <p className="whitespace-pre-wrap text-sm">{order.note}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Left column */}
+            <div className="space-y-6">
+              {/* Общие сведения */}
+              <Card>
+                <CardHeader><CardTitle>Общие сведения</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <InfoRow label="Номер заказа" value={String(order.order_number)} />
+                  <InfoRow label="Статус" value={statusLabel} />
+                  <InfoRow
+                    label="Менеджеры"
+                    value={order.manager_names.length > 0
+                      ? order.manager_names.map((m) => m.name).join(", ")
+                      : null}
+                  />
+                  <InfoRow
+                    label="Дата запуска"
+                    value={order.start_date ? new Date(order.start_date).toLocaleDateString("ru") : null}
+                  />
+                  <InfoRow
+                    label="Дата отгрузки"
+                    value={order.ship_date ? new Date(order.ship_date).toLocaleDateString("ru") : null}
+                  />
+                  <InfoRow label="Дата создания" value={new Date(order.created_at).toLocaleString("ru")} />
+                  {order.related_orders.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-1.5">
+                        <span className="text-sm text-muted-foreground">Связанные заказы</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {order.related_orders.map((num) => (
+                            <Badge
+                              key={num}
+                              variant="outline"
+                              className="cursor-pointer hover:bg-accent"
+                              onClick={() => navigate(`/orders/${num}`)}
+                            >
+                              #{num}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
-            )}
+
+              {/* Сведения об оборудовании и работах */}
+              <Card>
+                <CardHeader><CardTitle>Сведения об оборудовании и работах</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <TagList label="Оборудование" items={order.equipment_names} />
+                  <Separator />
+                  <TagList label="Виды работ" items={order.work_names} />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right column */}
+            <div className="space-y-6">
+              {/* Организация (структура) */}
+              <Card>
+                <CardHeader><CardTitle>Организация (структура)</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <InfoRow label="Страна" value={order.country_name} />
+                  {order.order_org_units.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-sm text-muted-foreground">Организации</span>
+                      {order.order_org_units.map((ou) => (
+                        <div key={ou.id} className="p-3 rounded-lg border bg-muted/20 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">{ou.org_unit_name}</span>
+                            {ou.role && (
+                              <Badge variant="default" className="text-[11px] shrink-0">
+                                {ORG_UNIT_BUSINESS_ROLES[ou.role] ?? ou.role}
+                              </Badge>
+                            )}
+                          </div>
+                          <OrgUnitBreadcrumb orgUnitId={ou.org_unit} orgUnitName={ou.org_unit_name} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {order.facility_names.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-1.5">
+                        <span className="text-sm text-muted-foreground">Объекты</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {order.facility_names.map((f) => (
+                            <Badge key={f.id} variant="secondary">
+                              {f.org_unit_name ? `${f.name} [${f.org_unit_name}]` : f.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {order.order_participants.length > 0 && (
+                    <>
+                      <Separator />
+                      <InfoRow
+                        label="Участники ЦЗ"
+                        value={order.order_participants.map((p) => p.org_unit_name).join(", ")}
+                      />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Сведения о закупке */}
+              <Card>
+                <CardHeader><CardTitle>Сведения о закупке</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <InfoRow label="Номер тендера" value={order.tender_number} />
+                </CardContent>
+              </Card>
+
+              {/* Дополнительные сведения */}
+              <Card>
+                <CardHeader><CardTitle>Дополнительные сведения</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-1.5">
+                    <span className="text-sm text-muted-foreground">Контакты</span>
+                    {order.contact_names.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {order.contact_names.map((c) => (
+                          <Badge key={c.id} variant="outline">{c.name}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground/60">—</p>
+                    )}
+                  </div>
+                  {order.note && (
+                    <>
+                      <Separator />
+                      <div className="space-y-1.5">
+                        <span className="text-sm text-muted-foreground">Примечание</span>
+                        <p className="whitespace-pre-wrap text-sm">{order.note}</p>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </TabsContent>
 
@@ -143,24 +310,32 @@ export function OrderDetailPage() {
           <OrderHistorySection orderId={orderNum} />
         </TabsContent>
       </Tabs>
-
-      <ConfirmDialog
-        open={showDelete}
-        onOpenChange={setShowDelete}
-        title="Удалить заказ?"
-        description={`Заказ #${order.order_number} будет удалён безвозвратно.`}
-        onConfirm={handleDelete}
-        loading={deleteMutation.isPending}
-      />
     </div>
   )
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value || "—"}</span>
+    <div className="flex justify-between text-sm gap-4">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="font-medium text-right">{value || "—"}</span>
+    </div>
+  )
+}
+
+function TagList({ label, items }: { label: string; items: { id: number; name: string }[] }) {
+  return (
+    <div className="space-y-1.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      {items.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((item) => (
+            <Badge key={item.id} variant="secondary">{item.name}</Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground/60">—</p>
+      )}
     </div>
   )
 }

@@ -70,4 +70,11 @@ export const orgUnitsApi = {
     const { data } = await apiClient.get<OrgUnit[]>("/directory/orgunits/search/", { params: { q } })
     return data
   },
+  facilitiesByOrgUnits: async (ids: number[]) => {
+    const queryString = ids.map((id) => `ids=${id}`).join("&")
+    const { data } = await apiClient.get<{ id: number; name: string; org_unit_name: string }[]>(
+      `/directory/orgunits/facilities-by-orgunits/?${queryString}`
+    )
+    return data
+  },
 }

@@ -23,12 +23,14 @@ interface OrgUnitComboboxSingleProps {
   mode?: "single"
   value: number | null
   onChange: (value: number | null) => void
+  onSelectItem?: (id: number, name: string) => void
 }
 
 interface OrgUnitComboboxMultiProps {
   mode: "multi"
   value: number[]
   onChange: (value: number[]) => void
+  onSelectItem?: (id: number, name: string) => void
 }
 
 type OrgUnitComboboxProps = OrgUnitComboboxSingleProps | OrgUnitComboboxMultiProps
@@ -44,6 +46,10 @@ export function OrgUnitCombobox(props: OrgUnitComboboxProps) {
   const selectedIds = isMulti ? props.value : props.value !== null ? [props.value] : []
 
   const handleSelect = (id: number) => {
+    const selected = results.find((r) => r.id === id)
+    if (selected && props.onSelectItem) {
+      props.onSelectItem(id, selected.name)
+    }
     if (isMulti) {
       const current = props.value as number[]
       if (current.includes(id)) {

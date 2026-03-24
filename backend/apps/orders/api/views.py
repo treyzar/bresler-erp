@@ -30,6 +30,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         "managers",
         "equipments",
         "works",
+        "facilities__org_unit",
         "files",
         "org_units",
         "participants",
@@ -111,6 +112,37 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="next-number")
     def next_number(self, request):
         return Response({"next_number": get_next_order_number()})
+
+    @action(detail=False, methods=["get"], url_path="missing-numbers")
+    def missing_numbers(self, request):
+        """Find gaps in order number sequence."""
+        numbers = set(
+            Order.objects.values_list("order_number", flat=True)
+        )
+        if not numbers:
+            return Response({"missing_formatted": [], "total": 0})
+
+        max_num = max(numbers)
+        all_numbers = set(range(1, max_num + 1))
+        missing = sorted(all_numbers - numbers)
+
+        # Group into ranges
+        formatted = []
+        if missing:
+            start = missing[0]
+            end = missing[0]
+            for n in missing[1:]:
+                if n == end + 1:
+                    end = n
+                else:
+                    formatted.append(f"{start}-{end}" if start != end else str(start))
+                    start = end = n
+            formatted.append(f"{start}-{end}" if start != end else str(start))
+
+        return Response({
+            "missing_formatted": formatted,
+            "total": len(missing),
+        })
 
     @action(detail=True, methods=["get"])
     def history(self, request, order_number=None):

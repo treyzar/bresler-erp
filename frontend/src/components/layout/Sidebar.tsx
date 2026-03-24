@@ -9,6 +9,7 @@ type NavItemWithModule = NavItem & {
 }
 
 const navItems: NavItemWithModule[] = [
+  { to: "/dashboard", label: "Главная" },
   { to: "/orders", label: "Заказы", module: "orders" },
   { to: "/directory/orgunits", label: "Организации", module: "directory" },
   { to: "/directory/contacts", label: "Контакты", module: "directory" },
