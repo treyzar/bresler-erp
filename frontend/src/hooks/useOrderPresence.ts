@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useAuthStore } from "@/stores/useAuthStore"
 
 interface PresenceEvent {
@@ -11,8 +11,13 @@ export function useOrderPresence(orderNumber: string | undefined) {
   const wsRef = useRef<WebSocket | null>(null)
   const token = useAuthStore((s) => s.accessToken)
 
-  const connect = useCallback(() => {
+  useEffect(() => {
     if (!orderNumber || !token) return
+
+    // Avoid duplicate connections
+    if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) {
+      return
+    }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     const host = window.location.host
@@ -39,27 +44,19 @@ export function useOrderPresence(orderNumber: string | undefined) {
     }
 
     ws.onerror = () => {
-      // WebSocket not available (e.g. no Channels backend in dev) — silently ignore
-      ws.close()
+      // silently ignore — WebSocket may not be available
     }
 
     ws.onclose = () => {
       wsRef.current = null
     }
 
-    return ws
-  }, [orderNumber, token])
-
-  useEffect(() => {
-    const ws = connect()
-
     return () => {
-      if (ws && ws.readyState <= WebSocket.OPEN) {
-        ws.close()
-      }
+      ws.close()
+      wsRef.current = null
       setActiveUsers(new Set())
     }
-  }, [connect])
+  }, [orderNumber, token])
 
   return activeUsers
 }

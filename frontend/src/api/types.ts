@@ -144,9 +144,10 @@ export interface ListParams {
 
 export const ORDER_STATUSES = {
   N: "Новый",
-  P: "В работе",
-  C: "Завершён",
-  T: "Тендер",
+  D: "Договор",
+  P: "Производство",
+  C: "Собран",
+  S: "Отгружен",
   A: "Архив",
 } as const
 

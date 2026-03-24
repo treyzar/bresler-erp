@@ -40,10 +40,11 @@ const DEFAULT_PAGE_SIZE = 20
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   N: "outline",
+  D: "secondary",
   P: "default",
   C: "secondary",
-  T: "outline",
-  A: "secondary",
+  S: "default",
+  A: "outline",
 }
 
 const LABEL_CLASS = "text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1 block pl-1"

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useOrderHistory } from "@/api/hooks/useOrders"
 
@@ -6,6 +7,12 @@ const HISTORY_TYPE_LABELS: Record<string, string> = {
   "+": "Создание",
   "~": "Изменение",
   "-": "Удаление",
+}
+
+const HISTORY_TYPE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  "+": "default",
+  "~": "secondary",
+  "-": "destructive",
 }
 
 interface OrderHistorySectionProps {
@@ -41,24 +48,38 @@ export function OrderHistorySection({ orderId }: OrderHistorySectionProps) {
         <Card key={record.id}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">
-                {HISTORY_TYPE_LABELS[record.type] ?? record.type}
-              </CardTitle>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                {record.user && <span>{record.user}</span>}
-                <span>{new Date(record.date).toLocaleString("ru")}</span>
+              <div className="flex items-center gap-2">
+                <Badge variant={HISTORY_TYPE_VARIANT[record.type] ?? "outline"} className="text-xs">
+                  {HISTORY_TYPE_LABELS[record.type] ?? record.type}
+                </Badge>
+                {record.user && (
+                  <span className="text-sm text-muted-foreground">{record.user}</span>
+                )}
               </div>
+              <span className="text-xs text-muted-foreground">
+                {new Date(record.date).toLocaleString("ru")}
+              </span>
             </div>
           </CardHeader>
           {record.changes.length > 0 && (
             <CardContent className="pt-0">
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {record.changes.map((change, i) => (
-                  <div key={i} className="text-sm">
-                    <span className="text-muted-foreground">{change.field}:</span>{" "}
-                    <span className="line-through text-destructive/70">{change.old || "—"}</span>
-                    {" → "}
-                    <span className="font-medium">{change.new || "—"}</span>
+                  <div key={i} className="text-sm flex gap-2">
+                    <span className="text-muted-foreground shrink-0 font-medium">
+                      {change.field}:
+                    </span>
+                    <span>
+                      {change.old != null ? (
+                        <>
+                          <span className="line-through text-destructive/70">{change.old}</span>
+                          {" → "}
+                          <span className="font-medium">{change.new || "—"}</span>
+                        </>
+                      ) : (
+                        <span className="font-medium">{change.new || "—"}</span>
+                      )}
+                    </span>
                   </div>
                 ))}
               </div>

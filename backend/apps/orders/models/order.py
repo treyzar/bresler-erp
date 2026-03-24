@@ -18,9 +18,10 @@ class Order(BaseModel):
 
     class Status(models.TextChoices):
         NEW = "N", "Новый"
-        IN_PROGRESS = "P", "В работе"
-        COMPLETED = "C", "Завершён"
-        TENDER = "T", "Тендер"
+        CONTRACT = "D", "Договор"
+        PRODUCTION = "P", "Производство"
+        ASSEMBLED = "C", "Собран"
+        SHIPPED = "S", "Отгружен"
         ARCHIVED = "A", "Архив"
 
     order_number = models.PositiveIntegerField(
@@ -128,7 +129,16 @@ class Order(BaseModel):
         verbose_name="Связанные заказы",
     )
 
-    history = HistoricalRecords()
+    history = HistoricalRecords(
+        m2m_fields=[
+            contacts,
+            managers,
+            equipments,
+            works,
+            facilities,
+            related_orders,
+        ],
+    )
 
     class Meta:
         verbose_name = "Заказ"
@@ -148,6 +158,8 @@ class OrderOrgUnit(models.Model):
     order_index = models.PositiveIntegerField("Порядок", default=0)
     note = models.TextField("Примечание", blank=True)
 
+    history = HistoricalRecords()
+
     class Meta:
         unique_together = [("order", "org_unit", "role")]
         ordering = ["order_index"]
@@ -159,6 +171,8 @@ class OrderParticipant(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     org_unit = models.ForeignKey(OrgUnit, on_delete=models.CASCADE)
     order_index = models.PositiveIntegerField("Порядок", default=0)
+
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ["order_index"]

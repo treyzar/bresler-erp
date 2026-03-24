@@ -15,14 +15,15 @@ import { OrderFilesSection } from "./OrderFilesSection"
 import { OrderHistorySection } from "./OrderHistorySection"
 
 const STATUS_STEPS = [
-  { key: "N", label: "Создан" },
+  { key: "N", label: "Новый" },
+  { key: "D", label: "Договор" },
   { key: "P", label: "Производство" },
   { key: "C", label: "Собран" },
-  { key: "T", label: "Отгружен" },
+  { key: "S", label: "Отгружен" },
 ] as const
 
 function getStatusStep(status: string): number {
-  const map: Record<string, number> = { N: 0, P: 1, C: 2, T: 3, A: 3 }
+  const map: Record<string, number> = { N: 0, D: 1, P: 2, C: 3, S: 4, A: 4 }
   return map[status] ?? 0
 }
 
@@ -41,14 +42,17 @@ function OrderStatusProgress({ status }: { status: string }) {
             {/* Step */}
             <div className="flex flex-col items-center gap-1">
               <div
-                className={`flex items-center justify-center size-8 rounded-full text-xs font-bold transition-all ${
+                className={`relative flex items-center justify-center size-8 rounded-full text-xs font-bold transition-all ${
                   isDone
                     ? "bg-primary text-primary-foreground"
                     : isActive
-                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                 }`}
               >
+                {isActive && (
+                  <span className="absolute inset-0 rounded-full animate-ping bg-primary/30" />
+                )}
                 {isDone ? <Check className="size-4" /> : i + 1}
               </div>
               <span
