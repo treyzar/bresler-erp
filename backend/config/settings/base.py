@@ -46,6 +46,7 @@ LOCAL_APPS = [
     "apps.users",
     "apps.directory",
     "apps.orders",
+    "apps.devices",
     "apps.edo.doc_builder",
     "apps.edo.parser_app",
     "apps.edo.templates_app",
@@ -185,6 +186,21 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+# Celery Beat schedule
+CELERY_BEAT_SCHEDULE = {
+    "import-components-daily": {
+        "task": "apps.devices.tasks.import_components",
+        "schedule": 86400.0,  # 24 hours
+    },
+}
+
+# ProdUX external API (component sync)
+PRODUX_API_URL = os.environ.get(
+    "PRODUX_API_URL", "https://app.bresler.ru:7007"
+)
+PRODUX_USERNAME = os.environ.get("PRODUX_USERNAME", "")
+PRODUX_PASSWORD = os.environ.get("PRODUX_PASSWORD", "")
 
 # Cache
 CACHES = {
