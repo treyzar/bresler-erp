@@ -20,6 +20,18 @@ const navItems: NavItemWithModule[] = [
   { to: "/directory/works", label: "Виды работ", module: "directory" },
   { to: "/directory/delivery-types", label: "Типы доставки", module: "directory" },
   {
+    to: "/devices",
+    label: "Устройства",
+    module: "devices",
+    subItems: [
+      { to: "/devices/rza", label: "Серии РЗА" },
+      { to: "/devices/components", label: "Компоненты" },
+      { to: "/devices/catalog", label: "Каталог продуктов" },
+      { to: "/devices/product-types", label: "Типы продуктов" },
+      { to: "/devices/voltage-classes", label: "Классы напряжения" },
+    ],
+  },
+  {
     to: "/edo",
     label: "ЭДО",
     module: "edo",

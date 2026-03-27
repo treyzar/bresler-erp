@@ -253,3 +253,214 @@ export interface OrderHistoryRecord {
   type: string
   changes: { field: string; old: string; new: string }[]
 }
+
+// Devices / Catalog types
+
+export interface VoltageClass extends BaseEntity {
+  name: string
+  description: string
+}
+
+export interface DeviceRZA extends BaseEntity {
+  rza_name: string
+  rza_name_rod: string
+  rza_short_name: string
+  rza_code: string
+  modifications_count?: number
+  parameters_count?: number
+  components_count?: number
+}
+
+export interface ModRZA extends BaseEntity {
+  device_rza: number
+  device_rza_name?: string
+  mod_name: string
+  mod_code: string
+  alter_mod_code: string
+  sec_mod_code: string
+  full_code?: string
+  parameters_count?: number
+  components_count?: number
+}
+
+export interface Parameter {
+  id: number
+  name: string
+  parameter_type: string
+  is_leaf: boolean
+  can_add_multiple: boolean
+  comment: string
+  created_at: string
+  values?: ParameterValue[]
+  children_count?: number
+  depth?: number
+}
+
+export interface ParameterValue {
+  id: number
+  parameter: number
+  value: string
+  is_custom_value: boolean
+}
+
+export interface ComponentType extends BaseEntity {
+  name: string
+  components_count?: number
+}
+
+export interface DeviceComponent extends BaseEntity {
+  produx_id: number
+  component_name: string
+  component_type: number
+  component_type_name?: string
+  is_active: boolean
+  additional_data: Record<string, unknown> | null
+}
+
+export interface DeviceRZAParameter {
+  id: number
+  device_rza: number
+  parameter: number
+  parameter_name?: string
+  parameter_type?: string
+  price: string
+}
+
+export interface ModRZAParameter {
+  id: number
+  mod_rza: number
+  parameter: number
+  parameter_name?: string
+  parameter_type?: string
+  price: string
+}
+
+export interface DeviceRZAComponent {
+  id: number
+  device_rza: number
+  component: number
+  component_name?: string
+  component_type_name?: string
+  price: string
+}
+
+export interface ModRZAComponent {
+  id: number
+  mod_rza: number
+  component: number
+  component_name?: string
+  component_type_name?: string
+  price: string
+}
+
+export interface ProductCategory {
+  id: number
+  name: string
+  short_name: string
+  slug: string
+  description: string
+  is_active: boolean
+  depth: number
+  level_name?: string
+  full_path?: string
+  created_at: string
+  updated_at: string
+  children?: ProductCategoryTree[]
+}
+
+export interface ProductCategoryTree {
+  id: number
+  name: string
+  short_name: string
+  slug: string
+  is_active: boolean
+  depth: number
+  children: ProductCategoryTree[]
+}
+
+export interface ProductType extends BaseEntity {
+  name: string
+  code: string
+  mark: string
+  description: string
+  is_active: boolean
+}
+
+export interface Product extends BaseEntity {
+  name: string
+  internal_code: string
+  slug: string
+  product_type: number | null
+  product_type_name?: string
+  uom: string
+  base_price: string
+  currency: string
+  vat_rate: string
+  price_with_vat: boolean
+  track_serial: boolean
+  is_active: boolean
+  is_spare_part: boolean
+  valid_from: string | null
+  valid_to: string | null
+  rza_spec?: RZASpec | null
+  categories?: { id: number; name: string; full_path: string }[]
+  bom_lines?: ProductBOMLine[]
+}
+
+export interface RZASpec {
+  id: number
+  product: number
+  device_rza: number
+  device_rza_code?: string
+  device_rza_name?: string
+  mod_rza: number | null
+  mod_rza_code?: string
+  description: string
+}
+
+export interface ProductBOMLine {
+  id: number
+  parent: number
+  child: number
+  child_name?: string
+  child_code?: string
+  role: string
+  quantity: number
+  slot_label: string
+  track_serial_override: boolean | null
+}
+
+export interface ProductAttribute extends BaseEntity {
+  code: string
+  name: string
+  unit: string
+  value_type: string
+  options?: ProductAttributeOption[]
+}
+
+export interface ProductAttributeOption {
+  id: number
+  attribute: number
+  code: string
+  label: string
+  sort_order: number
+}
+
+export const PARAMETER_TYPES: Record<string, string> = {
+  select: "Выбор из списка",
+  custom: "Пользовательское значение",
+  composite: "Составной параметр",
+}
+
+export const PRODUCT_CURRENCIES: Record<string, string> = {
+  RUB: "₽ RUB",
+  EUR: "€ EUR",
+  USD: "$ USD",
+}
+
+export const BOM_ROLES: Record<string, string> = {
+  RZA_TERMINAL: "МП терминал РЗА",
+  ACCESSORY: "Аксессуар/узел",
+  WIRING: "Проводка/шкафной монтаж",
+  MISC: "Прочее",
+}

@@ -26,6 +26,12 @@ import RenderTemplate from "@/features/edo/pages/RenderTemplate"
 import { LetterRegistryPage } from "@/features/edo/pages/LetterRegistryPage"
 import { LetterDetailPage } from "@/features/edo/pages/LetterDetailPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
+import { DevicesPage } from "@/features/devices/DevicesPage"
+import { DeviceDetailPage } from "@/features/devices/DeviceDetailPage"
+import { ComponentsPage } from "@/features/devices/ComponentsPage"
+import { CatalogPage } from "@/features/devices/CatalogPage"
+import { VoltageClassesPage } from "@/features/devices/VoltageClassesPage"
+import { ProductTypesPage } from "@/features/devices/ProductTypesPage"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -61,6 +67,18 @@ function App() {
                 <Route path="facilities" element={<FacilitiesPage />} />
                 <Route path="delivery-types" element={<DeliveryTypesPage />} />
                 <Route index element={<Navigate to="orgunits" replace />} />
+              </Route>
+            </Route>
+
+            <Route element={<ModuleGuard module="devices" />}>
+              <Route path="/devices">
+                <Route path="rza" element={<DevicesPage />} />
+                <Route path="rza/:id" element={<DeviceDetailPage />} />
+                <Route path="components" element={<ComponentsPage />} />
+                <Route path="catalog" element={<CatalogPage />} />
+                <Route path="voltage-classes" element={<VoltageClassesPage />} />
+                <Route path="product-types" element={<ProductTypesPage />} />
+                <Route index element={<Navigate to="rza" replace />} />
               </Route>
             </Route>
 
