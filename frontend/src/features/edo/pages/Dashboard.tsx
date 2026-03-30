@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { templatesApi } from '../api/client';
 import type { TemplateListItem } from '../api/types';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Edit3, Plus } from "lucide-react";
+import { FileText, Edit3, Plus, Trash2 } from "lucide-react";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { toast } from "sonner";
 
 type Scope = 'public' | 'my' | 'shared';
 
 export default function Dashboard() {
+  const location = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const currentUserId = user?.id;
+
+  const incomingState = location.state as any;
+  const letterId = incomingState?.letterId;
+  const prefillText = incomingState?.prefillText;
+  const letterNumber = incomingState?.letterNumber;
+  const letterData = incomingState?.letterData;
+
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [scope, setScope] = useState<Scope>('public');
   const [loading, setLoading] = useState(true);
@@ -32,6 +44,29 @@ export default function Dashboard() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, template: TemplateListItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (template.owner_id !== currentUserId) {
+      toast.error("Удаление разрешено только владельцу шаблона");
+      return;
+    }
+
+    if (!window.confirm(`Вы уверены, что хотите удалить шаблон "${template.title}"?`)) {
+      return;
+    }
+
+    try {
+      await templatesApi.delete(template.id);
+      toast.success("Шаблон успешно удален");
+      loadTemplates();
+    } catch (err) {
+      toast.error("Ошибка при удалении шаблона");
+      console.error(err);
     }
   };
 
@@ -109,15 +144,28 @@ export default function Dashboard() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {templates.map((template) => (
-                <Card key={template.id} className="flex flex-col hover:border-primary/50 transition-colors shadow-sm hover:shadow-md">
+                <Card key={template.id} className="flex flex-col hover:border-primary/50 transition-colors shadow-sm hover:shadow-md group relative">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start mb-2">
                       <div className="bg-secondary/50 p-2 rounded-md">
                          {template.template_type === 'HTML' ? <FileText className="h-5 w-5 text-primary" /> : <Edit3 className="h-5 w-5 text-primary" />}
                       </div>
-                      <Badge variant={template.visibility === 'PUBLIC' ? 'default' : 'secondary'}>
-                        {template.visibility === 'PUBLIC' ? 'Публичный' : 'Ограниченный'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={template.visibility === 'PUBLIC' ? 'default' : 'secondary'}>
+                          {template.visibility === 'PUBLIC' ? 'Публичный' : 'Ограниченный'}
+                        </Badge>
+                        {template.owner_id === currentUserId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                            onClick={(e) => handleDelete(e, template)}
+                            title="Удалить шаблон"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <CardTitle className="text-xl line-clamp-1">{template.title}</CardTitle>
                     <div className="flex items-center gap-2 mt-2">
@@ -166,7 +214,14 @@ export default function Dashboard() {
                       </Link>
                     </Button>
                     <Button asChild className="w-full sm:flex-1" size="sm">
-                      <Link to={`/edo/templates`} state={{ templateId: template.id }}>
+                      <Link to={`/edo/builder`} state={{ 
+                        templateToEdit: template, 
+                        templateId: template.id,
+                        letterId,
+                        prefillText,
+                        letterNumber,
+                        letterData
+                      }}>
                         <span className="truncate">Сгенерировать</span>
                       </Link>
                     </Button>

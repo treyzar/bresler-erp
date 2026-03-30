@@ -30,6 +30,9 @@ import type {
   ITableProperties,
   ISignatureProperties,
   IDividerProperties,
+  ICellStyle,
+  ITableCell,
+  ITableColumn,
 } from "../../utils/types/editor.types";
 
 interface Props {
@@ -595,137 +598,157 @@ const TableProps: React.FC<{
   onUpdate: (id: string, p: any) => void;
 }> = ({ el, onUpdate }) => {
   const p = el.properties as ITableProperties;
+  const isNew = !!(p.cells && p.columns);
   const [selectedRow, setSelectedRow] = React.useState(0);
   const [selectedCol, setSelectedCol] = React.useState(0);
 
-  // Инициализируем cellTextColors, если его нет
-  React.useEffect(() => {
-    if (!p.cellTextColors) {
-      const colors = Array(p.rows)
-        .fill(null)
-        .map(() => Array(p.cols).fill("#000000"));
-      onUpdate(el.id, { cellTextColors: colors });
-    }
-  }, [p.rows, p.cols]);
+  const currentCell = isNew ? p.cells?.[selectedRow]?.[selectedCol] : null;
+  const currentStyle = currentCell?.style || {};
 
-  const handleCellColorChange = (color: string) => {
-    const colors = [...(p.cellTextColors || [])];
-    // Убеждаемся, что массив имеет правильный размер
-    while (colors.length < p.rows) {
-      colors.push(Array(p.cols).fill("#000000"));
+  const updateCellStyle = (styleUpd: Partial<ICellStyle>) => {
+    if (!isNew || !p.cells) return;
+    const newCells = [...p.cells];
+    const cell = newCells[selectedRow][selectedCol];
+    if (cell) {
+      newCells[selectedRow][selectedCol] = {
+        ...cell,
+        style: { ...(cell.style || {}), ...styleUpd } as ICellStyle,
+      };
+      onUpdate(el.id, { cells: newCells });
     }
-    colors.forEach((row) => {
-      while (row.length < p.cols) {
-        row.push("#000000");
-      }
-    });
-
-    if (!colors[selectedRow]) {
-      colors[selectedRow] = Array(p.cols).fill("#000000");
-    }
-    colors[selectedRow][selectedCol] = color;
-    onUpdate(el.id, { cellTextColors: colors });
   };
-
-  const currentCellColor =
-    p.cellTextColors?.[selectedRow]?.[selectedCol] || "#000000";
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Общие настройки таблицы */}
       <div className="space-y-1.5">
         <Label className="flex items-center gap-2 text-xs text-muted-foreground">
           <TableIcon size={14} />
-          Строки
+          Общие границы
         </Label>
-        <div className="flex gap-3 items-center">
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={p.rows}
-            onChange={(e) =>
-              onUpdate(el.id, { rows: parseInt(e.target.value) })
-            }
-            className="flex-1 h-1.5 bg-input rounded-full appearance-none cursor-pointer accent-primary"
-          />
+        <div className="flex gap-2 items-center">
           <Input
             type="number"
             className="w-16 h-8 text-center shadow-none"
-            value={p.rows}
+            value={p.borderWidth}
             onChange={(e) =>
-              onUpdate(el.id, { rows: parseInt(e.target.value) || 1 })
+              onUpdate(el.id, { borderWidth: parseInt(e.target.value) || 0 })
             }
-            min="1"
-            max="10"
+            min="0"
           />
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Столбцы</Label>
-        <div className="flex gap-3 items-center">
           <input
-            type="range"
-            min="1"
-            max="10"
-            value={p.cols}
-            onChange={(e) =>
-              onUpdate(el.id, { cols: parseInt(e.target.value) })
-            }
-            className="flex-1 h-1.5 bg-input rounded-full appearance-none cursor-pointer accent-primary"
-          />
-          <Input
-            type="number"
-            className="w-16 h-8 text-center shadow-none"
-            value={p.cols}
-            onChange={(e) =>
-              onUpdate(el.id, { cols: parseInt(e.target.value) || 1 })
-            }
-            min="1"
-            max="10"
+            type="color"
+            className="flex-1 h-8 rounded cursor-pointer border-0 p-0"
+            value={p.borderColor}
+            onChange={(e) => onUpdate(el.id, { borderColor: e.target.value })}
           />
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Цвет границ</Label>
-        <input
-          type="color"
-          className="w-full h-8 rounded cursor-pointer border-0 p-0"
-          value={p.borderColor}
-          onChange={(e) => onUpdate(el.id, { borderColor: e.target.value })}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Цвет текста ячейки</Label>
-        <div className="flex gap-2 items-center mb-2 mt-1">
+
+      <Separator />
+
+      {/* Настройки конкретной ячейки */}
+      <div className="space-y-4">
+        <Label className="text-xs font-semibold">Свойства ячейки</Label>
+        <div className="flex gap-2 items-center">
           <select
-            className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             value={selectedRow}
             onChange={(e) => setSelectedRow(parseInt(e.target.value))}
           >
             {Array.from({ length: p.rows }).map((_, i) => (
               <option key={i} value={i}>
-                Строка {i + 1}
+                Стр. {i + 1}
               </option>
             ))}
           </select>
           <select
-            className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
             value={selectedCol}
             onChange={(e) => setSelectedCol(parseInt(e.target.value))}
           >
             {Array.from({ length: p.cols }).map((_, i) => (
               <option key={i} value={i}>
-                Колонка {i + 1}
+                Кол. {i + 1}
               </option>
             ))}
           </select>
         </div>
-        <input
-          type="color"
-          className="w-full h-8 rounded cursor-pointer border-0 p-0"
-          value={currentCellColor}
-          onChange={(e) => handleCellColorChange(e.target.value)}
-        />
+
+        {isNew && currentCell && (
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Фон ячейки</Label>
+              <input
+                type="color"
+                className="w-full h-7 rounded cursor-pointer border-0 p-0"
+                value={currentStyle.backgroundColor || p.cellBg}
+                onChange={(e) => updateCellStyle({ backgroundColor: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Цвет текста</Label>
+              <input
+                type="color"
+                className="w-full h-7 rounded cursor-pointer border-0 p-0"
+                value={currentStyle.color || "#000000"}
+                onChange={(e) => updateCellStyle({ color: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-[11px] text-muted-foreground">Размер</Label>
+                <Input
+                  type="number"
+                  className="h-7 text-xs"
+                  value={currentStyle.fontSize || 14}
+                  onChange={(e) => updateCellStyle({ fontSize: parseInt(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] text-muted-foreground">Жирный</Label>
+                <select
+                  className="h-7 w-full rounded-md border border-input bg-transparent px-2 py-0 text-xs shadow-sm"
+                  value={currentStyle.fontWeight || "normal"}
+                  onChange={(e) => updateCellStyle({ fontWeight: e.target.value as any })}
+                >
+                  <option value="normal">Нет</option>
+                  <option value="bold">Да</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Выравнивание</Label>
+              <div className="flex gap-1">
+                {(["left", "center", "right"] as const).map((a) => (
+                  <Button
+                    key={a}
+                    variant={currentStyle.textAlign === a ? "default" : "outline"}
+                    className="flex-1 h-7 px-0"
+                    onClick={() => updateCellStyle({ textAlign: a })}
+                  >
+                    {a === "left" && <AlignLeft size={14} />}
+                    {a === "center" && <AlignCenter size={14} />}
+                    {a === "right" && <AlignRight size={14} />}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground">Граница ячейки (px)</Label>
+              <Input
+                type="number"
+                className="h-7 text-xs"
+                value={currentStyle.borderWidth ?? p.borderWidth}
+                onChange={(e) => updateCellStyle({ borderWidth: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

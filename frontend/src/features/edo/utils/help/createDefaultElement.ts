@@ -53,20 +53,35 @@ export function createDefaultElement(
     return {
       ...base,
       type,
-      width: 400,
-      height: 200,
+      width: 450,
+      height: 120,
       properties: {
-        rows: 3,
-        cols: 3,
         borderWidth: 1,
         borderColor: "#1a1a1a",
         cellBg: "transparent",
-        data: Array(3)
-          .fill(null)
-          .map(() => Array(3).fill("")),
-        cellTextColors: Array(3)
-          .fill(null)
-          .map(() => Array(3).fill("#000000")),
+        // Новая структура
+        columns: [
+          { width: 150 },
+          { width: 150 },
+          { width: 150 }
+        ],
+        cells: [
+          [
+            { id: "c1", content: "", rowSpan: 1, colSpan: 1 },
+            { id: "c2", content: "", rowSpan: 1, colSpan: 1 },
+            { id: "c3", content: "", rowSpan: 1, colSpan: 1 }
+          ],
+          [
+            { id: "c4", content: "", rowSpan: 1, colSpan: 1 },
+            { id: "c5", content: "", rowSpan: 1, colSpan: 1 },
+            { id: "c6", content: "", rowSpan: 1, colSpan: 1 }
+          ],
+          [
+            { id: "c7", content: "", rowSpan: 1, colSpan: 1 },
+            { id: "c8", content: "", rowSpan: 1, colSpan: 1 },
+            { id: "c9", content: "", rowSpan: 1, colSpan: 1 }
+          ]
+        ]
       },
     };
 

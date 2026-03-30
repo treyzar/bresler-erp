@@ -10,6 +10,8 @@ import type {
   ISignatureProperties,
   IDividerProperties,
 } from "../../utils/types/editor.types";
+import { TableNode } from "./TableElement/TableNode";
+import { DragHandle } from "./TableElement/DragHandle";
 
 interface IElementRendererProps {
   element: IEditorElement;
@@ -285,53 +287,26 @@ export const ElementRenderer: React.FC<IElementRendererProps> = ({
 
   // ===== TABLE =====
   if (element.type === "table") {
-    const props = element.properties as ITableProperties;
     return (
       <div
-        style={commonStyle}
+        style={{
+          ...commonStyle,
+          cursor: "default",
+        }}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
         }}
-        onMouseDown={handleMouseDown}
-        className="table-element"
+        className="table-element group"
       >
-        <table
-          style={{ width: "100%", height: "100%", borderCollapse: "collapse" }}
-        >
-          <tbody>
-            {Array.from({ length: props.rows }).map((_, i) => (
-              <tr key={i}>
-                {Array.from({ length: props.cols }).map((__, j) => (
-                  <td
-                    key={`${i}-${j}`}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onBlur={(e) => {
-                      const data = [...(props.data || [])];
-                      if (!data[i]) data[i] = [];
-                      data[i][j] = e.currentTarget.textContent || "";
-                      onUpdateProp(element.id, { data });
-                    }}
-                    style={{
-                      border: `${props.borderWidth}px solid ${props.borderColor}`,
-                      padding: "8px",
-                      background: props.cellBg,
-                      minWidth: "60px",
-                      outline: "none",
-                      cursor: "text",
-                      color: props.cellTextColors?.[i]?.[j] || "#000000",
-                    }}
-                  >
-                    {props.data?.[i]?.[j] || ""}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {isSelected && (
+          <DragHandle onMouseDown={(e) => onMouseDown(e, element.id)} />
+        )}
+        <TableNode
+          element={element}
+          isSelected={isSelected}
+          onUpdateProp={onUpdateProp}
+        />
       </div>
     );
   }

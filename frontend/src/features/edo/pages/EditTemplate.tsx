@@ -164,7 +164,7 @@ export default function EditTemplate() {
       return;
     try {
       await templatesApi.delete(template.id);
-      navigate("/edo");
+      navigate("/edo/templates");
     } catch (err) {
       setError("Failed to delete template");
       console.error(err);
@@ -368,7 +368,7 @@ export default function EditTemplate() {
 
           <div className="flex gap-3 mt-6">
             <button
-              onClick={() => navigate("/edo")}
+              onClick={() => navigate("/edo/templates")}
               className="btn btn-secondary"
             >
               Вернуться на главную
