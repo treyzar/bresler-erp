@@ -50,6 +50,27 @@ class TemplateSerializer(serializers.ModelSerializer):
             return version.version_number
         return 0
 
+    def validate_editor_content(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("editor_content must be a list of elements.")
+        
+        new_value = []
+        for idx, el in enumerate(value):
+            if not isinstance(el, dict):
+                raise serializers.ValidationError(f"Element at index {idx} must be an object.")
+            
+            new_el = el.copy()
+            # Принудительно приводим координаты и размеры к целым числам (int)
+            for field in ['x', 'y', 'width', 'height']:
+                if field in el:
+                    try:
+                        new_el[field] = int(round(float(el[field])))
+                    except (ValueError, TypeError):
+                        raise serializers.ValidationError(f"Field '{field}' in element {idx} must be a number.")
+            new_value.append(new_el)
+        
+        return new_value
+
 class TemplateListSerializer(serializers.ModelSerializer):
     placeholders = serializers.SerializerMethodField()
 
