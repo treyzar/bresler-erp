@@ -48,8 +48,12 @@ export default function RenderTemplate() {
       const data = await templatesApi.get(Number(templateId));
       setTemplate(data);
       const initialValues: Record<string, string> = {};
+      
+      // Предзаполнение данными из письма (если есть в state)
+      const letterData = location.state?.letterData || {};
+      
       data.placeholders.forEach((p) => {
-        initialValues[p] = "";
+        initialValues[p] = letterData[p] || "";
       });
       setValues(initialValues);
     } catch (err) {
