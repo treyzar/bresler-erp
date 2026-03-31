@@ -102,3 +102,20 @@ export function useOrderFuzzySearch(query: string) {
     enabled: !!query && query.length >= 3,
   })
 }
+
+export function useOrderTransitions(orderNumber: number | null) {
+  return useQuery({
+    queryKey: [KEY, "transitions", orderNumber],
+    queryFn: () => ordersApi.transitions(orderNumber!),
+    enabled: orderNumber !== null,
+  })
+}
+
+export function useOrderTransition() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderNumber, toStatus }: { orderNumber: number; toStatus: string }) =>
+      ordersApi.transition(orderNumber, toStatus),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  })
+}

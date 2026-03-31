@@ -92,4 +92,19 @@ export const ordersApi = {
     )
     return data
   },
+
+  transitions: async (orderNumber: number) => {
+    const { data } = await apiClient.get<{ to_status: string; label: string; color: string }[]>(
+      `/orders/${orderNumber}/transitions/`
+    )
+    return data
+  },
+
+  transition: async (orderNumber: number, toStatus: string) => {
+    const { data } = await apiClient.post<OrderDetail>(
+      `/orders/${orderNumber}/transition/`,
+      { status: toStatus }
+    )
+    return data
+  },
 }

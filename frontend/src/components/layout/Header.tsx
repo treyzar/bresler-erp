@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { useUIStore, type Theme } from "@/stores/useUIStore"
+import { NotificationBell } from "./NotificationBell"
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", icon: Sun },
@@ -38,6 +39,7 @@ export function Header() {
         Menu
       </Button>
       <div className="flex items-center gap-3">
+        <NotificationBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-2">

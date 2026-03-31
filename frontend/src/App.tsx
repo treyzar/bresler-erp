@@ -26,6 +26,9 @@ import RenderTemplate from "@/features/edo/pages/RenderTemplate"
 import { LetterRegistryPage } from "@/features/edo/pages/LetterRegistryPage"
 import { LetterDetailPage } from "@/features/edo/pages/LetterDetailPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
+import { NotificationsPage } from "@/features/notifications/NotificationsPage"
+import { ImportPage } from "@/features/import/ImportPage"
+import { ReportsPage } from "@/features/reports/ReportsPage"
 import { DevicesPage } from "@/features/devices/DevicesPage"
 import { DeviceDetailPage } from "@/features/devices/DeviceDetailPage"
 import { ComponentsPage } from "@/features/devices/ComponentsPage"
@@ -96,6 +99,9 @@ function App() {
               </Route>
             </Route>
 
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/import" element={<ImportPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>

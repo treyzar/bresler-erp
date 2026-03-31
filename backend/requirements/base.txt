@@ -16,6 +16,7 @@ Pillow==11.1.0
 psycopg2-binary==2.9.10
 gunicorn==23.0.0
 python-dotenv==1.0.1
+openpyxl==3.1.5
 
 # EDO Module Dependencies
 beautifulsoup4==4.14.3

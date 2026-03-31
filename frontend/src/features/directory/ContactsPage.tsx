@@ -4,6 +4,7 @@ import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/shared/DataTable"
+import { ExportButton } from "@/components/shared/ExportButton"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { DataTableRowActions } from "@/components/shared/DataTableRowActions"
 import type { Contact, ListParams } from "@/api/types"
@@ -96,16 +97,19 @@ export function ContactsPage() {
         onSelectedRowsChange={setSelectedRows}
         onBulkDelete={(ids) => setBulkDeleteIds(ids)}
         toolbar={
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingItem(null)
-              setFormOpen(true)
-            }}
-          >
-            <Plus className="size-4 mr-1" />
-            Добавить
-          </Button>
+          <>
+            <ExportButton endpoint="/api/directory/contacts" params={{ search }} />
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingItem(null)
+                setFormOpen(true)
+              }}
+            >
+              <Plus className="size-4 mr-1" />
+              Добавить
+            </Button>
+          </>
         }
       />
 

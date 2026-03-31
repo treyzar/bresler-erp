@@ -5,6 +5,9 @@ from rest_framework import parsers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.events import trigger_event
+from apps.core.mixins.export import ExportMixin
+from apps.core.workflow import ConditionNotMet, TransitionNotAllowed, WorkflowService
 from apps.directory.models import Contact, Equipment, Facility, OrgUnit, TypeOfWork
 from apps.orders.models import Contract, Order, OrderFile
 from apps.orders.services.order_service import get_next_order_number
@@ -135,8 +138,26 @@ def _format_change(change):
     }
 
 
-class OrderViewSet(viewsets.ModelViewSet):
+class OrderViewSet(ExportMixin, viewsets.ModelViewSet):
     lookup_field = "order_number"
+    lookup_value_regex = r"\d+"
+    export_filename = "orders"
+    export_fields = {
+        "order_number": "Номер заказа",
+        "status": "Статус",
+        "customer_org_unit__name": "Заказчик",
+        "intermediary__name": "Посредник",
+        "designer__name": "Проектировщик",
+        "country__name": "Страна",
+        "tender_number": "Номер тендера",
+        "start_date": "Дата начала",
+        "ship_date": "Дата отгрузки",
+        "note": "Примечание",
+        "contract__contract_number": "Номер контракта",
+        "contract__amount": "Сумма контракта",
+        "contract__status": "Статус оплаты",
+        "created_at": "Дата создания",
+    }
     queryset = Order.objects.select_related(
         "customer_org_unit",
         "intermediary",
@@ -181,6 +202,61 @@ class OrderViewSet(viewsets.ModelViewSet):
         if self.action in ("create", "update", "partial_update"):
             return OrderCreateSerializer
         return OrderDetailSerializer
+
+    def perform_create(self, serializer):
+        """Trigger order.created event AFTER full save (including M2M)."""
+        order = serializer.save()
+        trigger_event("order.created", instance=order, user=self.request.user)
+
+    def perform_update(self, serializer):
+        """Trigger status_changed event when order status is updated via API."""
+        instance = serializer.instance
+        old_status = instance.status
+        order = serializer.save()
+        if "status" in serializer.validated_data and old_status != order.status:
+            trigger_event(
+                "order.status_changed",
+                instance=order,
+                user=self.request.user,
+                old_status=old_status,
+                new_status=order.status,
+            )
+
+    @action(detail=True, methods=["get"])
+    def transitions(self, request, order_number=None):
+        """Get available status transitions for the current user."""
+        from apps.orders.workflows import ORDER_WORKFLOW
+
+        order = self.get_object()
+        available = WorkflowService.get_available_transitions(
+            ORDER_WORKFLOW, order, user=request.user
+        )
+        return Response(available)
+
+    @action(detail=True, methods=["post"])
+    def transition(self, request, order_number=None):
+        """Execute a status transition with validation."""
+        from apps.orders.workflows import ORDER_WORKFLOW
+
+        order = self.get_object()
+        to_status = request.data.get("status")
+        if not to_status:
+            return Response(
+                {"detail": "Поле 'status' обязательно"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            WorkflowService.transition(
+                ORDER_WORKFLOW, order, to_status, user=request.user
+            )
+        except TransitionNotAllowed as e:
+            return Response({"detail": e.message}, status=status.HTTP_403_FORBIDDEN)
+        except ConditionNotMet as e:
+            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = OrderDetailSerializer(order)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["get"], url_path="fuzzy-search")
     def fuzzy_search(self, request):

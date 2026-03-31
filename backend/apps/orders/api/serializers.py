@@ -27,6 +27,9 @@ class OrderFileSerializer(serializers.ModelSerializer):
 
 
 class ContractSerializer(serializers.ModelSerializer):
+    # contract_number is auto-generated via NamingSeries if left blank
+    contract_number = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Contract
         fields = (

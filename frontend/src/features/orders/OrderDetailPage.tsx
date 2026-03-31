@@ -1,18 +1,23 @@
 import { useNavigate, useParams } from "react-router"
-import { Pencil, ArrowLeft, Check } from "lucide-react"
+import { Pencil, ArrowLeft, Check, ArrowRight as ArrowRightIcon } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ORDER_STATUSES, ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
-import { useOrder } from "@/api/hooks/useOrders"
+import { useOrder, useOrderTransitions, useOrderTransition } from "@/api/hooks/useOrders"
 import { useOrderPresence } from "@/hooks/useOrderPresence"
 import { OrgUnitBreadcrumb } from "@/components/shared/OrgUnitBreadcrumb"
 import { ContractSection } from "./ContractSection"
 import { OrderFilesSection } from "./OrderFilesSection"
 import { OrderHistorySection } from "./OrderHistorySection"
+import { Timeline } from "@/components/shared/Timeline"
+import { LinkedDocuments } from "@/components/shared/LinkedDocuments"
+import { useOrderHistory } from "@/api/hooks/useOrders"
 
 const STATUS_STEPS = [
   { key: "N", label: "Новый" },
@@ -85,7 +90,23 @@ export function OrderDetailPage() {
   const navigate = useNavigate()
   const orderNum = Number(orderNumber)
   const { data: order, isLoading } = useOrder(orderNum)
+  const { data: historyData, isLoading: historyLoading } = useOrderHistory(orderNum)
+  const { data: transitions = [] } = useOrderTransitions(orderNum)
+  const transitionMutation = useOrderTransition()
   const activeUsers = useOrderPresence(orderNumber)
+
+  const handleTransition = (toStatus: string) => {
+    transitionMutation.mutate(
+      { orderNumber: orderNum, toStatus },
+      {
+        onSuccess: () => toast.success("Статус изменён"),
+        onError: (err: any) => {
+          const detail = err?.response?.data?.detail || "Ошибка смены статуса"
+          toast.error(detail)
+        },
+      }
+    )
+  }
 
   if (isLoading) {
     return (
@@ -134,12 +155,48 @@ export function OrderDetailPage() {
         </Button>
       </div>
 
-      {/* Status progress */}
+      {/* Status progress + transition buttons */}
       <Card>
-        <CardContent className="py-5 px-8">
+        <CardContent className="py-5 px-8 space-y-4">
           <OrderStatusProgress status={order.status} />
+          {transitions.length > 0 && (
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <span className="text-sm text-muted-foreground mr-1">Действия:</span>
+              <TooltipProvider>
+                {transitions.map((t: any) => {
+                  const btn = (
+                    <Button
+                      key={t.to_status}
+                      variant={t.blocked ? "outline" : t.color === "gray" ? "outline" : "default"}
+                      size="sm"
+                      disabled={t.blocked || transitionMutation.isPending}
+                      onClick={() => handleTransition(t.to_status)}
+                      className={t.blocked ? "opacity-50" : ""}
+                    >
+                      <ArrowRightIcon className="size-3.5 mr-1" />
+                      {t.label}
+                    </Button>
+                  )
+                  if (t.blocked && t.blocked_reason) {
+                    return (
+                      <Tooltip key={t.to_status}>
+                        <TooltipTrigger asChild>
+                          <span>{btn}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>{t.blocked_reason}</TooltipContent>
+                      </Tooltip>
+                    )
+                  }
+                  return btn
+                })}
+              </TooltipProvider>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Linked documents */}
+      {order.id && <LinkedDocuments sourceModel="order" sourceId={order.id} />}
 
       <Tabs defaultValue="info">
         <TabsList>
@@ -148,6 +205,7 @@ export function OrderDetailPage() {
           <TabsTrigger value="files">
             Файлы {order.files.length > 0 && `(${order.files.length})`}
           </TabsTrigger>
+          <TabsTrigger value="timeline">Обсуждение</TabsTrigger>
           <TabsTrigger value="history">История</TabsTrigger>
         </TabsList>
 
@@ -308,6 +366,15 @@ export function OrderDetailPage() {
 
         <TabsContent value="files" className="mt-4">
           <OrderFilesSection orderId={orderNum} files={order.files} />
+        </TabsContent>
+
+        <TabsContent value="timeline" className="mt-4">
+          <Timeline
+            targetModel="order"
+            targetId={order.id}
+            history={historyData}
+            historyLoading={historyLoading}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="mt-4">

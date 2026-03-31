@@ -2,6 +2,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.mixins.export import ExportMixin
+
 from apps.directory.models import (
     City,
     Contact,
@@ -27,11 +29,23 @@ from .serializers import (
 )
 
 
-class OrgUnitViewSet(viewsets.ModelViewSet):
+class OrgUnitViewSet(ExportMixin, viewsets.ModelViewSet):
     queryset = OrgUnit.objects.all()
     serializer_class = OrgUnitSerializer
     filterset_class = OrgUnitFilter
     search_fields = ["name", "full_name", "inn", "external_code"]
+    export_filename = "organizations"
+    export_fields = {
+        "name": "Наименование",
+        "full_name": "Полное наименование",
+        "unit_type": "Тип",
+        "business_role": "Роль",
+        "inn": "ИНН",
+        "kpp": "КПП",
+        "ogrn": "ОГРН",
+        "address": "Адрес",
+        "is_active": "Активен",
+    }
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -142,11 +156,21 @@ class CityViewSet(viewsets.ModelViewSet):
         return Response({"deleted": deleted})
 
 
-class ContactViewSet(viewsets.ModelViewSet):
+class ContactViewSet(ExportMixin, viewsets.ModelViewSet):
     queryset = Contact.objects.all()
     serializer_class = ContactSerializer
     filterset_class = ContactFilter
     search_fields = ["full_name", "email", "phone"]
+    export_filename = "contacts"
+    export_fields = {
+        "full_name": "ФИО",
+        "position": "Должность",
+        "email": "Email",
+        "phone": "Телефон",
+        "address": "Адрес",
+        "city__name": "Город",
+        "company": "Компания",
+    }
 
     @action(detail=True, methods=["get"])
     def orgunits(self, request, pk=None):

@@ -3,6 +3,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.mixins.export import ExportMixin
+
 from apps.devices.models import (
     CatalogPlacement,
     ComponentType,
@@ -84,10 +86,17 @@ class VoltageClassViewSet(viewsets.ModelViewSet):
     search_fields = ["name"]
 
 
-class DeviceRZAViewSet(viewsets.ModelViewSet):
+class DeviceRZAViewSet(ExportMixin, viewsets.ModelViewSet):
     filterset_class = DeviceRZAFilter
     search_fields = ["rza_name", "rza_code", "rza_short_name"]
     ordering_fields = ["rza_code", "rza_name", "created_at"]
+    export_filename = "devices_rza"
+    export_fields = {
+        "rza_code": "Код",
+        "rza_name": "Наименование",
+        "rza_short_name": "Краткое наименование",
+        "rza_name_rod": "Наименование (род. падеж)",
+    }
 
     def get_queryset(self):
         return DeviceRZA.objects.annotate(

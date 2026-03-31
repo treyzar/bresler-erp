@@ -8,3 +8,9 @@ class DirectoryConfig(AppConfig):
 
     def ready(self):
         import apps.directory.signals  # noqa: F401
+
+        from apps.core.signals import register_auto_events
+
+        from .models import Contact, OrgUnit
+
+        register_auto_events(OrgUnit, Contact)

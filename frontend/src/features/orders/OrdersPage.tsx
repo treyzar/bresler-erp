@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DataTable } from "@/components/shared/DataTable"
+import { ExportButton } from "@/components/shared/ExportButton"
 import { OrgUnitCombobox } from "@/components/shared/OrgUnitCombobox"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
 import type { ListParams, OrderListItem } from "@/api/types"
@@ -244,6 +245,7 @@ export function OrdersPage() {
               </button>
             )}
           </div>
+          <ExportButton endpoint="/api/orders" params={listParams} />
           <Button variant="outline" size="sm" onClick={() => setMissingOpen(true)}>
             <Hash className="size-4 mr-1" />
             Пропущенные номера

@@ -47,6 +47,10 @@ LOCAL_APPS = [
     "apps.directory",
     "apps.orders",
     "apps.devices",
+    "apps.notifications",
+    "apps.comments",
+    "apps.importer",
+    "apps.reports",
     "apps.edo.doc_builder",
     "apps.edo.parser_app",
     "apps.edo.templates_app",
@@ -192,6 +196,14 @@ CELERY_BEAT_SCHEDULE = {
     "import-components-daily": {
         "task": "apps.devices.tasks.import_components",
         "schedule": 86400.0,  # 24 hours
+    },
+    "check-order-deadlines": {
+        "task": "apps.notifications.tasks.check_order_deadlines",
+        "schedule": 86400.0,  # 24 hours
+    },
+    "cleanup-old-notifications": {
+        "task": "apps.notifications.tasks.cleanup_old_notifications",
+        "schedule": 604800.0,  # 7 days
     },
 }
 

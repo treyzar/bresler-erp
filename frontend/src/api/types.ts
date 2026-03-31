@@ -446,6 +446,58 @@ export interface ProductAttributeOption {
   sort_order: number
 }
 
+// Import
+
+export interface ImportSession {
+  id: number
+  original_filename: string
+  target_model: string
+  status: "upload" | "mapping" | "validating" | "processing" | "complete" | "error"
+  columns: string[]
+  column_mapping: Record<string, string>
+  total_rows: number
+  success_count: number
+  error_count: number
+  error_details: { row: number; field: string; message: string }[]
+  created_at: string
+  updated_at: string
+}
+
+export const IMPORT_TARGET_MODELS: Record<string, string> = {
+  orgunit: "Организации",
+  contact: "Контакты",
+  equipment: "Оборудование",
+  typeofwork: "Виды работ",
+  facility: "Объекты",
+}
+
+// Comments
+
+export interface Comment {
+  id: number
+  author: number
+  author_name: string
+  author_username: string
+  text: string
+  content_type: number
+  object_id: number
+  created_at: string
+  updated_at: string
+}
+
+// Notifications
+
+export interface Notification {
+  id: number
+  title: string
+  message: string
+  category: "info" | "success" | "warning" | "error"
+  is_read: boolean
+  link: string
+  target_repr: string | null
+  created_at: string
+}
+
 export const PARAMETER_TYPES: Record<string, string> = {
   select: "Выбор из списка",
   custom: "Пользовательское значение",

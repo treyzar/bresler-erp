@@ -25,7 +25,7 @@ import { CONTRACT_STATUSES } from "@/api/types"
 import { useUpdateContract } from "@/api/hooks/useOrders"
 
 const contractSchema = z.object({
-  contract_number: z.string().min(1, "Обязательное поле"),
+  contract_number: z.string(),
   contract_date: z.string(),
   status: z.string(),
   advance_percent: z.string(),
@@ -101,7 +101,9 @@ export function ContractSection({ orderId, contract }: ContractSectionProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Номер контракта</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl>
+                      <Input placeholder="Автоматически, если оставить пустым" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

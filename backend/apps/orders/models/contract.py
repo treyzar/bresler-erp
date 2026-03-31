@@ -23,6 +23,7 @@ class Contract(BaseModel):
         "Номер контракта",
         max_length=100,
         unique=True,
+        blank=True,
     )
     contract_date = models.DateField("Дата контракта", null=True, blank=True)
     status = models.CharField(
@@ -70,3 +71,20 @@ class Contract(BaseModel):
 
     def __str__(self):
         return f"Контракт {self.contract_number}"
+
+    def save(self, *args, **kwargs):
+        if not self.contract_number:
+            self.contract_number = self._generate_number()
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def _generate_number() -> str:
+        """Auto-generate contract number via NamingSeries if available."""
+        try:
+            from apps.core.naming import NamingService
+            return NamingService.generate("contract")
+        except (ValueError, Exception):
+            # Fallback if sequence not configured
+            from django.db.models import Max
+            max_num = Contract.objects.aggregate(m=Max("id"))["m"] or 0
+            return f"ДОГ-{max_num + 1}"
