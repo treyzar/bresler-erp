@@ -125,4 +125,8 @@ export const registryApi = {
     const res = await api.get<LetterHistoryRecord[]>(`/edo/registry/letters/${id}/history/`)
     return res.data
   },
+
+  generateDocument: async (id: number, templateId: number): Promise<void> => {
+    await api.post(`/edo/registry/letters/${id}/generate/`, { template_id: templateId })
+  },
 }

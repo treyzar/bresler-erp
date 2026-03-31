@@ -21,6 +21,7 @@ class Template(models.Model):
     visibility = models.CharField(max_length=20, choices=VISIBILITY_CHOICES, default='PUBLIC')
     owner_id = models.IntegerField(default=1)
     allowed_users = models.JSONField(default=list, blank=True)
+    is_deleted = models.BooleanField(default=False, db_index=True)
     
     # HTML нужен для генерации PDF (рендера)
     html_content = models.TextField(blank=True, default='')

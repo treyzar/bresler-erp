@@ -38,6 +38,23 @@ export function LetterDetailPage() {
     enabled: !!id && historyOpen,
   })
 
+  const handleGenerate = () => {
+    if (!letter) return;
+    navigate("/edo/templates", { 
+      state: { 
+        prefillText: `ПИСЬМО №${letter.number} от ${format(new Date(letter.date), "dd.MM.yyyy")}\nТема: ${letter.subject}`,
+        letterId: letter.id,
+        letterNumber: letter.number,
+        letterData: {
+          number: letter.number,
+          date: format(new Date(letter.date), "dd.MM.yyyy"),
+          subject: letter.subject,
+          sender: letter.sender || letter.recipient || "", // В зависимости от направления
+        }
+      } 
+    });
+  };
+
   const deleteMutation = useMutation({
     mutationFn: () => registryApi.delete(Number(id)),
     onSuccess: () => {
@@ -90,6 +107,10 @@ export function LetterDetailPage() {
         <Button variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" />
           Редактировать
+        </Button>
+        <Button variant="outline" onClick={handleGenerate}>
+          <FileText className="mr-2 h-4 w-4" />
+          Сгенерировать
         </Button>
         <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
           <Trash2 className="mr-2 h-4 w-4" />

@@ -12,9 +12,9 @@ interface Props {
   onExportHtml: () => void;
   onExportPdf?: () => void;
   gridVisible: boolean;
-  gridStep: number;
+  gridSnap: boolean;
   onToggleGrid: (v: boolean) => void;
-  onGridStepChange: (s: number) => void;
+  onToggleSnap: (v: boolean) => void;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -30,9 +30,9 @@ const CanvasToolbar: React.FC<Props> = ({
   onExportHtml,
   onExportPdf,
   gridVisible,
-  gridStep,
+  gridSnap,
   onToggleGrid,
-  onGridStepChange,
+  onToggleSnap,
   currentPage,
   totalPages,
   onPageChange,
@@ -90,28 +90,7 @@ const CanvasToolbar: React.FC<Props> = ({
     </div>
 
     <div className="flex gap-2 items-center">
-      <div className="flex items-center gap-2 border-r pr-3 mr-1">
-        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
-          <input
-            type="checkbox"
-            className="rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-            checked={gridVisible}
-            onChange={(e) => onToggleGrid(e.target.checked)}
-          />
-          Сетка
-        </label>
-        <select
-          className="h-8 w-[80px] rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          value={gridStep}
-          onChange={(e) => onGridStepChange(parseInt(e.target.value))}
-        >
-          <option value={8}>8px</option>
-          <option value={10}>10px</option>
-          <option value={16}>16px</option>
-          <option value={20}>20px</option>
-          <option value={24}>24px</option>
-          <option value={32}>32px</option>
-        </select>
+      <div className="flex items-center gap-3 border-r pr-3 mr-1">
       </div>
 
       <Button

@@ -21,8 +21,8 @@ interface DragResizeHook {
     elements: IEditorElement[],
     selectedId: string | null,
     updateElement: (id: string, upd: Partial<IEditorElement>) => void,
-    snapToGrid: (v: number, gs?: number) => number,
-    gridSize: number,
+    snapToGrid: (v: number) => number,
+    isGridEnabled: boolean,
   ) => void;
   resizeHandle: string;
 }
@@ -71,13 +71,15 @@ export const useDragResize = (): DragResizeHook => {
       elements: IEditorElement[],
       selectedId: string | null,
       updateElement: (id: string, upd: Partial<IEditorElement>) => void,
-      snapToGrid: (v: number, gs?: number) => number,
-      gridSize: number,
+      snapToGrid: (v: number) => number,
+      isGridEnabled: boolean,
     ) => {
       if (!selectedId || (!isDragging.current && !isResizing.current)) return;
 
       const el = elements.find((i) => i.id === selectedId);
       if (!el) return;
+
+      const snap = (v: number) => (isGridEnabled ? snapToGrid(v) : v);
 
       // Координаты мыши относительно канваса (с учетом зума)
       const mouseX = (e.clientX - canvasRect.left) / zoom;
@@ -88,8 +90,8 @@ export const useDragResize = (): DragResizeHook => {
         let nx = mouseX - dragOffset.current.x;
         let ny = mouseY - dragOffset.current.y;
 
-        nx = snapToGrid(nx, gridSize);
-        ny = snapToGrid(ny, gridSize);
+        nx = snap(nx);
+        ny = snap(ny);
 
         const constrainedX = Math.max(0, Math.min(nx, A4_WIDTH - el.width));
         const constrainedY = Math.max(0, Math.min(ny, A4_HEIGHT - el.height));
@@ -110,7 +112,7 @@ export const useDragResize = (): DragResizeHook => {
 
         // Правый край (e = east)
         if (handle.includes("e")) {
-          const desiredWidth = snapToGrid(mouseX - el.x, gridSize);
+          const desiredWidth = snap(mouseX - el.x);
           newWidth = Math.max(MIN_WIDTH, desiredWidth);
           // Ограничение по правому краю страницы
           if (el.x + newWidth > A4_WIDTH) {
@@ -120,39 +122,38 @@ export const useDragResize = (): DragResizeHook => {
 
         // Нижний край (s = south)
         if (handle.includes("s")) {
-          const desiredHeight = snapToGrid(mouseY - el.y, gridSize);
+          const desiredHeight = snap(mouseY - el.y);
           newHeight = Math.max(MIN_HEIGHT, desiredHeight);
+          // Ограничение по высоте (опционально, если нужно)
         }
 
         // Левый край (w = west)
         if (handle.includes("w")) {
           const rightEdge = el.x + el.width;
-          const desiredLeft = snapToGrid(mouseX, gridSize);
+          const desiredLeft = snap(mouseX);
           const desiredWidth = rightEdge - desiredLeft;
 
           if (desiredWidth >= MIN_WIDTH && desiredLeft >= 0) {
             newX = desiredLeft;
             newWidth = desiredWidth;
           } else if (desiredLeft < 0) {
-            // Упёрлись в левый край
             newX = 0;
-            newWidth = rightEdge;
+            newWidth = snap(rightEdge);
           }
         }
 
         // Верхний край (n = north)
         if (handle.includes("n")) {
           const bottomEdge = el.y + el.height;
-          const desiredTop = snapToGrid(mouseY, gridSize);
+          const desiredTop = snap(mouseY);
           const desiredHeight = bottomEdge - desiredTop;
 
           if (desiredHeight >= MIN_HEIGHT && desiredTop >= 0) {
             newY = desiredTop;
             newHeight = desiredHeight;
           } else if (desiredTop < 0) {
-            // Упёрлись в верхний край
             newY = 0;
-            newHeight = bottomEdge;
+            newHeight = snap(bottomEdge);
           }
         }
 

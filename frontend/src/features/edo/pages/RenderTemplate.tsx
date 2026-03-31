@@ -1,7 +1,7 @@
 // src/pages/RenderTemplate.tsx
 
 import { useState, useEffect } from "react";
-import { useParams, Link, useLocation } from "react-router";
+import { useParams, Link, useLocation, useNavigate } from "react-router";
 import { templatesApi } from "../api/client";
 import type { Template } from "../api/types";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, FileText, Download, CheckCircle, Loader2, AlertCircle, Eye } from "lucide-react";
+import { ChevronLeft, FileText, Download, CheckCircle, Loader2, AlertCircle, Eye, Trash2 } from "lucide-react";
+import { replacePlaceholdersInString } from "../utils/help/replacePlaceholders";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { toast } from "sonner";
 
 export default function RenderTemplate() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const currentUserId = user?.id;
   
   const templateIdFromState = location.state?.templateId;
   const actualId = id || templateIdFromState;
@@ -24,6 +30,7 @@ export default function RenderTemplate() {
   const [rendering, setRendering] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (actualId) {
@@ -41,8 +48,12 @@ export default function RenderTemplate() {
       const data = await templatesApi.get(Number(templateId));
       setTemplate(data);
       const initialValues: Record<string, string> = {};
+      
+      // Предзаполнение данными из письма (если есть в state)
+      const letterData = location.state?.letterData || {};
+      
       data.placeholders.forEach((p) => {
-        initialValues[p] = "";
+        initialValues[p] = letterData[p] || "";
       });
       setValues(initialValues);
     } catch (err) {
@@ -50,6 +61,30 @@ export default function RenderTemplate() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!template) return;
+    
+    if (template.owner_id !== currentUserId) {
+      toast.error("Удаление разрешено только владельцу шаблона");
+      return;
+    }
+
+    if (!window.confirm(`Вы уверены, что хотите удалить шаблон "${template.title}"?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await templatesApi.delete(template.id);
+      toast.success("Шаблон успешно удален");
+      navigate("/edo/templates");
+    } catch (err) {
+      toast.error("Ошибка при удалении шаблона");
+      console.error(err);
+      setIsDeleting(false);
     }
   };
 
@@ -158,7 +193,7 @@ export default function RenderTemplate() {
         <AlertCircle className="h-12 w-12 text-destructive" />
         <h3 className="text-xl font-semibold">Шаблон не найден</h3>
         <Button variant="outline" asChild>
-          <Link to="/edo">Вернуться на главную</Link>
+          <Link to="/edo/templates">Вернуться на главную</Link>
         </Button>
       </div>
     );
@@ -169,20 +204,38 @@ export default function RenderTemplate() {
       {/* Header */}
       <div className="space-y-4">
         <Button variant="ghost" size="sm" asChild className="-ml-3 hidden sm:inline-flex text-muted-foreground hover:text-foreground">
-          <Link to="/edo">
+          <Link to="/edo/templates">
             <ChevronLeft className="mr-2 h-4 w-4" />
             Назад
           </Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-            <FileText className="h-8 w-8 text-primary" />
-            {template.title}
-          </h1>
-          <p className="text-muted-foreground mt-2 text-lg">
-            {template.description ||
-              "Скачайте шаблон или заполните поля для генерации документа"}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+              <FileText className="h-8 w-8 text-primary" />
+              {template.title}
+            </h1>
+            <p className="text-muted-foreground mt-2 text-lg">
+              {template.description ||
+                "Скачайте шаблон или заполните поля для генерации документа"}
+            </p>
+          </div>
+          {template.owner_id === currentUserId && (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="sm:self-start shadow-sm"
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Удалить шаблон
+            </Button>
+          )}
         </div>
         <div className="flex gap-2 pt-2">
           <Badge variant={template.template_type === "PDF" ? "default" : "secondary"} className="uppercase">
@@ -355,7 +408,9 @@ export default function RenderTemplate() {
            <div className="p-0 bg-white dark:bg-zinc-100 dark:text-zinc-900 border-t border-border/50 max-h-[600px] overflow-auto">
              {/* Note: Content here should ideally be isolated to avoid inheriting dark mode styles. */}
              <div className="origin-top-left p-8 sm:p-12 min-w-[700px] max-w-[800px] mx-auto prose prose-sm sm:prose-base dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: template.html_content }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: replacePlaceholdersInString(template.html_content, values) 
+                  }}
              />
            </div>
         </Card>

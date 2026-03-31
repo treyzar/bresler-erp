@@ -2,6 +2,7 @@
 
 import React, { forwardRef, useMemo } from "react";
 import type { IEditorElement } from "../../utils/types/editor.types";
+import { GRID_SIZE } from "../../utils/constants/editor.constants";
 import { ElementRenderer } from "./ElementRenderer";
 import ResizeHandles from "./ResizeHandles";
 
@@ -30,7 +31,7 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(function CanvasComponent(
     selectedId,
     gridVisible,
     zoom,
-    gridStep = 20,
+    gridStep = GRID_SIZE,
     onSelect,
     onElementMoveStart,
     onElementResizeStart,

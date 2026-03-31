@@ -47,6 +47,28 @@ export interface IImageProperties {
   file?: File;
 }
 
+export interface ICellStyle {
+  borderWidth: number; // в пикселях
+  borderColor: string; // hex
+  backgroundColor?: string;
+  color?: string; // hex
+  fontSize?: number;
+  fontWeight?: "normal" | "bold";
+  textAlign?: "left" | "center" | "right";
+}
+
+export interface ITableCell {
+  id: string;
+  content: string;
+  rowSpan?: number;
+  colSpan?: number;
+  style?: ICellStyle;
+}
+
+export interface ITableColumn {
+  width: number;
+}
+
 export interface ITableProperties {
   rows: number;
   cols: number;
@@ -55,6 +77,9 @@ export interface ITableProperties {
   cellBg: string;
   data: string[][];
   cellTextColors?: string[][]; // Цвета текста для каждой ячейки [row][col]
+  // НОВЫЕ СВОЙСТВА ДЛЯ ГИБКОЙ ТАБЛИЦЫ
+  cells?: ITableCell[][];
+  columns?: ITableColumn[];
 }
 
 export interface IDateProperties {

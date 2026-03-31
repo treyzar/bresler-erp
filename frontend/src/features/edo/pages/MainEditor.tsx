@@ -45,6 +45,10 @@ import { snapToGrid } from "../utils/help/snapToGrid";
 import { createDefaultElement } from "../utils/help/createDefaultElement";
 import { generateDocx } from "../utils/help/generateDocx";
 import { generatePdf } from "../utils/help/generatePDF";
+import {
+  replacePlaceholdersInElements,
+  replacePlaceholdersInString,
+} from "../utils/help/replacePlaceholders";
 
 export default function Editor() {
   const navigate = useNavigate();
@@ -58,6 +62,8 @@ export default function Editor() {
     | undefined;
   const importedTitle = state?.title as string | undefined;
   const editingTemplateId = state?.templateId as number | undefined;
+  const letterId = state?.letterId as number | undefined;
+  const letterData = state?.letterData as Record<string, string> | undefined;
 
   /* ---------- состояние ---------- */
   const [elements, setElements] = useState<IEditorElement[]>([]);
@@ -73,7 +79,7 @@ export default function Editor() {
   const [error, setError] = useState<string | null>(null);
 
   const [gridVisible, setGridVisible] = useState(true);
-  const [gridStep, setGridStep] = useState(20);
+  const [gridSnap, setGridSnap] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
 
   /* ---------- история ---------- */
@@ -282,35 +288,85 @@ export default function Editor() {
 
     setLoading(true);
     try {
-      // 1. Генерируем HTML представление (для PDF рендеринга на бэке)
-      const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title></head><body>${elements
-        .map((el) => {
-          if (el.type === "text") {
-            const { content } = el.properties as any;
-            return `<div>${content || ""}</div>`;
-          }
-          if (el.type === "signature") {
-            const p = el.properties as any;
-            if (p.image) {
-              return `<div><img src="${p.image}" alt="signature" style="max-width: 100%;" /></div>`;
-            }
-            return `<div>${p.text || ""}</div>`;
-          }
-          return `<div>${(el.properties as any).content || ""}</div>`;
-        })
-        .join("")}</body></html>`;
+      // 1. Стандартизация JSON (editor_content) для бэкенда
+      const cleanEditorContent = elements.map((el) => {
+        const p = el.properties as any;
+        return {
+          id: el.id,
+          type: el.type,
+          x: Math.round(Number(el.x)) || 0,
+          y: Math.round(Number(el.y)) || 0,
+          width: Math.round(Number(el.width)) || 100,
+          height: Math.round(Number(el.height)) || 40,
+          content: p.content || p.text || "",
+          isBold: !!p.bold,
+          isItalic: !!p.italic,
+          fontSize: p.fontSize || 14,
+          align: p.align || "left",
+        };
+      });
 
-      // 2. Формируем тело запроса
+      // 2. Генерируем ЧИСТЫЙ HTML (без артефактов редактора)
+      const cleanHtmlContent = `
+        <div class="canvas-print" style="position:relative; width:794px; min-height:1123px; background:white; margin:0 auto;">
+          ${elements
+            .map((el) => {
+              const commonStyle = `position:absolute; left:${el.x}px; top:${el.y}px; width:${el.width}px; height:${el.height}px;`;
+              
+              if (el.type === "text") {
+                const {
+                  content,
+                  fontFamily,
+                  fontSize,
+                  color,
+                  bold,
+                  italic,
+                  underline,
+                  align,
+                } = el.properties as any;
+                return `
+                  <div style="${commonStyle}">
+                    <p style="margin:0; font-family:${fontFamily || "Arial"}; font-size:${fontSize}px; color:${color || "#000"}; 
+                       font-weight:${bold ? "bold" : "normal"}; font-style:${italic ? "italic" : "normal"}; 
+                       text-decoration:${underline ? "underline" : "none"}; text-align:${align || "left"};">
+                      ${content || ""}
+                    </p>
+                  </div>`;
+              }
+              
+              if (el.type === "signature") {
+                const p = el.properties as any;
+                if (p.image) {
+                  return `<div style="${commonStyle}"><img src="${p.image}" alt="signature" style="width:100%; height:100%; object-fit:contain;" /></div>`;
+                }
+                return `<div style="${commonStyle} display:flex; align-items:center; justify-content:center; border-bottom:1px solid #000;">
+                          <span style="font-size:12px;">${p.text || "Подпись"}</span>
+                        </div>`;
+              }
+
+              if (el.type === "image") {
+                const { src, alt } = el.properties as any;
+                return `<div style="${commonStyle}"><img src="${src}" alt="${alt || ""}" style="width:100%; height:100%; object-fit:cover;" /></div>`;
+              }
+
+              if (el.type === "divider") {
+                const p = el.properties as any;
+                return `<div style="${commonStyle}"><hr style="border:none; border-top:${p.thickness || 1}px ${p.style || "solid"} ${p.color || "#000"}; margin:0;" /></div>`;
+              }
+
+              return "";
+            })
+            .join("")}
+        </div>`.trim();
+
+      // 3. Формируем тело запроса
       const payload = {
         title,
         description,
         visibility,
-        template_type: templateType, // Выбранный формат (PDF/HTML/DOCX)
-
-        // ВАЖНО: Отправляем элементы для сохранения в файл на бэкенде
-        editor_content: elements,
-
-        html_content: htmlContent,
+        template_type: templateType,
+        editor_content: cleanEditorContent,
+        html_content: cleanHtmlContent,
         allowed_users: [],
       };
 
@@ -388,11 +444,22 @@ export default function Editor() {
             Array.isArray(tpl.editor_content) &&
             tpl.editor_content.length > 0
           ) {
-            setElements(tpl.editor_content as any[]);
-            saveToHistory(tpl.editor_content as any[]);
+            let nextElements = tpl.editor_content as any[];
+            if (letterData) {
+              nextElements = replacePlaceholdersInElements(
+                nextElements,
+                letterData,
+              );
+            }
+            setElements(nextElements);
+            saveToHistory(nextElements);
           } else if (tpl.html_content) {
             try {
-              const parsed = parseHtmlToElements(tpl.html_content as string);
+              let html = tpl.html_content as string;
+              if (letterData) {
+                html = replacePlaceholdersInString(html, letterData);
+              }
+              const parsed = parseHtmlToElements(html);
               if (parsed && parsed.length) {
                 setElements(parsed);
                 saveToHistory(parsed);
@@ -409,22 +476,7 @@ export default function Editor() {
       return;
     }
 
-    /* 3. ПРИОРИТЕТ: Черновик из LocalStorage */
-    const draft = localStorage.getItem(LOCALSTORAGE_KEY);
-    if (draft) {
-      try {
-        const { elements: els, title: t, description: d } = JSON.parse(draft);
-        if (els && els.length > 0) {
-          setElements(els);
-          setTitle(t || "");
-          setDescription(d || "");
-          saveToHistory(els);
-          return;
-        }
-      } catch {}
-    }
-
-    /* 4. ПРИОРИТЕТ: Prefill (простой текст) */
+    /* 3. ПРИОРИТЕТ: Prefill (простой текст) - из письма */
     if (prefill) {
       const el = createDefaultElement("text", generateId(), snapToGrid);
       el.properties = { ...(el.properties as any), content: prefill };
@@ -448,6 +500,26 @@ export default function Editor() {
       setElements(next);
       saveToHistory(next);
       setSelectedId(el.id);
+      
+      if (letterId) {
+        setTitle(`Документ по письму №${state?.letterNumber || letterId}`);
+      }
+      return;
+    }
+
+    /* 4. ПРИОРИТЕТ: Черновик из LocalStorage */
+    const draft = localStorage.getItem(LOCALSTORAGE_KEY);
+    if (draft) {
+      try {
+        const { elements: els, title: t, description: d } = JSON.parse(draft);
+        if (els && els.length > 0) {
+          setElements(els);
+          setTitle(t || "");
+          setDescription(d || "");
+          saveToHistory(els);
+          return;
+        }
+      } catch {}
     }
   }, []); // Выполняется один раз при монтировании
 
@@ -525,7 +597,7 @@ export default function Editor() {
       const node = canvasRef.current;
       if (!node) return;
 
-      const currentSnap = e.shiftKey ? (v: number) => v : snapToGrid;
+      const currentSnap = e.shiftKey ? (v: number) => v : (v: number) => snapToGrid(v, GRID_SIZE);
 
       handleMouseMove(
         e,
@@ -535,7 +607,7 @@ export default function Editor() {
         selectedId,
         updateElementPosition,
         currentSnap,
-        gridStep,
+        gridSnap,
       );
     };
 
@@ -559,7 +631,7 @@ export default function Editor() {
     isResizing,
     selectedId,
     zoom,
-    gridStep,
+    gridSnap,
     handleMouseMove,
     updateElementPosition,
     saveToHistory,
@@ -588,11 +660,14 @@ export default function Editor() {
       <div className="border-b bg-card text-card-foreground">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild className="-ml-3 hidden sm:inline-flex">
-              <a href="/edo">
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Назад
-              </a>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="-ml-3 hidden sm:inline-flex"
+              onClick={() => navigate("/edo/templates")}
+            >
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Назад
             </Button>
             <div className="h-6 w-px bg-border hidden sm:block" />
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -678,7 +753,9 @@ export default function Editor() {
               }}
               onImageUpload={handleImageUpload}
               gridVisible={gridVisible}
+              gridSnap={gridSnap}
               onToggleGrid={setGridVisible}
+              onToggleSnap={setGridSnap}
               zoom={zoom}
               autoZoom={autoZoom}
               isManualZoom={isManualZoom}
@@ -708,9 +785,9 @@ export default function Editor() {
                 onExportHtml={exportHtml}
                 onExportPdf={exportPdf}
                 gridVisible={gridVisible}
-                gridStep={gridStep}
+                gridSnap={gridSnap}
                 onToggleGrid={setGridVisible}
-                onGridStepChange={setGridStep}
+                onToggleSnap={setGridSnap}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}

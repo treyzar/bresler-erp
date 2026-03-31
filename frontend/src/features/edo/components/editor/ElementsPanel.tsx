@@ -18,7 +18,9 @@ interface Props {
   onAdd: (t: TElementType) => void;
   onImageUpload: (f: File) => void;
   gridVisible: boolean;
+  gridSnap: boolean;
   onToggleGrid: (v: boolean) => void;
+  onToggleSnap: (v: boolean) => void;
   zoom: number;
   autoZoom: number;
   isManualZoom: boolean;
@@ -38,7 +40,9 @@ const ElementsPanel: React.FC<Props> = ({
   onAdd,
   onImageUpload,
   gridVisible,
+  gridSnap,
   onToggleGrid,
+  onToggleSnap,
   zoom,
   autoZoom,
   isManualZoom,
@@ -177,8 +181,8 @@ const ElementsPanel: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Сетка */}
-      <div className="pb-4">
+      {/* Сетка и Привязка */}
+      <div className="pb-4 space-y-1">
         <label className="flex items-center gap-3 cursor-pointer text-sm py-2 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
           <input
             type="checkbox"
@@ -188,6 +192,16 @@ const ElementsPanel: React.FC<Props> = ({
           />
           <Grid size={14} className="text-muted-foreground" />
           <span className="font-medium text-foreground">Показать сетку</span>
+        </label>
+        <label className="flex items-center gap-3 cursor-pointer text-sm py-2 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
+          <input
+            type="checkbox"
+            className="w-[18px] h-[18px] accent-primary cursor-pointer rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+            checked={gridSnap}
+            onChange={(e) => onToggleSnap(e.target.checked)}
+          />
+          <PenTool size={14} className="text-muted-foreground" />
+          <span className="font-medium text-foreground">Привязка (Магнит)</span>
         </label>
       </div>
     </div>

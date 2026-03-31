@@ -21,6 +21,49 @@ export function generateHTMLFromElements(
         const p = el.properties as any;
         return `<div style="${style}"><img src="${p.src}" alt="${p.alt}" style="width:100%;height:100%;object-fit:cover"></div>`;
       }
+      if (el.type === "table") {
+        const p = el.properties as any;
+        const isNewStructure = !!(p.cells && p.columns);
+        
+        if (!isNewStructure) {
+          // Старая структура
+          let rowsHtml = "";
+          for (let i = 0; i < (p.rows || 0); i++) {
+            let cellsHtml = "";
+            for (let j = 0; j < (p.cols || 0); j++) {
+              const cellColor = p.cellTextColors?.[i]?.[j] || "#000000";
+              cellsHtml += `<td style="border:${p.borderWidth || 1}px solid ${p.borderColor || "#000"};padding:8px;background:${p.cellBg};color:${cellColor}">${p.data?.[i]?.[j] || ""}</td>`;
+            }
+            rowsHtml += `<tr>${cellsHtml}</tr>`;
+          }
+          return `<div style="${style}"><table style="width:100%;height:100%;border-collapse:collapse;table-layout:fixed">${rowsHtml}</table></div>`;
+        }
+
+        // Новая структура
+        const colGroup = `<colgroup>${p.columns.map((c: any) => `<col style="width:${c.width}px">`).join("")}</colgroup>`;
+        const rowsHtml = p.cells.map((row: any[]) => {
+          const cellsHtml = row.map((cell: any) => {
+            if (!cell) return "";
+            const s = cell.style || {};
+            const cellStyle = [
+              `border:${s.borderWidth ?? p.borderWidth}px solid ${s.borderColor ?? p.borderColor}`,
+              `padding:8px`,
+              `background:${s.backgroundColor ?? p.cellBg}`,
+              `color:${s.color || "#000000"}`,
+              s.fontSize ? `font-size:${s.fontSize}px` : "",
+              `font-weight:${s.fontWeight || "normal"}`,
+              `text-align:${s.textAlign || "left"}`,
+              `word-break:break-all`,
+              `vertical-align:top`
+            ].filter(Boolean).join(";");
+            
+            return `<td rowspan="${cell.rowSpan || 1}" colspan="${cell.colSpan || 1}" style="${cellStyle}">${cell.content}</td>`;
+          }).join("");
+          return `<tr>${cellsHtml}</tr>`;
+        }).join("");
+
+        return `<div style="${style}"><table style="width:100%;height:100%;border-collapse:collapse;table-layout:fixed">${colGroup}<tbody>${rowsHtml}</tbody></table></div>`;
+      }
       return "";
     })
     .join("");

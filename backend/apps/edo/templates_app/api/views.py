@@ -20,6 +20,8 @@ from rest_framework.response import Response
 from docxtpl import DocxTemplate
 
 from ..models.models import Template, TemplateVersion, ShareLink
+from ..services.pdf_export import PDFExportService
+from ..services.docx_builder import DocxBuilderService
 from .serializers import (
     TemplateSerializer, TemplateListSerializer,
     TemplateVersionSerializer, ShareLinkSerializer, RenderSerializer
@@ -29,50 +31,6 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 CURRENT_USER_ID = getattr(settings, 'CURRENT_USER_ID', 1)
-
-
-def _html_to_pdf_bytes_playwright(html: str, base_url: str) -> bytes:
-    """Генерация PDF из HTML через Chromium (Playwright)."""
-    logger.info("=== _html_to_pdf_bytes_playwright START ===")
-    logger.info(f"HTML length: {len(html)}")
-    logger.info(f"Base URL: {base_url}")
-    
-    try:
-        from playwright.sync_api import sync_playwright
-        logger.info("Playwright imported successfully")
-    except ImportError as e:
-        logger.error(f"Playwright import failed: {e}")
-        raise RuntimeError(
-            "Playwright is not installed. Run: pip install playwright && python -m playwright install chromium"
-        ) from e
-
-    try:
-        with sync_playwright() as p:
-            logger.info("Launching Chromium...")
-            browser = p.chromium.launch()
-            logger.info("Chromium launched")
-            
-            try:
-                page = browser.new_page(java_script_enabled=False)
-                logger.info("Page created")
-                
-                page.set_content(html, wait_until="networkidle", timeout=30000)
-                logger.info("Content set")
-                
-                pdf_bytes = page.pdf(
-                    format="A4",
-                    print_background=True,
-                    prefer_css_page_size=True,
-                    margin={"top": "20px", "bottom": "20px", "left": "20px", "right": "20px"}
-                )
-                logger.info(f"PDF generated, size: {len(pdf_bytes)} bytes")
-                return pdf_bytes
-            finally:
-                browser.close()
-                logger.info("Browser closed")
-    except Exception as e:
-        logger.error(f"Playwright error: {type(e).__name__}: {e}", exc_info=True)
-        raise
 
 
 def _get_base_url_from_request(request) -> str:
@@ -120,28 +78,51 @@ class TemplateViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         scope = self.request.query_params.get("scope", "all")
         
+        # Базовая фильтрация по мягкому удалению
+        base_qs = Template.objects.filter(is_deleted=False)
+        
         if scope == "public":
-            return Template.objects.filter(visibility="PUBLIC").order_by("-updated_at")
+            return base_qs.filter(visibility="PUBLIC").order_by("-updated_at")
         
         if scope == "my":
-            return Template.objects.filter(owner_id=CURRENT_USER_ID).order_by("-updated_at")
+            return base_qs.filter(owner_id=CURRENT_USER_ID).order_by("-updated_at")
         
         if scope == "shared":
-            all_templates = Template.objects.exclude(owner_id=CURRENT_USER_ID)
+            all_templates = base_qs.exclude(owner_id=CURRENT_USER_ID)
             ids = [t.id for t in all_templates if CURRENT_USER_ID in (t.allowed_users or [])]
-            return Template.objects.filter(id__in=ids).order_by("-updated_at")
+            return base_qs.filter(id__in=ids).order_by("-updated_at")
 
-        all_templates = Template.objects.all()
+        all_templates = base_qs.all()
         ids = [
             t.id for t in all_templates
             if t.visibility == "PUBLIC"
             or t.owner_id == CURRENT_USER_ID
             or CURRENT_USER_ID in (t.allowed_users or [])
         ]
-        return Template.objects.filter(id__in=ids).order_by("-updated_at")
+        return base_qs.filter(id__in=ids).order_by("-updated_at")
 
     def perform_create(self, serializer):
         serializer.save(owner_id=CURRENT_USER_ID)
+
+    def perform_update(self, serializer):
+        """Нормализация координат и размеров в editor_content перед сохранением"""
+        editor_content = serializer.validated_data.get('editor_content', [])
+        if isinstance(editor_content, list):
+            for el in editor_content:
+                if isinstance(el, dict):
+                    if 'x' in el:
+                        try: el['x'] = int(round(float(el['x'])))
+                        except (ValueError, TypeError): pass
+                    if 'y' in el:
+                        try: el['y'] = int(round(float(el['y'])))
+                        except (ValueError, TypeError): pass
+                    if 'width' in el:
+                        try: el['width'] = int(round(float(el['width'])))
+                        except (ValueError, TypeError): pass
+                    if 'height' in el:
+                        try: el['height'] = int(round(float(el['height'])))
+                        except (ValueError, TypeError): pass
+        serializer.save()
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -174,9 +155,20 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        
+        # Проверка на владельца (даже для superuser, так как CURRENT_USER_ID 
+        # будет сравниваться с owner_id объекта)
         if instance.owner_id != CURRENT_USER_ID:
-            return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+            return Response(
+                {"error": "Удаление разрешено только владельцу шаблона."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Мягкое удаление
+        instance.is_deleted = True
+        instance.save(update_fields=['is_deleted'])
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['GET'], url_path='download-source')
     def download_source(self, request, pk=None):
@@ -194,14 +186,12 @@ class TemplateViewSet(viewsets.ModelViewSet):
         if req_format == 'pdf':
             html = template.html_content or "<html><body><p>Empty Template</p></body></html>"
             try:
-                base_url = _get_base_url_from_request(request)
-                pdf_bytes = _html_to_pdf_bytes_playwright(html, base_url=base_url)
-                
+                pdf_bytes = PDFExportService.generate(html)
                 response = HttpResponse(pdf_bytes, content_type='application/pdf')
                 response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
                 return response
             except Exception as e:
-                logger.error(f"PDF generation failed: {e}", exc_info=True)
+                logger.error(f"PDF source download failed: {e}", exc_info=True)
                 return Response({"error": f"PDF generation failed: {str(e)}"}, status=500)
 
         elif req_format == 'html':
@@ -225,17 +215,17 @@ class TemplateViewSet(viewsets.ModelViewSet):
             return response
 
         elif req_format == 'docx':
-            if template.docx_file:
-                return FileResponse(
-                    template.docx_file.open('rb'),
-                    as_attachment=True,
-                    filename=f"{filename}.docx",
+            try:
+                docx_bytes = DocxBuilderService.build_from_json(template.editor_content)
+                response = HttpResponse(
+                    docx_bytes,
                     content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                 )
-            else:
-                return Response({
-                    "error": "DOCX file not available. This template was created in the Web Editor."
-                }, status=400)
+                response['Content-Disposition'] = f'attachment; filename="{filename}.docx"'
+                return response
+            except Exception as e:
+                logger.error(f"DOCX source download failed: {e}", exc_info=True)
+                return Response({"error": f"DOCX generation failed: {str(e)}"}, status=500)
 
         return Response({"error": f"Unknown format: {req_format}"}, status=400)
 
@@ -333,21 +323,15 @@ def render_template(request, template: Template, values: Dict[str, Any]):
     logger.info("=== render_template START ===")
     logger.info(f"Template: {template.title}, Type: {template.template_type}")
     
-    # 1. Если это DOCX файл
-    if template.template_type == "DOCX" and template.docx_file:
-        logger.info("Rendering DOCX template...")
+    # 1. Генерируем DOCX через DocxBuilderService (Spatial Sorting)
+    if template.template_type == "DOCX":
+        logger.info("Rendering DOCX template via DocxBuilderService...")
         try:
-            logger.info(f"DOCX path: {template.docx_file.path}")
-            doc = DocxTemplate(template.docx_file.path)
-            doc.render(values or {})
-            
-            docx_buffer = io.BytesIO()
-            doc.save(docx_buffer)
-            docx_buffer.seek(0)
+            docx_bytes = DocxBuilderService.build_from_json(template.editor_content, values)
             
             filename = _safe_filename(template.title) + ".docx"
             response = HttpResponse(
-                docx_buffer.read(),
+                docx_bytes,
                 content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
             response["Content-Disposition"] = f'attachment; filename="{filename}"'
@@ -357,30 +341,20 @@ def render_template(request, template: Template, values: Dict[str, Any]):
             logger.error(f"DOCX Render failed: {e}", exc_info=True)
             return Response({"error": f"DOCX Render failed: {str(e)}"}, status=500)
 
-    # 2. Генерируем PDF из HTML
-    logger.info("Rendering PDF from HTML...")
+    # 2. Генерируем PDF через PDFExportService (Playwright)
+    logger.info("Rendering PDF via PDFExportService...")
     html_content = template.html_content or ""
-    logger.info(f"Original HTML length: {len(html_content)}")
     
-    if not html_content.strip():
-        logger.warning("HTML content is empty!")
-        html_content = "<html><body><p>Empty document</p></body></html>"
-    
+    # Подстановка плейсхолдеров
     html_content = _apply_placeholders_html(html_content, values)
-    logger.info(f"HTML after placeholders: {len(html_content)}")
     
-    base_url = _get_base_url_from_request(request)
-    logger.info(f"Base URL: {base_url}")
-
     try:
-        pdf_bytes = _html_to_pdf_bytes_playwright(html_content, base_url=base_url)
-        logger.info(f"PDF generated successfully: {len(pdf_bytes)} bytes")
-    except RuntimeError as e:
-        logger.error(f"Playwright not available: {e}")
-        return Response(
-            {"error": "PDF engine unavailable (Playwright not installed).", "detail": str(e)},
-            status=503,
-        )
+        pdf_bytes = PDFExportService.generate(html_content)
+        filename = _safe_filename(template.title) + ".pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        logger.info(f"PDF render complete: {filename}")
+        return response
     except Exception as e:
         logger.error(f"PDF generation failed: {e}", exc_info=True)
         return Response(
