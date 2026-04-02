@@ -3,10 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.mixins import ListModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
-from apps.notifications.api.serializers import NotificationSerializer
-from apps.notifications.models import Notification
+from apps.notifications.api.serializers import NotificationPreferenceSerializer, NotificationSerializer
+from apps.notifications.models import Notification, NotificationPreference
 from apps.notifications.services import get_unread_count, mark_all_read, mark_read
 
 
@@ -47,3 +48,24 @@ class NotificationViewSet(ListModelMixin, GenericViewSet):
     def mark_all_read(self, request):
         count = mark_all_read(request.user)
         return Response({"status": "ok", "count": count})
+
+
+class NotificationPreferenceView(APIView):
+    """
+    GET /api/notifications/preferences/ — get current user's notification preferences.
+    PATCH /api/notifications/preferences/ — update preferences.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pref, _ = NotificationPreference.objects.get_or_create(user=request.user)
+        serializer = NotificationPreferenceSerializer(pref)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        pref, _ = NotificationPreference.objects.get_or_create(user=request.user)
+        serializer = NotificationPreferenceSerializer(pref, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

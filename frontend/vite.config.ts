@@ -18,6 +18,10 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: true,
       },
+      "/media": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
       "/ws": {
         target: apiTarget.replace(/^http/, "ws"),
         ws: true,

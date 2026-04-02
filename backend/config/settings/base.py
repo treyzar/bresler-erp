@@ -201,11 +201,29 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.check_order_deadlines",
         "schedule": 86400.0,  # 24 hours
     },
+    "send-email-digest": {
+        "task": "apps.notifications.tasks.send_email_digest",
+        "schedule": 86400.0,  # 24 hours
+    },
     "cleanup-old-notifications": {
         "task": "apps.notifications.tasks.cleanup_old_notifications",
         "schedule": 604800.0,  # 7 days
     },
 }
+
+# Email
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Bresler ERP <noreply@bresler.ru>")
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+
+# Site URL for links in email notifications
+SITE_URL = os.environ.get("SITE_URL", "http://localhost:5173")
 
 # ProdUX external API (component sync)
 PRODUX_API_URL = os.environ.get(

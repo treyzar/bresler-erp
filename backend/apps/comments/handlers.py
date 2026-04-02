@@ -3,7 +3,7 @@
 from apps.core.events import on_event
 
 
-@on_event("comment.created")
+@on_event("comment.created", async_task=True)
 def on_comment_created(event_name, instance, user=None, target=None, **kwargs):
     """Notify relevant users when a comment is posted on a document."""
     from apps.notifications.services import create_notification

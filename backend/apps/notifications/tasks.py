@@ -85,6 +85,19 @@ def check_order_deadlines():
 
 
 @shared_task
+def send_email_digest():
+    """
+    Send email digest of unread notifications to users with email enabled.
+    Runs daily via Celery Beat (e.g., at 09:00).
+    """
+    from apps.notifications.services import send_email_digest as _send_digest
+
+    sent = _send_digest()
+    logger.info("Email digest: %d emails sent", sent)
+    return {"emails_sent": sent}
+
+
+@shared_task
 def cleanup_old_notifications():
     """Delete read notifications older than 90 days."""
     from apps.notifications.models import Notification, NotificationEntry

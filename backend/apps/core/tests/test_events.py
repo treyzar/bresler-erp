@@ -1,5 +1,7 @@
 """Tests for the Event System."""
 
+from unittest.mock import patch
+
 import pytest
 
 from apps.core.events import (
@@ -132,6 +134,64 @@ class TestSuppressEvents:
 
         do_bulk_work()
         assert called == []
+
+
+class TestAsyncDispatch:
+    def test_async_handler_registered_with_flag(self):
+        @on_event("test.async", async_task=True)
+        def handler(**kwargs):
+            pass
+
+        events = get_registered_events()
+        assert "test.async" in events
+
+    @patch("apps.core.tasks.run_event_handler.delay")
+    def test_async_handler_dispatched_via_celery(self, mock_delay):
+        """Async handlers should be dispatched via Celery task, not called directly."""
+
+        @on_event("test.async_dispatch", async_task=True)
+        def handler(event_name, **kwargs):
+            pass
+
+        trigger_event("test.async_dispatch", foo="bar")
+
+        mock_delay.assert_called_once()
+        call_args = mock_delay.call_args
+        handler_path = call_args[0][0]
+        assert "handler" in handler_path
+        assert call_args[0][1]["foo"] == "bar"
+
+    @patch("apps.core.tasks.run_event_handler.delay")
+    def test_sync_handler_called_directly(self, mock_delay):
+        """Sync handlers should NOT go through Celery."""
+        called = []
+
+        @on_event("test.sync_direct")
+        def handler(event_name, **kwargs):
+            called.append(True)
+
+        trigger_event("test.sync_direct")
+
+        assert called == [True]
+        mock_delay.assert_not_called()
+
+    @patch("apps.core.tasks.run_event_handler.delay")
+    def test_mixed_sync_and_async_handlers(self, mock_delay):
+        """Both sync and async handlers on the same event."""
+        sync_called = []
+
+        @on_event("test.mixed")
+        def sync_handler(event_name, **kwargs):
+            sync_called.append(True)
+
+        @on_event("test.mixed", async_task=True)
+        def async_handler(event_name, **kwargs):
+            pass
+
+        trigger_event("test.mixed")
+
+        assert sync_called == [True]
+        mock_delay.assert_called_once()
 
 
 class TestClearRegistry:

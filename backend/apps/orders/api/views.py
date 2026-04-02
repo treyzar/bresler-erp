@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from apps.core.events import trigger_event
 from apps.core.mixins.export import ExportMixin
+from apps.core.mixins.metadata import MetadataMixin
 from apps.core.workflow import ConditionNotMet, TransitionNotAllowed, WorkflowService
 from apps.directory.models import Contact, Equipment, Facility, OrgUnit, TypeOfWork
 from apps.orders.models import Contract, Order, OrderFile
@@ -138,10 +139,24 @@ def _format_change(change):
     }
 
 
-class OrderViewSet(ExportMixin, viewsets.ModelViewSet):
+class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     lookup_field = "order_number"
     lookup_value_regex = r"\d+"
     export_filename = "orders"
+    meta_extra = {
+        "customer": {"widget": "combobox", "endpoint": "/api/directory/orgunits/?business_role=customer"},
+        "country": {"widget": "combobox", "endpoint": "/api/directory/countries/"},
+        "equipment": {"widget": "combobox", "endpoint": "/api/directory/equipment/"},
+        "work": {"widget": "combobox", "endpoint": "/api/directory/works/"},
+        "participant": {"widget": "combobox", "endpoint": "/api/directory/orgunits/"},
+        "branch": {"widget": "combobox", "endpoint": "/api/directory/orgunits/?unit_type=branch"},
+        "division": {"widget": "combobox", "endpoint": "/api/directory/orgunits/?unit_type=division"},
+        "facility": {"widget": "combobox", "endpoint": "/api/directory/orgunits/?unit_type=site"},
+        "start_date_from": {"range_group": "start_date"},
+        "start_date_to": {"range_group": "start_date"},
+        "ship_date_from": {"range_group": "ship_date"},
+        "ship_date_to": {"range_group": "ship_date"},
+    }
     export_fields = {
         "order_number": "Номер заказа",
         "status": "Статус",

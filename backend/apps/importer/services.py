@@ -6,6 +6,7 @@ import csv
 import io
 import logging
 
+from apps.core.events import suppress_events
 from apps.importer.models import ImportSession
 
 logger = logging.getLogger("importer")
@@ -192,27 +193,30 @@ def apply_import(session: ImportSession) -> dict:
     success = 0
     errors = []
 
-    for i, row in enumerate(rows, start=2):
-        mapped_row = {}
-        for file_col, model_field in mapping.items():
-            if file_col in row:
-                value = row[file_col]
-                if value == "" or value is None:
-                    continue
-                mapped_row[model_field] = value
+    # Suppress auto-events during bulk creation to avoid event storm;
+    # a single import.completed event fires after the loop instead.
+    with suppress_events():
+        for i, row in enumerate(rows, start=2):
+            mapped_row = {}
+            for file_col, model_field in mapping.items():
+                if file_col in row:
+                    value = row[file_col]
+                    if value == "" or value is None:
+                        continue
+                    mapped_row[model_field] = value
 
-        row_errors = _validate_row(mapped_row, required_fields, model_class, i)
-        if row_errors:
-            errors.extend(row_errors)
-            continue
+            row_errors = _validate_row(mapped_row, required_fields, model_class, i)
+            if row_errors:
+                errors.extend(row_errors)
+                continue
 
-        try:
-            # Clean boolean fields
-            _coerce_types(mapped_row, session.target_model)
-            model_class.objects.create(**mapped_row)
-            success += 1
-        except Exception as exc:
-            errors.append({"row": i, "field": "", "message": str(exc)[:200]})
+            try:
+                # Clean boolean fields
+                _coerce_types(mapped_row, session.target_model)
+                model_class.objects.create(**mapped_row)
+                success += 1
+            except Exception as exc:
+                errors.append({"row": i, "field": "", "message": str(exc)[:200]})
 
     session.status = ImportSession.Status.COMPLETE
     session.success_count = success

@@ -97,6 +97,120 @@ class TestProfileEndpoint:
 
 
 @pytest.mark.django_db
+class TestChangePassword:
+    def setup_method(self):
+        self.client = APIClient()
+        self.user = UserFactory(username="pwduser")
+        self.user.set_password("OldPass123!")
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+
+    def test_change_password_success(self):
+        response = self.client.post("/api/users/me/change-password/", {
+            "current_password": "OldPass123!",
+            "new_password": "NewPass456!",
+            "new_password_confirm": "NewPass456!",
+        })
+        assert response.status_code == status.HTTP_200_OK
+        self.user.refresh_from_db()
+        assert self.user.check_password("NewPass456!")
+
+    def test_change_password_wrong_current(self):
+        response = self.client.post("/api/users/me/change-password/", {
+            "current_password": "WrongPass!",
+            "new_password": "NewPass456!",
+            "new_password_confirm": "NewPass456!",
+        })
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_change_password_mismatch(self):
+        response = self.client.post("/api/users/me/change-password/", {
+            "current_password": "OldPass123!",
+            "new_password": "NewPass456!",
+            "new_password_confirm": "Different789!",
+        })
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_change_password_unauthenticated(self):
+        client = APIClient()
+        response = client.post("/api/users/me/change-password/", {
+            "current_password": "OldPass123!",
+            "new_password": "NewPass456!",
+            "new_password_confirm": "NewPass456!",
+        })
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestAvatarUpload:
+    def setup_method(self):
+        self.client = APIClient()
+        self.user = UserFactory()
+        self.client.force_authenticate(user=self.user)
+
+    def test_upload_avatar(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Create a real 1x1 PNG in memory
+        buf = io.BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(buf, format="PNG")
+        buf.seek(0)
+        image = SimpleUploadedFile("avatar.png", buf.read(), content_type="image/png")
+        response = self.client.post("/api/users/me/avatar/", {"avatar": image}, format="multipart")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["avatar"] is not None
+
+    def test_delete_avatar(self):
+        response = self.client.delete("/api/users/me/avatar/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_avatar_unauthenticated(self):
+        client = APIClient()
+        response = client.post("/api/users/me/avatar/", {}, format="multipart")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestMyOrders:
+    def setup_method(self):
+        self.client = APIClient()
+        self.user = UserFactory()
+        self.client.force_authenticate(user=self.user)
+
+    def test_my_orders_returns_200(self):
+        response = self.client.get("/api/users/me/orders/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "stats" in response.data
+        assert "orders" in response.data
+        assert response.data["stats"]["total"] == 0
+
+    def test_my_orders_unauthenticated(self):
+        client = APIClient()
+        response = client.get("/api/users/me/orders/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestActivityFeed:
+    def setup_method(self):
+        self.client = APIClient()
+        self.user = UserFactory()
+        self.client.force_authenticate(user=self.user)
+
+    def test_activity_returns_200(self):
+        response = self.client.get("/api/users/me/activity/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "results" in response.data
+
+    def test_activity_unauthenticated(self):
+        client = APIClient()
+        response = client.get("/api/users/me/activity/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
 class TestUserListEndpoint:
     def setup_method(self):
         self.client = APIClient()

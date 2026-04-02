@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.notifications.models import Notification
+from apps.notifications.models import Notification, NotificationPreference
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -28,3 +28,16 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class UnreadCountSerializer(serializers.Serializer):
     count = serializers.IntegerField()
+
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationPreference
+        fields = [
+            "order_created",
+            "order_status_changed",
+            "order_deadline",
+            "contract_payment",
+            "comments",
+            "import_completed",
+        ]

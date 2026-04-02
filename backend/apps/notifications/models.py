@@ -63,6 +63,88 @@ class Notification(BaseModel):
         return f"[{self.recipient}] {self.title}"
 
 
+class NotificationPreference(models.Model):
+    """
+    Per-user notification preferences — which event categories to receive
+    and through which channels (in-app bell, email).
+
+    Created on first access via get_or_create in the service layer.
+    """
+
+    class Channel(models.TextChoices):
+        BELL = "bell", "Только в приложении"
+        EMAIL = "email", "Только email"
+        ALL = "all", "Приложение + email"
+        NONE = "none", "Отключены"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notification_preference",
+        verbose_name="Пользователь",
+    )
+
+    # Per-category channel settings
+    order_created = models.CharField(
+        "Новые заказы",
+        max_length=10,
+        choices=Channel.choices,
+        default=Channel.BELL,
+    )
+    order_status_changed = models.CharField(
+        "Изменение статуса заказа",
+        max_length=10,
+        choices=Channel.choices,
+        default=Channel.ALL,
+    )
+    order_deadline = models.CharField(
+        "Дедлайны и просрочки",
+        max_length=10,
+        choices=Channel.choices,
+        default=Channel.ALL,
+    )
+    contract_payment = models.CharField(
+        "Оплата контрактов",
+        max_length=10,
+        choices=Channel.choices,
+        default=Channel.BELL,
+    )
+    comments = models.CharField(
+        "Комментарии",
+        max_length=10,
+        choices=Channel.choices,
+        default=Channel.BELL,
+    )
+    import_completed = models.CharField(
+        "Завершение импорта",
+        max_length=10,
+        choices=Channel.choices,
+        default=Channel.BELL,
+    )
+
+    class Meta:
+        verbose_name = "Настройки уведомлений"
+        verbose_name_plural = "Настройки уведомлений"
+
+    def __str__(self):
+        return f"Настройки уведомлений: {self.user}"
+
+    def get_channel(self, event_key: str) -> str:
+        """
+        Get channel setting for a given event key.
+        Falls back to BELL if key is unknown.
+        """
+        return getattr(self, event_key, self.Channel.BELL)
+
+    def is_bell_enabled(self, event_key: str) -> bool:
+        channel = self.get_channel(event_key)
+        return channel in (self.Channel.BELL, self.Channel.ALL)
+
+    def is_email_enabled(self, event_key: str) -> bool:
+        channel = self.get_channel(event_key)
+        return channel in (self.Channel.EMAIL, self.Channel.ALL)
+
+
 class NotificationEntry(models.Model):
     """
     Deduplication tracker — prevents sending the same notification

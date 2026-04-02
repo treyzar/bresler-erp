@@ -9,7 +9,7 @@ from apps.core.events import on_event
 from apps.notifications.services import create_notification
 
 
-@on_event("order.created")
+@on_event("order.created", async_task=True)
 def on_order_created(event_name, instance, user=None, **kwargs):
     """Notify order managers when a new order is created."""
     # Only notify managers assigned to this order (not all users)
@@ -31,7 +31,7 @@ def on_order_created(event_name, instance, user=None, **kwargs):
     )
 
 
-@on_event("import.completed")
+@on_event("import.completed", async_task=True)
 def on_import_completed(event_name, instance, user=None, **kwargs):
     """Notify user when their import session completes."""
     if not user:
@@ -64,7 +64,7 @@ def _get_customer_name(order):
     return None
 
 
-@on_event("order.status_changed")
+@on_event("order.status_changed", async_task=True)
 def on_order_status_changed(event_name, instance, user=None, old_status=None, new_status=None, **kwargs):
     """Notify order managers when status changes."""
     from apps.orders.models import Order
@@ -88,7 +88,7 @@ def on_order_status_changed(event_name, instance, user=None, old_status=None, ne
         )
 
 
-@on_event("contract.payment_changed")
+@on_event("contract.payment_changed", async_task=True)
 def on_contract_payment_changed(event_name, instance, user=None, old_status=None, new_status=None, **kwargs):
     """Notify order managers when payment status changes."""
     from apps.orders.models import Contract

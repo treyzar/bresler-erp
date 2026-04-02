@@ -4,19 +4,15 @@ import { ChevronRight, FolderOpen, LayoutList, Plus, Network, Info } from "lucid
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataTable } from "@/components/shared/DataTable"
+import { AutoFilters } from "@/components/shared/AutoFilters"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { DataTableRowActions } from "@/components/shared/DataTableRowActions"
 import type { OrgUnit, ListParams } from "@/api/types"
 import { orgUnitHooks, useOrgUnitList, useOrgUnitAncestors, useOrgUnitTree } from "@/api/hooks/useOrgUnits"
+import { useFilterMeta } from "@/api/hooks/useFilterMeta"
+import { useAutoFilters } from "@/hooks/useAutoFilters"
 import { OrgUnitForm } from "./OrgUnitForm"
 import { OrgUnitTreeView } from "./OrgUnitTreeView"
 import { OrgUnitInfoDrawer } from "./OrgUnitInfoDrawer"
@@ -45,16 +41,13 @@ export function OrgUnitsPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [bulkDeleteIds, setBulkDeleteIds] = useState<number[] | null>(null)
   
-  const [unitTypeFilter, setUnitTypeFilter] = useState<string>("")
-  const [businessRoleFilter, setBusinessRoleFilter] = useState<string>("")
-  const [isActiveFilter, setIsActiveFilter] = useState<string>("")
+  // Metadata-driven filters
+  const { data: meta } = useFilterMeta("/directory/orgunits/")
+  const { values: filterValues, setValue: setFilterValue, reset: resetFilters, hasActiveFilters, params: filterParams } = useAutoFilters(meta?.filters)
 
-  const listParams: ListParams = { page, page_size: PAGE_SIZE }
+  const listParams: ListParams = { page, page_size: PAGE_SIZE, ...filterParams }
   if (search) listParams.search = search
   if (parentId !== null && !search) listParams.parent = parentId
-  if (unitTypeFilter) listParams.unit_type = unitTypeFilter
-  if (businessRoleFilter) listParams.business_role = businessRoleFilter
-  if (isActiveFilter) listParams.is_active = isActiveFilter
 
   const { data, isLoading } = useOrgUnitList(listParams)
   const { data: treeData, isLoading: isTreeLoading } = useOrgUnitTree()
@@ -267,41 +260,17 @@ export function OrgUnitsPage() {
             </nav>
           )}
 
-          {/* Filters */}
-          <div className="flex gap-2 flex-wrap">
-            <Select value={unitTypeFilter} onValueChange={(v) => { setUnitTypeFilter(v === "ALL" ? "" : v); setPage(1) }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Тип" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Все типы</SelectItem>
-                {Object.entries(UNIT_TYPES).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={businessRoleFilter} onValueChange={(v) => { setBusinessRoleFilter(v === "ALL" ? "" : v); setPage(1) }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Роль" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Все роли</SelectItem>
-                {Object.entries(BUSINESS_ROLES).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={isActiveFilter} onValueChange={(v) => { setIsActiveFilter(v === "ALL" ? "" : v); setPage(1) }}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Статус" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Все</SelectItem>
-                <SelectItem value="true">Активные</SelectItem>
-                <SelectItem value="false">Неактивные</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Metadata-driven filters */}
+          {meta?.filters && (
+            <AutoFilters
+              filters={meta.filters}
+              values={filterValues}
+              onChange={(name, val) => { setFilterValue(name, val); setPage(1) }}
+              onReset={() => { resetFilters(); setPage(1) }}
+              hasActiveFilters={hasActiveFilters}
+              defaultOpen
+            />
+          )}
 
           <DataTable
             columns={columns}

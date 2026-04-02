@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.core.mixins.export import ExportMixin
+from apps.core.mixins.metadata import MetadataMixin
 
 from apps.directory.models import (
     City,
@@ -29,11 +30,15 @@ from .serializers import (
 )
 
 
-class OrgUnitViewSet(ExportMixin, viewsets.ModelViewSet):
+class OrgUnitViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     queryset = OrgUnit.objects.all()
     serializer_class = OrgUnitSerializer
     filterset_class = OrgUnitFilter
     search_fields = ["name", "full_name", "inn", "external_code"]
+    meta_extra = {
+        "country": {"widget": "combobox", "endpoint": "/api/directory/countries/"},
+        "parent": {"widget": "combobox", "endpoint": "/api/directory/orgunits/"},
+    }
     export_filename = "organizations"
     export_fields = {
         "name": "Наименование",
