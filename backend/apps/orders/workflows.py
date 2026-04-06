@@ -10,8 +10,17 @@ from apps.core.workflow import ConditionNotMet, TransitionDef, WorkflowConfig
 
 # ── Conditions ────────────────────────────────────────────────────────────────
 
+def _is_non_standard_order(instance) -> bool:
+    """Check if order type skips contract requirements (warranty, NIOKR, replacement)."""
+    return getattr(instance, "order_type", "standard") in ("warranty", "niokr", "replacement")
+
+
 def require_contract_exists(instance, user):
-    """Order must have a contract before moving to CONTRACT status."""
+    """Order must have a contract before moving to CONTRACT status.
+    Skipped for warranty/NIOKR/replacement orders.
+    """
+    if _is_non_standard_order(instance):
+        return
     if not hasattr(instance, "contract"):
         raise ConditionNotMet("Необходимо создать контракт перед переводом в статус 'Договор'")
     try:
@@ -21,13 +30,23 @@ def require_contract_exists(instance, user):
 
 
 def require_advance_paid(instance, user):
-    """Contract must have advance paid before starting production."""
+    """Contract must have advance paid before starting production.
+    Skipped for warranty/NIOKR/replacement orders.
+    """
+    if _is_non_standard_order(instance):
+        return
     try:
         contract = instance.contract
     except Exception:
         raise ConditionNotMet("Контракт не найден")
     if contract.status == "not_paid":
         raise ConditionNotMet("Необходимо получить аванс, чтобы запустить производство")
+
+
+def require_non_standard_order(instance, user):
+    """Only non-standard orders (warranty/NIOKR/replacement) can go directly to production."""
+    if not _is_non_standard_order(instance):
+        raise ConditionNotMet("Прямой перевод в производство доступен только для гарантийных, НИОКР и замен")
 
 
 def require_ship_date(instance, user):
@@ -50,6 +69,9 @@ ORDER_WORKFLOW = WorkflowConfig(
                        condition=require_contract_exists, color="blue"),
         TransitionDef("D", "P", label="Запустить производство", allowed_groups=MANAGER_GROUPS,
                        condition=require_advance_paid, color="indigo"),
+        # Bypass for warranty/NIOKR/replacement — directly to production
+        TransitionDef("N", "P", label="Сразу в производство", allowed_groups=MANAGER_GROUPS,
+                       condition=require_non_standard_order, color="indigo"),
         TransitionDef("P", "C", label="Собран", allowed_groups=MANAGER_GROUPS, color="amber"),
         TransitionDef("C", "S", label="Отгрузить", allowed_groups=MANAGER_GROUPS,
                        condition=require_ship_date, color="green"),

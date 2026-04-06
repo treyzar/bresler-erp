@@ -465,6 +465,7 @@ export function OrdersPage() {
         enableSelection={false}
         enableSearch={false}
         onRowClick={(row) => navigate(`/orders/${row.order_number}`)}
+        getRowHref={(row) => `/orders/${row.order_number}`}
         fixedLayout
         onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
       />

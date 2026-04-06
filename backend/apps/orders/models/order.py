@@ -24,6 +24,19 @@ class Order(BaseModel):
         SHIPPED = "S", "Отгружен"
         ARCHIVED = "A", "Архив"
 
+    class OrderType(models.TextChoices):
+        STANDARD = "standard", "Стандартный"
+        WARRANTY = "warranty", "Гарантийный ремонт"
+        NIOKR = "niokr", "НИОКР"
+        REPLACEMENT = "replacement", "Замена"
+
+    order_type = models.CharField(
+        "Тип заказа",
+        max_length=20,
+        choices=OrderType.choices,
+        default=OrderType.STANDARD,
+        db_index=True,
+    )
     order_number = models.PositiveIntegerField(
         "Номер заказа",
         unique=True,

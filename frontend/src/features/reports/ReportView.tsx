@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Download } from "lucide-react"
 import {
@@ -25,7 +25,19 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import apiClient from "@/api/client"
+import { useDebounce } from "@/hooks/useDebounce"
+import type { PaginatedResponse } from "@/api/types"
+
+interface ReportResponse {
+  meta: { title: string; filters: any[]; columns: any[]; chart: any }
+  data: Record<string, any>[]
+  count: number
+  page: number
+  page_size: number
+  total_pages: number
+}
 
 const CHART_COLORS = [
   "oklch(0.646 0.222 41.116)",
@@ -40,46 +52,165 @@ interface ReportViewProps {
   onBack: () => void
 }
 
-export function ReportView({ reportName, onBack }: ReportViewProps) {
-  const [filters, setFilters] = useState<Record<string, string>>({})
+// ── Combobox filter for directory lookups ────────────────────────
 
-  const { data: result, isLoading } = useQuery({
-    queryKey: ["reports", "detail", reportName, filters],
+function DirectoryCombobox({
+  endpoint, value, onChange, placeholder,
+}: {
+  endpoint: string
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+}) {
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebounce(search, 300)
+
+  const { data: options = [] } = useQuery({
+    queryKey: ["directory-options", endpoint, debouncedSearch],
     queryFn: async () => {
-      const params = new URLSearchParams()
-      for (const [k, v] of Object.entries(filters)) {
-        if (v) params.set(k, v)
-      }
-      const { data } = await apiClient.get(`/reports/${reportName}/?${params}`)
-      return data as {
-        meta: { title: string; filters: any[]; columns: any[]; chart: any }
-        data: Record<string, any>[]
-        count: number
-      }
+      const params: Record<string, string> = { page_size: "30" }
+      if (debouncedSearch) params.search = debouncedSearch
+      const { data } = await apiClient.get<PaginatedResponse<{ id: number; name: string }>>(endpoint, { params })
+      return data.results
     },
   })
 
-  const meta = result?.meta
+  return (
+    <div className="relative w-[220px]">
+      <Input
+        value={value || search}
+        onChange={(e) => {
+          setSearch(e.target.value)
+          // Clear selection when typing
+          if (value) onChange("")
+        }}
+        placeholder={placeholder}
+        className="h-9"
+      />
+      {search && !value && options.length > 0 && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-[200px] overflow-auto">
+          {options.map((o) => (
+            <div
+              key={o.id}
+              className="px-3 py-1.5 text-sm cursor-pointer hover:bg-muted"
+              onClick={() => {
+                onChange(o.name)
+                setSearch("")
+              }}
+            >
+              {o.name}
+            </div>
+          ))}
+        </div>
+      )}
+      {value && (
+        <button
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+          onClick={() => { onChange(""); setSearch("") }}
+        >
+          &times;
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Filter type → directory endpoint mapping ────────────────────
+
+const DIRECTORY_FILTERS: Record<string, { endpoint: string; placeholder: string }> = {
+  customer: { endpoint: "/directory/orgunits/", placeholder: "Выберите заказчика..." },
+  equipment: { endpoint: "/directory/equipment/", placeholder: "Выберите оборудование..." },
+}
+
+// ── Main component ──────────────────────────────────────────────
+
+export function ReportView({ reportName, onBack }: ReportViewProps) {
+  const [filters, setFilters] = useState<Record<string, string>>({})
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(50)
+  const debouncedFilters = useDebounce(filters, 500)
+
+  // Load meta once (no filters dependency)
+  const { data: metaResult } = useQuery({
+    queryKey: ["reports", "meta", reportName],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/reports/${reportName}/`, {
+        params: { page: 1, page_size: pageSize },
+      })
+      return data as ReportResponse
+    },
+  })
+
+  const meta = metaResult?.meta
+
+  // Load data with debounced filters + pagination
+  const { data: result, isLoading: dataLoading } = useQuery({
+    queryKey: ["reports", "data", reportName, debouncedFilters, page, pageSize],
+    queryFn: async () => {
+      const params: Record<string, string> = {
+        page: String(page),
+        page_size: String(pageSize),
+      }
+      for (const [k, v] of Object.entries(debouncedFilters)) {
+        if (v) params[k] = v
+      }
+      const { data } = await apiClient.get(`/reports/${reportName}/`, { params })
+      return data as ReportResponse
+    },
+    placeholderData: (prev) => prev,
+  })
+
   const rows = result?.data ?? []
+  const totalCount = result?.count ?? 0
+  const totalPages = result?.total_pages ?? 1
   const chart = meta?.chart
 
   const handleFilterChange = (name: string, value: string) => {
     setFilters((prev) => ({ ...prev, [name]: value }))
+    setPage(1)
+  }
+
+  const handleExcelDownload = async () => {
+    const params: Record<string, string> = { export: "xlsx" }
+    for (const [k, v] of Object.entries(debouncedFilters)) {
+      if (v) params[k] = v
+    }
+    const { data, headers } = await apiClient.get(
+      `/reports/${reportName}/`,
+      { params, responseType: "blob" },
+    )
+    const filename = headers["content-disposition"]?.match(/filename="?(.+?)"?$/)?.[1] ?? `${reportName}.xlsx`
+    const url = URL.createObjectURL(data)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
+      {/* Header — always stable, uses meta */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="size-4 mr-1" />
           Назад
         </Button>
         <h1 className="text-2xl font-bold">{meta?.title || reportName}</h1>
-        <Badge variant="outline">{result?.count ?? 0} записей</Badge>
+        <Badge variant="outline">{totalCount.toLocaleString("ru-RU")} записей</Badge>
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExcelDownload}
+            disabled={rows.length === 0}
+          >
+            <Download className="size-3.5 mr-1" /> Excel
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters — always visible once meta loaded */}
       {meta?.filters && meta.filters.length > 0 && (
         <Card>
           <CardContent className="pt-4">
@@ -102,6 +233,13 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                  ) : DIRECTORY_FILTERS[f.name] ? (
+                    <DirectoryCombobox
+                      endpoint={DIRECTORY_FILTERS[f.name].endpoint}
+                      value={filters[f.name] || ""}
+                      onChange={(v) => handleFilterChange(f.name, v)}
+                      placeholder={DIRECTORY_FILTERS[f.name].placeholder}
+                    />
                   ) : (
                     <Input
                       type={f.type === "date" ? "date" : "text"}
@@ -139,7 +277,7 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
                     outerRadius={80}
                     innerRadius={40}
                   >
-                    {rows.map((_, i) => (
+                    {rows.map((_: any, i: number) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
@@ -200,8 +338,10 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
       {/* Data table */}
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+          {dataLoading && rows.length === 0 ? (
+            <div className="p-6 space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
           ) : rows.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">Нет данных</div>
           ) : (
@@ -215,7 +355,7 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((row, i) => (
+                  {rows.map((row: any, i: number) => (
                     <TableRow key={i}>
                       {meta?.columns.map((col: any) => (
                         <TableCell key={col.name}>
@@ -227,6 +367,8 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
                               : "—"
                           ) : col.type === "number" ? (
                             Number(row[col.name]).toLocaleString("ru-RU")
+                          ) : col.type === "date" ? (
+                            row[col.name] ? new Date(row[col.name]).toLocaleDateString("ru") : "—"
                           ) : (
                             row[col.name] ?? "—"
                           )}
@@ -240,6 +382,49 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            Стр. {page} из {totalPages} ({totalCount.toLocaleString("ru-RU")} записей)
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+            >
+              &laquo;
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+            >
+              &lsaquo; Назад
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(page + 1)}
+              disabled={page >= totalPages}
+            >
+              Вперёд &rsaquo;
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(totalPages)}
+              disabled={page >= totalPages}
+            >
+              &raquo;
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

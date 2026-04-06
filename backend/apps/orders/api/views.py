@@ -1,3 +1,4 @@
+from django.db import models as db_models
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models.functions import Coalesce, Greatest
@@ -10,16 +11,20 @@ from apps.core.mixins.export import ExportMixin
 from apps.core.mixins.metadata import MetadataMixin
 from apps.core.workflow import ConditionNotMet, TransitionNotAllowed, WorkflowService
 from apps.directory.models import Contact, Equipment, Facility, OrgUnit, TypeOfWork
-from apps.orders.models import Contract, Order, OrderFile
+from apps.orders.models import Contract, DocumentTemplate, Order, OrderFile, ShipmentBatch
 from apps.orders.services.order_service import get_next_order_number
+from apps.orders.services.document_gen_service import generate_document
 
 from .filters import OrderFilter
 from .serializers import (
     ContractSerializer,
+    DocumentTemplateSerializer,
+    GenerateDocumentSerializer,
     OrderCreateSerializer,
     OrderDetailSerializer,
     OrderFileSerializer,
     OrderListSerializer,
+    ShipmentBatchSerializer,
 )
 
 User = get_user_model()
@@ -382,6 +387,8 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     def upload_files(self, request, order_number=None):
         order = self.get_object()
         files = request.FILES.getlist("files")
+        category = request.data.get("category", "general")
+        description = request.data.get("description", "")
         created = []
         for f in files:
             order_file = OrderFile.objects.create(
@@ -389,6 +396,8 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
                 file=f,
                 original_name=f.name,
                 file_size=f.size,
+                category=category,
+                description=description,
             )
             created.append(order_file)
         serializer = OrderFileSerializer(created, many=True)
@@ -397,10 +406,25 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def files(self, request, order_number=None):
         order = self.get_object()
-        serializer = OrderFileSerializer(order.files.all(), many=True)
+        qs = order.files.all()
+        category = request.query_params.get("category")
+        if category:
+            qs = qs.filter(category=category)
+        serializer = OrderFileSerializer(qs, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["delete"], url_path=r"files/(?P<file_id>\d+)")
+    @action(detail=True, methods=["patch"], url_path=r"files/(?P<file_id>\d+)")
+    def update_file(self, request, order_number=None, file_id=None):
+        order = self.get_object()
+        order_file = order.files.filter(id=file_id).first()
+        if not order_file:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = OrderFileSerializer(order_file, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["delete"], url_path=r"files/(?P<file_id>\d+)/delete")
     def delete_file(self, request, order_number=None, file_id=None):
         order = self.get_object()
         order.files.filter(id=file_id).delete()
@@ -427,3 +451,67 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(order=order)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="generate-document")
+    def generate_document(self, request, order_number=None):
+        """Generate a DOCX document from a template for this order."""
+        from django.http import HttpResponse
+
+        order = self.get_object()
+        serializer = GenerateDocumentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        template = DocumentTemplate.objects.get(pk=serializer.validated_data["template_id"])
+        extra_data = serializer.validated_data.get("extra_data", {})
+
+        buf = generate_document(order, template, extra_data)
+        filename = f"{template.name}_{order.order_number}.docx"
+        response = HttpResponse(
+            buf.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+
+    # ── Shipment batches ──────────────────────────────────────────
+
+    @action(detail=True, methods=["get", "post"], url_path="shipments")
+    def shipments(self, request, order_number=None):
+        order = self.get_object()
+        if request.method == "GET":
+            batches = order.shipment_batches.all()
+            return Response(ShipmentBatchSerializer(batches, many=True).data)
+
+        # POST: create new batch
+        next_num = (order.shipment_batches.aggregate(
+            m=db_models.Max("batch_number"))["m"] or 0) + 1
+        serializer = ShipmentBatchSerializer(data={**request.data, "batch_number": next_num})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(order=order)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["patch", "delete"], url_path=r"shipments/(?P<batch_id>\d+)")
+    def shipment_detail(self, request, order_number=None, batch_id=None):
+        order = self.get_object()
+        batch = order.shipment_batches.filter(id=batch_id).first()
+        if not batch:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            batch.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = ShipmentBatchSerializer(batch, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class DocumentTemplateViewSet(viewsets.ReadOnlyModelViewSet):
+    """List and retrieve document templates."""
+
+    queryset = DocumentTemplate.objects.filter(is_active=True)
+    serializer_class = DocumentTemplateSerializer
+    search_fields = ["name"]
+    filterset_fields = ["entity", "document_type"]

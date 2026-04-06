@@ -1,6 +1,7 @@
 import os
 
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from apps.core.models import BaseModel
 
@@ -47,6 +48,8 @@ class DeviceComponent(BaseModel):
     additional_data = models.JSONField(
         blank=True, null=True, verbose_name="Дополнительные данные"
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ["component_name"]

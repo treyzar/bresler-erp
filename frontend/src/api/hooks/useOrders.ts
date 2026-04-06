@@ -63,8 +63,17 @@ export function useOrderHistory(id: number | null) {
 export function useUploadOrderFiles() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, files }: { id: number; files: File[] }) =>
-      ordersApi.uploadFiles(id, files),
+    mutationFn: ({ id, files, category, description }: { id: number; files: File[]; category?: string; description?: string }) =>
+      ordersApi.uploadFiles(id, files, category, description),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  })
+}
+
+export function useUpdateOrderFile() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, fileId, data }: { orderId: number; fileId: number; data: { category?: string; description?: string } }) =>
+      ordersApi.updateFile(orderId, fileId, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   })
 }

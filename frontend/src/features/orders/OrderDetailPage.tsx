@@ -1,5 +1,6 @@
+import { useState } from "react"
 import { useNavigate, useParams } from "react-router"
-import { Pencil, ArrowLeft, Check, ArrowRight as ArrowRightIcon } from "lucide-react"
+import { Pencil, ArrowLeft, Check, ArrowRight as ArrowRightIcon, FileDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,13 +9,16 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { ORDER_STATUSES, ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
+import { ORDER_STATUSES, ORDER_TYPES, ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
 import { useOrder, useOrderTransitions, useOrderTransition } from "@/api/hooks/useOrders"
 import { useOrderPresence } from "@/hooks/useOrderPresence"
 import { OrgUnitBreadcrumb } from "@/components/shared/OrgUnitBreadcrumb"
 import { ContractSection } from "./ContractSection"
 import { OrderFilesSection } from "./OrderFilesSection"
 import { OrderHistorySection } from "./OrderHistorySection"
+import { OffersTab } from "./OffersTab"
+import { GenerateDocumentDialog } from "./GenerateDocumentDialog"
+import { ShipmentsTab } from "./ShipmentsTab"
 import { Timeline } from "@/components/shared/Timeline"
 import { LinkedDocuments } from "@/components/shared/LinkedDocuments"
 import { useOrderHistory } from "@/api/hooks/useOrders"
@@ -94,6 +98,7 @@ export function OrderDetailPage() {
   const { data: transitions = [] } = useOrderTransitions(orderNum)
   const transitionMutation = useOrderTransition()
   const activeUsers = useOrderPresence(orderNumber)
+  const [generateDocOpen, setGenerateDocOpen] = useState(false)
 
   const handleTransition = (toStatus: string) => {
     transitionMutation.mutate(
@@ -201,9 +206,15 @@ export function OrderDetailPage() {
       <Tabs defaultValue="info">
         <TabsList>
           <TabsTrigger value="info">Основная информация</TabsTrigger>
+          <TabsTrigger value="offers">
+            ТКП {order.order_participants.length > 0 && `(${order.order_participants.length})`}
+          </TabsTrigger>
           <TabsTrigger value="contract">Контракт</TabsTrigger>
           <TabsTrigger value="files">
             Файлы {order.files.length > 0 && `(${order.files.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="shipments">
+            Отгрузки {order.shipment_batches.length > 0 && `(${order.shipment_batches.length})`}
           </TabsTrigger>
           <TabsTrigger value="timeline">Обсуждение</TabsTrigger>
           <TabsTrigger value="history">История</TabsTrigger>
@@ -220,6 +231,9 @@ export function OrderDetailPage() {
                 <CardContent className="space-y-3">
                   <InfoRow label="Номер заказа" value={String(order.order_number)} />
                   <InfoRow label="Статус" value={statusLabel} />
+                  {order.order_type && order.order_type !== "standard" && (
+                    <InfoRow label="Тип заказа" value={ORDER_TYPES[order.order_type as keyof typeof ORDER_TYPES] ?? order.order_type} />
+                  )}
                   <InfoRow
                     label="Менеджеры"
                     value={order.manager_names.length > 0
@@ -360,12 +374,34 @@ export function OrderDetailPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="offers" className="mt-4">
+          <OffersTab
+            orderId={order.id}
+            orderNumber={order.order_number}
+            participants={order.order_participants}
+          />
+        </TabsContent>
+
         <TabsContent value="contract" className="mt-4">
           <ContractSection orderId={orderNum} contract={order.contract} />
         </TabsContent>
 
-        <TabsContent value="files" className="mt-4">
+        <TabsContent value="files" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => setGenerateDocOpen(true)}>
+              <FileDown className="size-3.5 mr-1" /> Сформировать документ
+            </Button>
+          </div>
           <OrderFilesSection orderId={orderNum} files={order.files} />
+          <GenerateDocumentDialog
+            open={generateDocOpen}
+            onOpenChange={setGenerateDocOpen}
+            orderNumber={orderNum}
+          />
+        </TabsContent>
+
+        <TabsContent value="shipments" className="mt-4">
+          <ShipmentsTab orderNumber={orderNum} batches={order.shipment_batches} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">

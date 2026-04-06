@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.orders.models import Contract, Order, OrderFile, OrderOrgUnit, OrderParticipant
+from apps.orders.models import Contract, DocumentTemplate, Order, OrderFile, OrderOrgUnit, OrderParticipant, ShipmentBatch
 
 
 class OrderOrgUnitSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class OrderParticipantSerializer(serializers.ModelSerializer):
 class OrderFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderFile
-        fields = ("id", "file", "original_name", "file_size", "created_at")
+        fields = ("id", "file", "original_name", "file_size", "category", "description", "created_at")
         read_only_fields = ("id", "file_size", "created_at")
 
 
@@ -37,6 +37,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "contract_number",
             "contract_date",
             "status",
+            "payment_template",
             "advance_percent",
             "intermediate_percent",
             "post_payment_percent",
@@ -45,6 +46,33 @@ class ContractSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class DocumentTemplateSerializer(serializers.ModelSerializer):
+    entity_display = serializers.CharField(source="get_entity_display", read_only=True)
+    document_type_display = serializers.CharField(source="get_document_type_display", read_only=True)
+
+    class Meta:
+        model = DocumentTemplate
+        fields = (
+            "id", "name", "document_type", "document_type_display",
+            "entity", "entity_display", "template_file",
+            "description", "is_active",
+            "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class GenerateDocumentSerializer(serializers.Serializer):
+    template_id = serializers.IntegerField()
+    extra_data = serializers.DictField(required=False, default=dict)
+
+
+class ShipmentBatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShipmentBatch
+        fields = ("id", "batch_number", "ship_date", "description", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
 
 
@@ -75,6 +103,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "order_number",
+            "order_type",
             "tender_number",
             "status",
             "status_display",
@@ -154,6 +183,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     files = OrderFileSerializer(many=True, read_only=True)
+    shipment_batches = ShipmentBatchSerializer(many=True, read_only=True)
     manager_ids = serializers.PrimaryKeyRelatedField(
         source="managers",
         many=True,
@@ -195,6 +225,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "order_number",
+            "order_type",
             "tender_number",
             "status",
             "status_display",
@@ -213,6 +244,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "order_org_units",
             "order_participants",
             "files",
+            "shipment_batches",
             "manager_ids",
             "manager_names",
             "contact_ids",
@@ -265,6 +297,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
     org_units_data = serializers.ListField(
         child=serializers.DictField(),
+        write_only=True,
+        required=False,
+        default=[],
+    )
+    participants_data = serializers.ListField(
+        child=serializers.DictField(),
         required=False,
         write_only=True,
     )
@@ -273,6 +311,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         model = Order
         fields = (
             "order_number",
+            "order_type",
             "tender_number",
             "status",
             "note",
@@ -289,19 +328,25 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "facilities",
             "related_orders",
             "org_units_data",
+            "participants_data",
         )
 
     def create(self, validated_data):
         org_units_data = validated_data.pop("org_units_data", [])
+        participants_data = validated_data.pop("participants_data", [])
         order = super().create(validated_data)
         self._save_org_units(order, org_units_data)
+        self._save_participants(order, participants_data)
         return order
 
     def update(self, instance, validated_data):
         org_units_data = validated_data.pop("org_units_data", None)
+        participants_data = validated_data.pop("participants_data", None)
         order = super().update(instance, validated_data)
         if org_units_data is not None:
             self._save_org_units(order, org_units_data)
+        if participants_data is not None:
+            self._save_participants(order, participants_data)
         return order
 
     @staticmethod
@@ -313,4 +358,14 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 org_unit_id=entry["org_unit"],
                 role=entry.get("role", ""),
                 order_index=i,
+            )
+
+    @staticmethod
+    def _save_participants(order, participants_data):
+        order.orderparticipant_set.all().delete()
+        for i, entry in enumerate(participants_data):
+            OrderParticipant.objects.create(
+                order=order,
+                org_unit_id=entry["org_unit"],
+                order_index=i + 1,
             )

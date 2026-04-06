@@ -51,6 +51,7 @@ LOCAL_APPS = [
     "apps.comments",
     "apps.importer",
     "apps.reports",
+    "apps.specs",
     "apps.edo.doc_builder",
     "apps.edo.parser_app",
     "apps.edo.templates_app",

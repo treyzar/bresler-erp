@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Contract, Order, OrderFile, OrderOrgUnit, OrderParticipant
+from .models import Contract, DocumentTemplate, Order, OrderFile, OrderOrgUnit, OrderParticipant
 
 
 class OrderOrgUnitInline(admin.TabularInline):
@@ -39,3 +39,10 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields = ("order_number", "tender_number", "note")
     inlines = [ContractInline, OrderOrgUnitInline, OrderParticipantInline, OrderFileInline]
     filter_horizontal = ("contacts", "managers", "equipments", "works", "related_orders")
+
+
+@admin.register(DocumentTemplate)
+class DocumentTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "document_type", "entity", "is_active")
+    list_filter = ("entity", "document_type", "is_active")
+    search_fields = ("name",)

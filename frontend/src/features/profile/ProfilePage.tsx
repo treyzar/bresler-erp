@@ -6,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import {
-  ClipboardList, Bell, User as UserIcon, Settings, Camera, Trash2, Eye, Lock,
-  AlertTriangle, Clock, CheckCircle2,
+  ClipboardList, Bell, User as UserIcon, Settings, Camera, Trash2, Lock,
+  AlertTriangle, Clock, CheckCircle2, Building2, BarChart3, FileText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,8 +21,10 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { usersApi } from "@/api/usersApi"
-import type { ActivityItem, MyOrderItem } from "@/api/usersApi"
-import { ORDER_STATUSES } from "@/api/types"
+import type { ActivityItem, MyOrderItem, MyOfferItem } from "@/api/usersApi"
+import { ORDER_STATUSES, OFFER_STATUSES } from "@/api/types"
+import { MyCustomersTab } from "./MyCustomersTab"
+import { MyStatsTab } from "./MyStatsTab"
 
 // ── Schemas ──
 
@@ -68,9 +70,17 @@ export function ProfilePage() {
     queryFn: () => usersApi.getMe(),
   })
 
+  const [ordersGroup, setOrdersGroup] = useState<string>("current")
+  const [ordersPage, setOrdersPage] = useState(1)
+
   const { data: myOrdersData } = useQuery({
-    queryKey: ["users", "me", "orders"],
-    queryFn: () => usersApi.myOrders(),
+    queryKey: ["users", "me", "orders", ordersGroup, ordersPage],
+    queryFn: () => usersApi.myOrders({ group: ordersGroup, page: ordersPage }),
+  })
+
+  const { data: myOffers } = useQuery({
+    queryKey: ["users", "me", "offers"],
+    queryFn: () => usersApi.myOffers(),
   })
 
   const { data: activityData } = useQuery({
@@ -114,8 +124,9 @@ export function ProfilePage() {
       {/* Quick stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <NumberCard label="Мои заказы" value={stats.total} icon={<ClipboardList className="size-4" />} />
+          <NumberCard label="Всего заказов" value={stats.total} icon={<ClipboardList className="size-4" />} />
           <NumberCard label="В работе" value={stats.in_progress} icon={<Clock className="size-4" />} />
+          <NumberCard label="Реализовано" value={stats.shipped} icon={<CheckCircle2 className="size-4" />} />
           <NumberCard
             label="Просрочено"
             value={stats.overdue}
@@ -137,6 +148,14 @@ export function ProfilePage() {
             <ClipboardList className="size-4" />
             Мои заказы
           </TabsTrigger>
+          <TabsTrigger value="customers" className="gap-1.5">
+            <Building2 className="size-4" />
+            Мои заказчики
+          </TabsTrigger>
+          <TabsTrigger value="stats" className="gap-1.5">
+            <BarChart3 className="size-4" />
+            Статистика
+          </TabsTrigger>
           <TabsTrigger value="activity" className="gap-1.5">
             <Bell className="size-4" />
             Активность
@@ -152,44 +171,132 @@ export function ProfilePage() {
         </TabsList>
 
         {/* ── Tab: My Orders ── */}
-        <TabsContent value="orders" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Заказы, где я менеджер</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!myOrdersData?.orders.length ? (
-                <p className="text-muted-foreground text-sm">У вас пока нет назначенных заказов</p>
-              ) : (
-                <div className="divide-y">
-                  {myOrdersData.orders.map((order: MyOrderItem) => (
-                    <button
-                      key={order.id}
-                      onClick={() => navigate(`/orders/${order.order_number}`)}
-                      className="flex items-center justify-between py-3 w-full text-left hover:bg-muted/50 px-2 -mx-2 rounded"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold">#{order.order_number}</span>
-                        {order.customer_name && (
-                          <span className="text-muted-foreground text-sm">{order.customer_name}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {order.ship_date && (
+        <TabsContent value="orders" className="mt-4 space-y-4">
+          {/* Sub-tabs for order groups */}
+          <div className="flex items-center gap-2">
+            {([
+              ["current", "Текущие"],
+              ["shipped", "Отгруженные"],
+              ["offers", "КП"],
+              ["all", "Все"],
+            ] as const).map(([key, label]) => (
+              <Button
+                key={key}
+                variant={ordersGroup === key ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setOrdersGroup(key); setOrdersPage(1) }}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+
+          {ordersGroup === "offers" ? (
+            /* КП list */
+            <Card>
+              <CardContent className="pt-4">
+                {!myOffers?.length ? (
+                  <p className="text-muted-foreground text-sm">Нет коммерческих предложений</p>
+                ) : (
+                  <div className="divide-y">
+                    {myOffers.map((offer) => (
+                      <button
+                        key={offer.id}
+                        onClick={() => navigate(`/orders/${offer.order_number}`)}
+                        className="flex items-center justify-between py-3 w-full text-left hover:bg-muted/50 px-2 -mx-2 rounded"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="size-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">{offer.offer_number}</span>
+                          <span className="text-muted-foreground text-sm">{offer.participant_name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground">
-                            отгрузка: {new Date(order.ship_date).toLocaleDateString("ru")}
+                            {new Date(offer.date).toLocaleDateString("ru")}
                           </span>
-                        )}
-                        <Badge variant={statusVariant[order.status] ?? "outline"}>
-                          {order.status_display}
-                        </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            {OFFER_STATUSES[offer.status as keyof typeof OFFER_STATUSES] ?? offer.status}
+                          </Badge>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            /* Orders list */
+            <Card>
+              <CardContent className="pt-4">
+                {!myOrdersData?.orders.length ? (
+                  <p className="text-muted-foreground text-sm">Нет заказов</p>
+                ) : (
+                  <>
+                    <div className="divide-y">
+                      {myOrdersData.orders.map((order: MyOrderItem) => (
+                        <button
+                          key={order.id}
+                          onClick={() => navigate(`/orders/${order.order_number}`)}
+                          className="flex items-center justify-between py-3 w-full text-left hover:bg-muted/50 px-2 -mx-2 rounded"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold">#{order.order_number}</span>
+                            {order.customer_name && (
+                              <span className="text-muted-foreground text-sm">{order.customer_name}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {order.contract_amount && (
+                              <span className="text-xs font-medium">
+                                {Number(order.contract_amount).toLocaleString("ru-RU")} руб.
+                              </span>
+                            )}
+                            {order.payment_status && (
+                              <span className="text-xs text-muted-foreground">{order.payment_status}</span>
+                            )}
+                            {order.ship_date && (
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(order.ship_date).toLocaleDateString("ru")}
+                              </span>
+                            )}
+                            <Badge variant={statusVariant[order.status] ?? "outline"}>
+                              {order.status_display}
+                            </Badge>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {/* Pagination */}
+                    {myOrdersData.count > myOrdersData.page_size && (
+                      <div className="flex items-center justify-between pt-4">
+                        <span className="text-xs text-muted-foreground">
+                          {myOrdersData.count} заказов, стр. {myOrdersData.page}
+                        </span>
+                        <div className="flex gap-1">
+                          <Button variant="outline" size="sm" onClick={() => setOrdersPage(ordersPage - 1)} disabled={ordersPage <= 1}>
+                            Назад
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setOrdersPage(ordersPage + 1)} disabled={myOrdersData.orders.length < myOrdersData.page_size}>
+                            Вперёд
+                          </Button>
+                        </div>
                       </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Tab: My Customers ── */}
+        <TabsContent value="customers" className="mt-4">
+          <MyCustomersTab />
+        </TabsContent>
+
+        {/* ── Tab: Statistics ── */}
+        <TabsContent value="stats" className="mt-4">
+          <MyStatsTab />
         </TabsContent>
 
         {/* ── Tab: Activity ── */}

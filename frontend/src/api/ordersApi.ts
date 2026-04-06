@@ -1,12 +1,14 @@
 import apiClient from "./client"
 import type {
   Contract,
+  DocumentTemplate,
   ListParams,
   OrderDetail,
   OrderFile,
   OrderHistoryRecord,
   OrderListItem,
   PaginatedResponse,
+  ShipmentBatch,
 } from "./types"
 
 export interface FuzzySuggestion {
@@ -50,22 +52,31 @@ export const ordersApi = {
     return data
   },
 
-  uploadFiles: async (id: number, files: File[]) => {
+  uploadFiles: async (id: number, files: File[], category = "general", description = "") => {
     const formData = new FormData()
     files.forEach((f) => formData.append("files", f))
+    formData.append("category", category)
+    formData.append("description", description)
     const { data } = await apiClient.post<OrderFile[]>(`/orders/${id}/upload-files/`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     })
     return data
   },
 
-  getFiles: async (id: number) => {
-    const { data } = await apiClient.get<OrderFile[]>(`/orders/${id}/files/`)
+  getFiles: async (id: number, category?: string) => {
+    const params: Record<string, string> = {}
+    if (category) params.category = category
+    const { data } = await apiClient.get<OrderFile[]>(`/orders/${id}/files/`, { params })
+    return data
+  },
+
+  updateFile: async (orderId: number, fileId: number, payload: { category?: string; description?: string }) => {
+    const { data } = await apiClient.patch<OrderFile>(`/orders/${orderId}/files/${fileId}/`, payload)
     return data
   },
 
   deleteFile: async (id: number, fileId: number) => {
-    await apiClient.delete(`/orders/${id}/files/${fileId}/`)
+    await apiClient.delete(`/orders/${id}/files/${fileId}/delete/`)
   },
 
   getContract: async (id: number) => {
@@ -106,5 +117,48 @@ export const ordersApi = {
       { status: toStatus }
     )
     return data
+  },
+
+  // Shipment batches
+  getShipments: async (orderNumber: number) => {
+    const { data } = await apiClient.get<ShipmentBatch[]>(`/orders/${orderNumber}/shipments/`)
+    return data
+  },
+
+  createShipment: async (orderNumber: number, payload: { ship_date: string; description?: string }) => {
+    const { data } = await apiClient.post<ShipmentBatch>(`/orders/${orderNumber}/shipments/`, payload)
+    return data
+  },
+
+  updateShipment: async (orderNumber: number, batchId: number, payload: Partial<ShipmentBatch>) => {
+    const { data } = await apiClient.patch<ShipmentBatch>(`/orders/${orderNumber}/shipments/${batchId}/`, payload)
+    return data
+  },
+
+  deleteShipment: async (orderNumber: number, batchId: number) => {
+    await apiClient.delete(`/orders/${orderNumber}/shipments/${batchId}/`)
+  },
+
+  // Document templates
+  listTemplates: async (params?: Record<string, string>) => {
+    const { data } = await apiClient.get<PaginatedResponse<DocumentTemplate>>(
+      "/orders/document-templates/", { params },
+    )
+    return data.results
+  },
+
+  generateDocument: async (orderNumber: number, templateId: number, extraData?: Record<string, string>) => {
+    const { data, headers } = await apiClient.post(
+      `/orders/${orderNumber}/generate-document/`,
+      { template_id: templateId, extra_data: extraData },
+      { responseType: "blob" },
+    )
+    const filename = headers["content-disposition"]?.match(/filename="?(.+?)"?$/)?.[1] ?? `document_${orderNumber}.docx`
+    const url = URL.createObjectURL(data)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
   },
 }

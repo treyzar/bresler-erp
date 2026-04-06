@@ -434,24 +434,337 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 - [x] Финальные тесты frontend (Vitest): 55 тестов (useDebounce, useAuthStore, useUIStore, API client, ConfirmDialog, MultiSelect, useOrderPresence, useDirectoryQuery)
 - [ ] **MVP-1 Ready** — деплой на staging
 
-### Фаза 2: Устройства + Спецификации + ТКП (4-5 недель)
+### Фаза 2: Устройства + ТКП + Спецификации (8-10 недель)
 
-**Неделя 7-8:** apps/devices/ — DeviceRZA, ModRZA, Parameter (tree), ParameterValue, Components, ProductCategory (tree), Product, ProductAttribute
-**Неделя 9-10:** apps/specs/ — Specification, DeviceInSpecification, TechnicalCommercialOffer. Генерация DOCX.
-**Неделя 11:** React: каталог терминалов, конфигуратор ТКП, экспорт документов
+> **Источники требований:** workflow.vsdx (процесс оформления заказа), ТЗ от сотрудника ОТМ, анализ legacy-системы «Маркетинг».
+> **Примечание:** apps/devices/ (каталог устройств РЗА) уже реализован — DeviceRZA, ModRZA, Parameter (tree), ParameterValue, Components, ProductCategory (tree), Product, ProductAttribute, BOM. Остаётся реализовать apps/specs/ (ТКП и спецификации).
 
-### Фаза 3: ЭДО + Миграция данных (3-4 недели)
+#### 2.1 Модели данных `apps/specs/`
+
+**CommercialOffer (Технико-коммерческое предложение / КП):**
+- `order` → FK(Order) — привязка к заказу
+- `participant` → FK(OrderParticipant) — участник запроса (СВЭЛ, ЧЭМЗ и т.д.)
+- `offer_number` (CharField, unique) — автонумерация: `{contract_number}/{participant_index}-{version}` (пример: `4070/1-1`, `4070/2-3`)
+- `version` (PositiveIntegerField, default=1) — версия КП (при новом КП по тому же участнику: version+1)
+- `date` (DateField, default=today) — дата КП, можно изменить вручную
+- `valid_days` (PositiveIntegerField) — срок действия (14, 30, 60 дней — выпадающий список + ручной ввод)
+- `valid_until` (DateField, computed) — date + valid_days
+- `manager` → FK(User) — менеджер (привязка к ЛК), отображается в разделе «По вопросам обращаться»
+- `executor` → FK(User) — исполнитель (кто оформляет КП)
+- `status` (CharField) — draft / sent / accepted / rejected / expired
+- `vat_rate` (DecimalField) — ставка НДС (0% / 20%, выпадающий список)
+- `payment_terms` (CharField) — условия оплаты из предустановленных шаблонов:
+  - `50_50`: 50% аванс, 50% перед отгрузкой
+  - `100_post_7`: 100% в течение 7 дней после отгрузки
+  - `100_post_30`: 100% в течение 30 дней после отгрузки
+  - `custom`: произвольные условия
+- `advance_percent` / `pre_shipment_percent` / `post_payment_percent` (DecimalField) — %, заполняется автоматически из шаблона или вручную при custom
+- `manufacturing_period` (CharField) — срок изготовления: `30-60`, `60-90`, `90-120`, `120-150`, `150-180` (выпадающий список + произвольный ввод)
+- `warranty_months` (PositiveIntegerField, default=60) — гарантия в месяцах (12, 36, 60 — выпадающий список)
+- `delivery_included` (BooleanField, default=False) — доставка включена
+- `delivery_city` (CharField, blank=True) — город доставки (если включена)
+- `additional_conditions` (TextField, blank=True) — доп. условия (МЭК, соответствие ТЗ и прочее). Если пусто — не выводится в КП
+- `is_template` (BooleanField, default=False) — типовое КП для участника (сохранение спец. условий)
+- `based_on` → FK(self, nullable) — «заполнить на основании» другого КП
+- history = HistoricalRecords()
+
+**OfferWorkItem (Работы в КП):**
+- `offer` → FK(CommercialOffer)
+- `work_type` → FK(TypeOfWork) — вид работ (ШНР, ШМР, ПНР, СМР и др.)
+- `included` (BooleanField, default=False) — включено / не включено
+- `days` (PositiveIntegerField, default=15) — кол-во дней
+- `specialists` (PositiveIntegerField, default=1) — кол-во специалистов
+- `trips` (PositiveIntegerField, default=1) — кол-во выездов
+
+**Specification (Спецификация к КП):**
+- `offer` → OneToOne(CommercialOffer) — одна спецификация на КП
+- `total_amount` (DecimalField, computed) — итоговая сумма
+- `total_amount_with_vat` (DecimalField, computed) — итого с НДС
+- history = HistoricalRecords()
+
+**SpecificationLine (Позиция спецификации):**
+- `specification` → FK(Specification)
+- `line_number` (PositiveIntegerField) — порядковый номер (сквозная нумерация в КП)
+- `product` → FK(Product, nullable) — позиция из каталога (может быть и ручной ввод)
+- `device_rza` → FK(DeviceRZA, nullable) — устройство РЗА
+- `mod_rza` → FK(ModRZA, nullable) — модификация
+- `name` (CharField) — наименование (из Product.name или ручной ввод)
+- `quantity` (PositiveIntegerField, default=1)
+- `unit_price` (DecimalField) — цена за единицу
+- `total_price` (DecimalField, computed) — quantity × unit_price
+- `delivery_date` (DateField, nullable) — срок поставки позиции (по умолчанию = общий, но можно изменить для конкретной позиции — поддержка нескольких партий)
+- `note` (TextField, blank=True) — примечание
+
+**ParticipantContact (Контакты участника запроса):**
+- `participant` → FK(OrderParticipant) — участник запроса
+- `contact` → FK(Contact) — контактное лицо
+- `is_primary` (BooleanField, default=False)
+> Решает проблему: сейчас контакты привязаны к заказу целиком, а по ТЗ у каждого участника свои контактные лица.
+
+#### 2.2 Сервисы `apps/specs/services/`
+
+**offer_service.py:**
+- `create_offer(order, participant, user)` — создание КП с автонумерацией
+- `create_from_template(offer, participant)` — «заполнить на основании» другого КП (копирование условий, спецификации)
+- `next_version(order, participant)` — вычисление следующей версии для участника
+- `auto_number(offer)` — генерация номера `{contract}/{participant_index}-{version}`
+
+**specification_service.py:**
+- `fill_from_offer(specification, source_offer)` — заполнить спецификацию из другого КП
+- `recalculate_totals(specification)` — пересчёт итогов
+- `fill_from_products(specification, product_ids)` — заполнить из каталога продуктов
+
+**document_service.py (генерация DOCX):**
+- `generate_offer_docx(offer)` — генерация КП по шаблону (python-docx / docxtpl)
+- `generate_specification_docx(specification)` — выгрузка спецификации по шаблону
+- Шаблоны хранятся в `apps/specs/templates/docx/` (offer_template.docx, specification_template.docx)
+- Подстановка данных: реквизиты участника, позиции спецификации, условия оплаты, работы, гарантия
+- Пункт КП про оплату формируется автоматически: если 50/50 → «Срок отгрузки — в течение 10 рабочих дней после полной оплаты»; если с постоплатой → «...после уведомления о готовности»
+
+#### 2.3 API `apps/specs/api/`
+
+```
+# ТКП
+GET    /api/orders/{id}/offers/                    # Список КП по заказу (фильтр по участнику)
+POST   /api/orders/{id}/offers/                    # Создать КП
+GET    /api/offers/{id}/                           # Детали КП
+PATCH  /api/offers/{id}/                           # Обновить КП
+DELETE /api/offers/{id}/                           # Удалить КП
+POST   /api/offers/{id}/copy/                      # Заполнить на основании (копия)
+GET    /api/offers/{id}/export/                    # Выгрузка DOCX
+
+# Спецификация
+GET    /api/offers/{id}/specification/             # Получить спецификацию
+PATCH  /api/offers/{id}/specification/             # Обновить позиции
+POST   /api/offers/{id}/specification/fill/        # Заполнить из каталога / другого КП
+GET    /api/offers/{id}/specification/export/      # Выгрузка спецификации DOCX
+
+# Работы в КП
+GET    /api/offers/{id}/works/                     # Список работ КП
+PATCH  /api/offers/{id}/works/                     # Bulk-обновление работ
+
+# Контакты участника
+GET    /api/participants/{id}/contacts/            # Контакты участника
+POST   /api/participants/{id}/contacts/            # Привязать контакт
+DELETE /api/participants/{id}/contacts/{contact_id}/ # Отвязать контакт
+```
+
+#### 2.4 Frontend — React
+
+**Неделя 7-8: Backend models + API + services + tests**
+- [x] apps/devices/ — уже реализован
+- [ ] Модели: CommercialOffer, OfferWorkItem, Specification, SpecificationLine, ParticipantContact
+- [ ] Миграции
+- [ ] Сервисы: offer_service, specification_service
+- [ ] API: ViewSets, serializers, filters
+- [ ] Тесты: модели, сервисы, API
+
+**Неделя 9-10: Backend — генерация документов + доработки**
+- [ ] document_service.py — генерация DOCX (python-docx / docxtpl)
+- [ ] DOCX-шаблоны: КП, спецификация
+- [ ] Логика автоформирования текста условий оплаты и отгрузки
+- [ ] Доработка OrderParticipant: привязка контактов per-participant
+- [ ] Тесты генерации документов
+
+**Неделя 11-12: Frontend — ТКП**
+- [ ] Вкладка «ТКП» в OrderDetailPage — список КП по участникам запроса
+- [ ] Форма создания/редактирования КП (React Hook Form + Zod):
+  - Выбор участника, менеджера, исполнителя
+  - Условия оплаты (шаблоны + custom), НДС, срок изготовления, гарантия
+  - Доставка (вкл/выкл + город)
+  - Доп. условия (textarea)
+- [ ] Таблица работ в КП (OfferWorkItem): включено, вид, дни, специалисты, выезды
+- [ ] Кнопка «Заполнить на основании» — выбор источника КП
+- [ ] Кнопка «Скачать DOCX»
+- [ ] Версионирование: список версий КП по участнику
+
+**Неделя 13-14: Frontend — Спецификация**
+- [ ] Редактор спецификации (таблица позиций):
+  - Выбор из каталога Product / DeviceRZA / ModRZA или ручной ввод
+  - Количество, цена, итого (auto-calculated)
+  - Срок поставки per-позиция (несколько партий)
+  - Drag-and-drop сортировка позиций
+- [ ] Кнопка «Заполнить из каталога» — выбор продуктов, авто-подстановка цен
+- [ ] Кнопка «Скачать спецификацию DOCX»
+- [ ] Итоги: сумма без НДС, НДС, итого с НДС
+- [ ] Контакты участника запроса — привязка ФИО к конкретному участнику
+
+#### 2.5 Доработки существующих модулей (в рамках Фазы 2)
+
+**Order workflow — обход для гарантийных заказов:**
+- [ ] Добавить поле `Order.order_type` (choices: standard / warranty / niokr / replacement) — тип заказа
+- [ ] Для типов warranty/niokr/replacement — переход N→P без обязательного контракта (условие `require_contract_exists` не применяется)
+- [ ] Соответствует workflow.vsdx: «если гарантийный ремонт, замены, НИОКР — сразу в производство»
+
+**Contract — шаблоны условий оплаты:**
+- [ ] Добавить поле `Contract.payment_template` (CharField, choices: 50_50, 100_post_7, 100_post_30, custom)
+- [ ] При выборе шаблона — автозаполнение advance/intermediate/post_payment процентов
+- [ ] Frontend: выпадающий список шаблонов в ContractSection
+
+### Фаза 3: Коммерческая информация + Документы (3-4 недели)
+
+> **Источник:** ТЗ от сотрудника ОТМ — разделы «Коммерческая информация», «Документация», «Исходящие».
+
+#### 3.1 Категоризация файлов заказа
+
+**Доработка OrderFile:**
+- [ ] Добавить поле `category` (choices: general / incoming / outgoing / contract / specification / letter / rkd / other)
+- [ ] Добавить поле `description` (CharField, blank=True) — краткое описание
+- [ ] Frontend: фильтр по категории (входящие / исходящие / все), группировка по дате, сворачиваемые секции
+
+#### 3.2 Генерация типовых документов
+
+**DocumentTemplate модель:**
+- [ ] `name` (CharField) — название шаблона (Типовой договор, Письмо о готовности, Письмо о просрочке, Письмо об оплате, Протокол разногласий)
+- [ ] `template_file` (FileField) — DOCX-шаблон с плейсхолдерами
+- [ ] `document_type` (CharField) — тип документа
+- [ ] `entity` (CharField) — какой компании принадлежит шаблон (НПП / ЧАК / Технопарк)
+
+**API:**
+```
+GET    /api/document-templates/                    # Список шаблонов
+POST   /api/orders/{id}/generate-document/         # Генерация документа по шаблону
+         body: { template_id, extra_data: { dates, amounts, ... } }
+```
+
+**Frontend:**
+- [ ] Кнопка «Сформировать документ» в карточке заказа → выбор шаблона → заполнение полей (даты, суммы, контрагент) → скачать DOCX
+- [ ] Выбор предприятия (НПП, ЧАК, Технопарк) — бланк и реквизиты подставляются автоматически
+
+#### 3.3 Выгрузка референса
+
+- [ ] Новый отчёт `reference_export` — список отгруженных заказов с группировкой по оборудованию
+- [ ] Фильтры: период отгрузки, заказчик (по умолчанию все), оборудование
+- [ ] Группировка оборудования по кодам 01X7: РЗА 6-35, РЗА 110-220, РЗА 330+, ДГР, Генерация, ПА, РАС, ОМП, НКУ, АСУ ТП
+- [ ] Экспорт в Excel
+- [ ] К выгрузке принимаются только заказы со статусом «Отгружен» (S)
+
+#### 3.4 Несколько партий отгрузки
+
+- [ ] Новая модель `ShipmentBatch`: order→FK, batch_number, ship_date, description
+- [ ] Привязка позиций спецификации к партиям
+- [ ] В карточке заказа: вкладка «Отгрузки» — список партий с датами
+
+### Фаза 4: ЛК Менеджера + ЛК Руководителя (2-3 недели)
+
+> **Источник:** ТЗ от сотрудника ОТМ — разделы «ЛК Менеджера», «ЛК Руководителя».
+
+#### 4.1 ЛК Менеджера (расширение ProfilePage)
+
+**Backend:**
+- [ ] Привязка «Мои заказчики» к менеджеру: новая модель `ManagerCustomer` (manager→FK(User), org_unit→FK(OrgUnit)) или новый M2M на User
+- [ ] API: `GET /api/users/me/customers/` — мои заказчики
+- [ ] API: `GET /api/users/me/orders/` — мои заказы с расширенными фильтрами (текущие / отгружено / по годам)
+- [ ] API: `GET /api/users/me/offers/` — мои КП (привязка через CommercialOffer.manager)
+- [ ] API: `GET /api/users/me/stats/` — персональная статистика
+
+**Frontend — ProfilePage (расширение существующего):**
+- [ ] Вкладка «Мои заказчики» — список организаций с кнопкой «Добавить» (добавление нового → автосоздание в справочнике OrgUnit)
+- [ ] Вкладка «Мои заказы» — три подвкладки:
+  - КП (список коммерческих предложений менеджера)
+  - Текущие (заказы в статусах N, D, P, C) — с датой отгрузки / планируемой датой
+  - Отгруженные (статус S) — с суммой договора, статусом оплаты
+- [ ] Группировка по годам (сворачиваемые секции: +2026, +2025, -2024...)
+- [ ] При клике на заказ → открывается карточка заказа (вкладка ТКП, если КП)
+- [ ] Вкладка «Статистика»:
+  - Кол-во реализованных заказов из выданных КП (конверсия)
+  - Моя доля в реализованных проектах компании
+  - Основные заказчики (топ-5 по кол-ву заказов)
+  - Основное оборудование (топ-5)
+  - Разбивка по годам (вкладки / фильтр)
+
+#### 4.2 ЛК Руководителя
+
+**Backend:**
+- [ ] API: `GET /api/users/{id}/orders/` — заказы конкретного менеджера (доступ для группы admin + руководителей)
+- [ ] API: `GET /api/users/{id}/stats/` — статистика менеджера
+- [ ] API: `GET /api/reports/team-performance/` — сводный отчёт по команде
+
+**Frontend — ManagerDashboard (новая страница /manager-dashboard):**
+- [ ] Выбор менеджера из списка (для руководителя)
+- [ ] Та же информация, что в ЛК менеджера, но по выбранному сотруднику
+- [ ] Сводная таблица: все менеджеры, кол-во заказов, сумма, конверсия
+- [ ] У руководителя (Максим Николаевич) — также свои заказчики (как у менеджера)
+
+### Фаза 5: ЭДО + Миграция данных (3-4 недели)
 
 > **Примечание:** Модуль ЭДО (apps/edo/) разрабатывается отдельным разработчиком на аналогичном стеке (Django + DRF + React). Код будет интегрирован в данный проект. Legacy-модуль: `/home/serj/PyCharm/Projects/marketing` (модуль edo).
 
-**Неделя 12-13:** Интеграция apps/edo/ (Document, DocumentFile, DRF ViewSets, React UI) от внешнего разработчика
-**Неделя 14-15:** Скрипты миграции данных из старой PostgreSQL → новая. Mapping таблиц, трансформации, верификация.
+**Неделя 19-20:** Интеграция apps/edo/ (Document, DocumentFile, DRF ViewSets, React UI) от внешнего разработчика
+**Неделя 21-22:** Скрипты миграции данных из старой PostgreSQL → новая. Mapping таблиц, трансформации, верификация.
 
-### Фаза 4: Production + Аналитика (2-3 недели)
+### Фаза 6: Закупки (4-6 недель)
 
-**Неделя 16:** Деплой на production, переключение пользователей
-**Неделя 17:** Дашборды аналитики (React + Recharts)
-**Неделя 18:** Оптимизация, мониторинг, документация
+> **Источник:** ТЗ от сотрудника ОТМ — разделы «Закупки», workflow.vsdx (проверка комплектующих на складе, дефицит → закупки).
+> **Зависимость:** Требуется уточнение у отдела закупок (Поливцев А.) и складского учёта (Казаков А.) по текущим процессам и интеграции с 1С.
+
+#### 6.1 Складской учёт (базовый)
+
+**Модели:**
+- [ ] `StockItem` — позиция на складе: product→FK(Product), quantity, reserved, available (computed), last_updated
+- [ ] `StockMovement` — движение: stock_item→FK, movement_type (receipt/issue/reserve/unreserve), quantity, order→FK(Order, nullable), user→FK, created_at, comment
+- [ ] `StockReservation` — бронирование: stock_item→FK, order→FK, quantity, reserved_by→FK(User), comment, created_at
+
+**API:**
+```
+GET    /api/stock/                                 # Остатки на текущую дату
+GET    /api/stock/{id}/movements/                  # История движений
+POST   /api/stock/{id}/reserve/                    # Забронировать для заказа
+POST   /api/stock/{id}/unreserve/                  # Снять бронь
+```
+
+**Frontend:**
+- [ ] Страница «Склад» — таблица остатков (наименование, артикул, кол-во, резерв, доступно)
+- [ ] При оформлении закупки — подсказка «можно забрать со склада»
+
+#### 6.2 Заявки на закупку
+
+**Модели:**
+- [ ] `PurchaseRequest` — заявка: order→FK, created_by→FK(User, тех. специалист), status (draft/submitted/in_progress/completed), required_date
+- [ ] `PurchaseRequestLine` — позиция заявки: request→FK, product→FK, quantity, target_description (шкаф, дверца, №заводской), note
+
+**Workflow:**
+- Тех. специалист создаёт заявку → направляется закупщикам → подсказка «есть на складе» → закупщик обрабатывает
+
+#### 6.3 Общая база закупок
+
+**Модели:**
+- [ ] `PurchaseOrder` — закупочный ордер: supplier→FK(OrgUnit, business_role=supplier), order→FK(Order, nullable), status (ordered/delivered/partial), purchaser→FK(User)
+- [ ] `PurchaseOrderLine` — позиция: purchase_order→FK, product→FK, quantity, unit_price, total_price, delivery_date
+- [ ] `SupplierConditions` — условия поставщика: supplier→FK(OrgUnit), discount_percent, payment_terms, notes
+
+**API + Frontend:**
+- [ ] Реестр закупок: позиция, поставщик, цена, статус, исполнитель
+- [ ] Фильтры: по договору, поставщику, периоду
+- [ ] Выгрузка: что, кому, сколько, когда (Excel)
+- [ ] Карточка поставщика: основные условия, скидки, история закупок
+
+#### 6.4 Оплата закупок
+
+**Модели:**
+- [ ] `PurchasePayment` — оплата: purchase_order→FK, amount, payment_date, status (pending_approval/approved/paid), approved_by→FK(User, nullable)
+- [ ] Привязка счетов (файлов) к закупке
+
+**Workflow:**
+- Закупщик добавляет счёт + кнопка «Оплатить» → переносится в раздел «На согласование» → руководитель согласовывает → информация выгружается для бухгалтерии
+- Для постоплаты: указывается срок → напоминание при наступлении срока (через Notification system)
+
+#### 6.5 ЛК Руководителя отдела закупок
+
+- [ ] Закупочные цены на позиции за период
+- [ ] Прогноз-график закупок на год (основные позиции)
+- [ ] Доля основного поставщика
+- [ ] Раздел «На оплату» — список счетов на согласование
+
+> **Открытые вопросы (требуют уточнения):**
+> - Интеграция с 1С: можно ли выгружать/загружать данные? Какой формат обмена?
+> - Текущий процесс ведения базы закупок (уточнить у Казакова А.)
+> - Объём складского учёта: полноценный WMS или базовый учёт остатков?
+
+### Фаза 7: Production + Деплой (2-3 недели)
+
+**Неделя 25-26:** Деплой на production, переключение пользователей
+**Неделя 27:** Оптимизация, мониторинг, документация
 
 ---
 
@@ -488,7 +801,9 @@ deploy-prod:     ansible-playbook (manual trigger, only from main)
 | **JWT + LDAP** | Stateless auth для SPA, корпоративная аутентификация |
 | **drf-spectacular** | Автогенерация OpenAPI → автогенерация TypeScript-типов |
 | **Единый OrgUnit** | Все компании (заказчики, посредники, проектировщики и др.) хранятся в OrgUnit, роль определяется через business_role |
-| **simple_history** | Аудит на Order, Contract, OrgUnit — как в старой системе |
+| **simple_history** | Аудит на Order, Contract, OrgUnit, все справочники, devices — полное покрытие |
+| **docxtpl для DOCX** | Генерация КП и спецификаций по шаблонам, гибче чем python-docx |
+| **КП-версионирование** | Версия КП привязана к паре (заказ, участник), авто-инкремент при новом КП |
 | **treebeard MP_Node** | OrgUnit, ProductCategory, Parameter — проверенное решение |
 | **TanStack Table** | Замена jQuery DataTables — серверная пагинация, сортировка, фильтры |
 | **Zustand (не Redux)** | Простой, минимальный boilerplate, достаточен для ERP |

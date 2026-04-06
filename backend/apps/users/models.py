@@ -66,6 +66,17 @@ class User(AbstractUser):
     department = models.CharField("Отдел", max_length=150, blank=True)
     company = models.CharField("Компания", max_length=150, blank=True)
     avatar = models.ImageField("Аватар", upload_to="avatars/", blank=True, null=True)
+    is_department_head = models.BooleanField(
+        "Руководитель отдела",
+        default=False,
+        help_text="Даёт доступ к панели руководителя для своего отдела",
+    )
+    my_customers = models.ManyToManyField(
+        "directory.OrgUnit",
+        blank=True,
+        related_name="assigned_managers",
+        verbose_name="Мои заказчики",
+    )
 
     class Meta:
         verbose_name = "Пользователь"

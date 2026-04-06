@@ -1,4 +1,5 @@
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from apps.core.models import BaseModel
 
@@ -46,6 +47,8 @@ class DeviceRZA(BaseModel):
         verbose_name="Функциональный код устройства",
     )
 
+    history = HistoricalRecords()
+
     class Meta:
         ordering = ["rza_code"]
         verbose_name = "Устройство РЗА"
@@ -82,6 +85,8 @@ class ModRZA(BaseModel):
         default="",
         verbose_name="Код модификации по ШЭТ",
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ["device_rza", "mod_code"]

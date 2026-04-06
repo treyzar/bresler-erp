@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from simple_history.models import HistoricalRecords
 
@@ -12,6 +14,18 @@ class Contract(BaseModel):
         ADVANCE_PAID = "advance_paid", "Аванс оплачен"
         INTERMEDIATE = "intermediate", "Промежуточная оплата"
         FULLY_PAID = "fully_paid", "Полностью оплачен"
+
+    class PaymentTemplate(models.TextChoices):
+        FIFTY_FIFTY = "50_50", "50% аванс, 50% перед отгрузкой"
+        POST_7 = "100_post_7", "100% в течение 7 дней после отгрузки"
+        POST_30 = "100_post_30", "100% в течение 30 дней после отгрузки"
+        CUSTOM = "custom", "Произвольные условия"
+
+    TEMPLATE_PERCENTS = {
+        "50_50": (Decimal("50"), Decimal("0"), Decimal("50")),
+        "100_post_7": (Decimal("0"), Decimal("0"), Decimal("100")),
+        "100_post_30": (Decimal("0"), Decimal("0"), Decimal("100")),
+    }
 
     order = models.OneToOneField(
         "orders.Order",
@@ -61,6 +75,12 @@ class Contract(BaseModel):
         "Срок (дней)",
         null=True,
         blank=True,
+    )
+    payment_template = models.CharField(
+        "Шаблон оплаты",
+        max_length=20,
+        choices=PaymentTemplate.choices,
+        default=PaymentTemplate.CUSTOM,
     )
 
     history = HistoricalRecords()

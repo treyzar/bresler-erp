@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
+from simple_history.models import HistoricalRecords
 from treebeard.mp_tree import MP_Node
 
 from apps.core.models import BaseModel
@@ -153,6 +154,8 @@ class Product(BaseModel):
     valid_to = models.DateField(
         blank=True, null=True, verbose_name="Действует по"
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ["name"]

@@ -57,6 +57,7 @@ interface DataTableProps<T> {
   toolbar?: React.ReactNode
   getRowId?: (row: T) => string
   onRowClick?: (row: T) => void
+  getRowHref?: (row: T) => string
   fixedLayout?: boolean
   onPageSizeChange?: (size: number) => void
   pageSizeOptions?: number[]
@@ -80,6 +81,7 @@ export function DataTable<T>({
   toolbar,
   getRowId,
   onRowClick,
+  getRowHref,
   fixedLayout = false,
   onPageSizeChange,
   pageSizeOptions = PAGE_SIZE_OPTIONS,
@@ -245,15 +247,16 @@ export function DataTable<T>({
       <div className="rounded-md border bg-card">
         <Table className={fixedLayout ? "table-fixed" : undefined}>
           <colgroup>
-            {table.getVisibleFlatColumns().map((col) => {
-              const size = col.getSize()
-              return (
+            {(() => {
+              const visibleCols = table.getVisibleFlatColumns()
+              const totalSize = visibleCols.reduce((sum, col) => sum + col.getSize(), 0)
+              return visibleCols.map((col) => (
                 <col
                   key={col.id}
-                  style={size !== 150 ? { width: size } : undefined}
+                  style={{ width: `${(col.getSize() / totalSize) * 100}%` }}
                 />
-              )
-            })}
+              ))
+            })()}
           </colgroup>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -285,7 +288,22 @@ export function DataTable<T>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className={onRowClick ? "cursor-pointer" : undefined}
-                  onClick={() => onRowClick?.(row.original)}
+                  onClick={(e) => {
+                    if (onRowClick) {
+                      if (e.ctrlKey || e.metaKey) {
+                        const href = getRowHref?.(row.original)
+                        if (href) window.open(href, "_blank")
+                      } else {
+                        onRowClick(row.original)
+                      }
+                    }
+                  }}
+                  onAuxClick={(e) => {
+                    if (e.button === 1 && getRowHref) {
+                      e.preventDefault()
+                      window.open(getRowHref(row.original), "_blank")
+                    }
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

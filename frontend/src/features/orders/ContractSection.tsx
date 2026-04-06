@@ -21,13 +21,20 @@ import {
 } from "@/components/ui/form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Contract } from "@/api/types"
-import { CONTRACT_STATUSES } from "@/api/types"
+import { CONTRACT_STATUSES, CONTRACT_PAYMENT_TEMPLATES } from "@/api/types"
 import { useUpdateContract } from "@/api/hooks/useOrders"
+
+const TEMPLATE_PRESETS: Record<string, { advance: string; intermediate: string; post: string }> = {
+  "50_50": { advance: "50.00", intermediate: "0.00", post: "50.00" },
+  "100_post_7": { advance: "0.00", intermediate: "0.00", post: "100.00" },
+  "100_post_30": { advance: "0.00", intermediate: "0.00", post: "100.00" },
+}
 
 const contractSchema = z.object({
   contract_number: z.string(),
   contract_date: z.string(),
   status: z.string(),
+  payment_template: z.string(),
   advance_percent: z.string(),
   intermediate_percent: z.string(),
   post_payment_percent: z.string(),
@@ -52,6 +59,7 @@ export function ContractSection({ orderId, contract }: ContractSectionProps) {
           contract_number: contract.contract_number,
           contract_date: contract.contract_date ?? "",
           status: contract.status,
+          payment_template: contract.payment_template ?? "custom",
           advance_percent: contract.advance_percent,
           intermediate_percent: contract.intermediate_percent,
           post_payment_percent: contract.post_payment_percent,
@@ -62,6 +70,7 @@ export function ContractSection({ orderId, contract }: ContractSectionProps) {
           contract_number: "",
           contract_date: "",
           status: "not_paid",
+          payment_template: "custom",
           advance_percent: "0.00",
           intermediate_percent: "0.00",
           post_payment_percent: "0.00",
@@ -69,6 +78,19 @@ export function ContractSection({ orderId, contract }: ContractSectionProps) {
           deadline_days: null,
         },
   })
+
+  const paymentTemplate = form.watch("payment_template")
+  const isCustom = paymentTemplate === "custom"
+
+  const handleTemplateChange = (value: string) => {
+    form.setValue("payment_template", value)
+    const preset = TEMPLATE_PRESETS[value]
+    if (preset) {
+      form.setValue("advance_percent", preset.advance)
+      form.setValue("intermediate_percent", preset.intermediate)
+      form.setValue("post_payment_percent", preset.post)
+    }
+  }
 
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
@@ -151,31 +173,22 @@ export function ContractSection({ orderId, contract }: ContractSectionProps) {
               />
               <FormField
                 control={form.control}
-                name="advance_percent"
+                name="payment_template"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Аванс, %</FormLabel>
-                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="intermediate_percent"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Промежуточная, %</FormLabel>
-                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="post_payment_percent"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Постоплата, %</FormLabel>
-                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                    <FormLabel>Условия оплаты</FormLabel>
+                    <Select onValueChange={handleTemplateChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(CONTRACT_PAYMENT_TEMPLATES).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormItem>
                 )}
               />
@@ -191,6 +204,42 @@ export function ContractSection({ orderId, contract }: ContractSectionProps) {
                         value={field.value ?? ""}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                       />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="advance_percent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Аванс, %</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} disabled={!isCustom} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="intermediate_percent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Промежуточная, %</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} disabled={!isCustom} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="post_payment_percent"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Постоплата, %</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} disabled={!isCustom} />
                     </FormControl>
                   </FormItem>
                 )}

@@ -1,4 +1,5 @@
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from apps.core.models import BaseModel
 
@@ -7,6 +8,8 @@ class Equipment(BaseModel):
     """Equipment type reference."""
 
     name = models.CharField("Название", max_length=255, unique=True)
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = "Оборудование"
@@ -22,6 +25,8 @@ class TypeOfWork(BaseModel):
 
     name = models.CharField("Название", max_length=255, unique=True)
 
+    history = HistoricalRecords()
+
     class Meta:
         verbose_name = "Вид работ"
         verbose_name_plural = "Виды работ"
@@ -35,6 +40,8 @@ class DeliveryType(BaseModel):
     """Delivery type reference."""
 
     name = models.CharField("Название", max_length=255, unique=True)
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = "Тип доставки"

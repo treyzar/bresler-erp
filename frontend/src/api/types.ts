@@ -15,6 +15,7 @@ export interface User {
   company: string
   avatar: string | null
   is_active: boolean
+  is_department_head: boolean
   last_login: string | null
   date_joined: string
   groups?: string[]
@@ -194,18 +195,39 @@ export interface OrderParticipantEntry {
   order_index: number
 }
 
+export const FILE_CATEGORIES = {
+  general: "Общий",
+  incoming: "Входящий",
+  outgoing: "Исходящий",
+  contract: "Договор",
+  specification: "Спецификация",
+  letter: "Письмо",
+  rkd: "РКД",
+  other: "Другое",
+} as const
+
 export interface OrderFile {
   id: number
   file: string
   original_name: string
   file_size: number
+  category: string
+  description: string
   created_at: string
 }
+
+export const CONTRACT_PAYMENT_TEMPLATES = {
+  "50_50": "50% аванс, 50% перед отгрузкой",
+  "100_post_7": "100% в течение 7 дней после отгрузки",
+  "100_post_30": "100% в течение 30 дней после отгрузки",
+  custom: "Произвольные условия",
+} as const
 
 export interface Contract extends BaseEntity {
   contract_number: string
   contract_date: string | null
   status: string
+  payment_template: string
   advance_percent: string
   intermediate_percent: string
   post_payment_percent: string
@@ -215,6 +237,7 @@ export interface Contract extends BaseEntity {
 
 export interface OrderDetail extends BaseEntity {
   order_number: number
+  order_type: string
   tender_number: string
   status: string
   status_display: string
@@ -233,6 +256,7 @@ export interface OrderDetail extends BaseEntity {
   order_org_units: OrderOrgUnitEntry[]
   order_participants: OrderParticipantEntry[]
   files: OrderFile[]
+  shipment_batches: ShipmentBatch[]
   manager_ids: number[]
   manager_names: { id: number; name: string }[]
   contact_ids: number[]
@@ -444,6 +468,169 @@ export interface ProductAttributeOption {
   code: string
   label: string
   sort_order: number
+}
+
+// Specs / Commercial Offers
+
+export const ORDER_TYPES = {
+  standard: "Стандартный",
+  warranty: "Гарантийный ремонт",
+  niokr: "НИОКР",
+  replacement: "Замена",
+} as const
+
+export const OFFER_STATUSES = {
+  draft: "Черновик",
+  sent: "Отправлено",
+  accepted: "Принято",
+  rejected: "Отклонено",
+  expired: "Истекло",
+} as const
+
+export const PAYMENT_TERMS = {
+  "50_50": "50% аванс, 50% перед отгрузкой",
+  "100_post_7": "100% в течение 7 дней после отгрузки",
+  "100_post_30": "100% в течение 30 дней после отгрузки",
+  custom: "Произвольные условия",
+} as const
+
+export const MANUFACTURING_PERIODS = [
+  "30-60", "60-90", "90-120", "120-150", "150-180",
+] as const
+
+export const WARRANTY_MONTHS_OPTIONS = [12, 36, 60] as const
+export const VALID_DAYS_OPTIONS = [14, 30, 60] as const
+
+export interface OfferWorkItem {
+  id: number
+  work_type: number
+  work_type_name: string
+  included: boolean
+  days: number
+  specialists: number
+  trips: number
+}
+
+export interface SpecificationLine {
+  id?: number
+  line_number: number
+  product: number | null
+  product_name?: string | null
+  device_rza: number | null
+  device_rza_name?: string | null
+  mod_rza: number | null
+  mod_rza_name?: string | null
+  name: string
+  quantity: number
+  unit_price: string
+  total_price: string
+  delivery_date: string | null
+  note: string
+}
+
+export interface OfferSpecification {
+  id: number
+  total_amount: string
+  total_amount_with_vat: string
+  lines: SpecificationLine[]
+}
+
+export interface CommercialOfferListItem {
+  id: number
+  offer_number: string
+  version: number
+  status: string
+  date: string
+  valid_until: string | null
+  participant: number
+  participant_name: string
+  manager: number | null
+  manager_name: string
+  vat_rate: string
+  payment_terms: string
+  total_amount: string | null
+}
+
+export interface CommercialOfferDetail extends BaseEntity {
+  offer_number: string
+  version: number
+  status: string
+  date: string
+  valid_days: number
+  valid_until: string | null
+  order: number
+  participant: number
+  participant_name: string
+  manager: number | null
+  manager_name: string
+  executor: number | null
+  executor_name: string
+  based_on: number | null
+  based_on_number: string | null
+  vat_rate: string
+  payment_terms: string
+  advance_percent: string
+  pre_shipment_percent: string
+  post_payment_percent: string
+  manufacturing_period: string
+  warranty_months: number
+  delivery_included: boolean
+  delivery_city: string
+  additional_conditions: string
+  is_template: boolean
+  shipment_condition_text: string
+  work_items: OfferWorkItem[]
+  specification: OfferSpecification | null
+}
+
+export interface ParticipantContact {
+  id: number
+  participant: number
+  contact: number
+  contact_name: string
+  is_primary: boolean
+}
+
+// Document templates
+
+export const DOCUMENT_TYPES = {
+  contract: "Типовой договор",
+  readiness_letter: "Письмо о готовности",
+  overdue_letter: "Письмо о просрочке",
+  payment_letter: "Письмо об оплате",
+  protocol: "Протокол разногласий",
+  other: "Другое",
+} as const
+
+export const COMPANY_ENTITIES = {
+  npp: "НПП Бреслер",
+  chak: "ЧАК",
+  technopark: "Технопарк",
+} as const
+
+export interface DocumentTemplate {
+  id: number
+  name: string
+  document_type: string
+  document_type_display: string
+  entity: string
+  entity_display: string
+  template_file: string
+  description: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Shipment batches
+
+export interface ShipmentBatch {
+  id: number
+  batch_number: number
+  ship_date: string
+  description: string
+  created_at: string
+  updated_at: string
 }
 
 // Import

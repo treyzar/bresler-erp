@@ -1,4 +1,5 @@
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from apps.core.models import BaseModel
 
@@ -29,6 +30,8 @@ class Contact(BaseModel):
         related_name="contacts",
         verbose_name="Организации",
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = "Контакт"

@@ -5,6 +5,7 @@ import { type NavItem, SidebarNavItem } from "./SidebarNavItem"
 
 type NavItemWithModule = NavItem & {
   module?: string
+  requireAccess?: "dashboard"
   subItems?: (NavItem & { module?: string })[]
 }
 
@@ -43,14 +44,18 @@ const navItems: NavItemWithModule[] = [
     ],
   },
   { to: "/profile", label: "Профиль" },
+  { to: "/manager-dashboard", label: "Руководитель", requireAccess: "dashboard" },
 ]
 
 export function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const hasModuleAccess = useAuthStore((s) => s.hasModuleAccess)
+  const canAccessDashboard = useAuthStore((s) => s.canAccessDashboard)
 
   const visibleItems = navItems.filter(
-    (item) => !item.module || hasModuleAccess(item.module),
+    (item) =>
+      (!item.module || hasModuleAccess(item.module)) &&
+      (!item.requireAccess || (item.requireAccess === "dashboard" && canAccessDashboard())),
   )
 
   return (

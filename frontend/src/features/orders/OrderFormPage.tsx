@@ -31,7 +31,7 @@ import { OrgUnitCombobox } from "@/components/shared/OrgUnitCombobox"
 import { MultiSelect } from "@/components/shared/MultiSelect"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
 import { OrgUnitBreadcrumb } from "@/components/shared/OrgUnitBreadcrumb"
-import { ORDER_STATUSES, ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
+import { ORDER_STATUSES, ORDER_TYPES, ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
 import {
   useOrder,
   useCreateOrder,
@@ -50,6 +50,7 @@ interface OrgUnitWithRole {
 
 const formSchema = z.object({
   order_number: z.number().int().positive("Обязательное поле"),
+  order_type: z.string(),
   tender_number: z.string(),
   status: z.string(),
   note: z.string(),
@@ -97,6 +98,17 @@ export function OrderFormPage() {
     return []
   })
 
+  // Participants (managed outside react-hook-form)
+  const [participants, setParticipants] = useState<{ org_unit: number; org_unit_name: string }[]>(() => {
+    if (isEdit && order) {
+      return order.order_participants.map((p) => ({
+        org_unit: p.org_unit,
+        org_unit_name: p.org_unit_name,
+      }))
+    }
+    return []
+  })
+
   // Facilities/objects by selected OrgUnits
   const orgUnitIds = orgUnits.map((ou) => ou.org_unit)
   const { data: availableFacilities = [] } = useFacilitiesByOrgUnits(orgUnitIds)
@@ -117,6 +129,7 @@ export function OrderFormPage() {
     values: isEdit && order
       ? {
           order_number: order.order_number,
+          order_type: order.order_type ?? "standard",
           tender_number: order.tender_number,
           status: order.status,
           note: order.note,
@@ -135,6 +148,7 @@ export function OrderFormPage() {
         }
       : {
           order_number: nextNumber ?? 0,
+          order_type: "standard",
           tender_number: "",
           status: "N",
           note: "",
@@ -161,6 +175,12 @@ export function OrderFormPage() {
       role: ou.role,
     })))
   }
+  if (isEdit && order && participants.length === 0 && order.order_participants.length > 0) {
+    setParticipants(order.order_participants.map((p) => ({
+      org_unit: p.org_unit,
+      org_unit_name: p.org_unit_name,
+    })))
+  }
 
   const handleSubmit = form.handleSubmit(async (values) => {
     const payload = {
@@ -170,6 +190,9 @@ export function OrderFormPage() {
       org_units_data: orgUnits.map((ou) => ({
         org_unit: ou.org_unit,
         role: ou.role,
+      })),
+      participants_data: participants.map((p) => ({
+        org_unit: p.org_unit,
       })),
     }
     try {
@@ -273,6 +296,27 @@ export function OrderFormPage() {
                             </FormControl>
                             <SelectContent>
                               {Object.entries(ORDER_STATUSES).map(([key, label]) => (
+                                <SelectItem key={key} value={key}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="order_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Тип заказа</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.entries(ORDER_TYPES).map(([key, label]) => (
                                 <SelectItem key={key} value={key}>{label}</SelectItem>
                               ))}
                             </SelectContent>
@@ -496,7 +540,7 @@ export function OrderFormPage() {
                 <CardHeader>
                   <CardTitle>Сведения о закупке</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
                     name="tender_number"
@@ -507,6 +551,37 @@ export function OrderFormPage() {
                       </FormItem>
                     )}
                   />
+                  <Separator />
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Участники запроса</span>
+                    <OrgUnitCombobox
+                      mode="single"
+                      value={null}
+                      onChange={() => {}}
+                      onSelectItem={(id, name) => {
+                        if (!participants.some((p) => p.org_unit === id)) {
+                          setParticipants([...participants, { org_unit: id, org_unit_name: name }])
+                        }
+                      }}
+                    />
+                    {participants.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {participants.map((p, idx) => (
+                          <Badge key={p.org_unit} variant="secondary" className="gap-1 pr-1">
+                            <span className="text-xs font-bold mr-0.5">#{idx + 1}</span>
+                            {p.org_unit_name}
+                            <button
+                              type="button"
+                              className="ml-1 hover:text-destructive"
+                              onClick={() => setParticipants(participants.filter((x) => x.org_unit !== p.org_unit))}
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 

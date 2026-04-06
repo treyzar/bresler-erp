@@ -11,6 +11,9 @@ interface AuthState {
   setUser: (user: User) => void
   logout: () => void
   hasModuleAccess: (module: string) => boolean
+  hasGroup: (group: string) => boolean
+  isManager: () => boolean
+  canAccessDashboard: () => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,10 +34,26 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
         }),
       hasModuleAccess: (module: string) => {
-        const user = get().user
-        if (!user) return false
-        if (user.allowed_modules === undefined) return false
+        const { user, isAuthenticated } = get()
+        // User data not loaded yet — don't hide menu items
+        if (!user) return isAuthenticated
+        if (user.allowed_modules === undefined) return true
         return user.allowed_modules.includes(module)
+      },
+      hasGroup: (group: string) => {
+        const { user } = get()
+        return user?.groups?.includes(group) ?? false
+      },
+      isManager: () => {
+        const { user } = get()
+        if (!user?.groups) return false
+        return user.groups.some((g) => ["admin", "otm"].includes(g))
+      },
+      canAccessDashboard: () => {
+        const { user } = get()
+        if (!user) return false
+        if (user.is_department_head) return true
+        return user.groups?.includes("admin") ?? false
       },
     }),
     {

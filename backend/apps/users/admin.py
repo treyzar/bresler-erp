@@ -22,9 +22,10 @@ class UserAdmin(BaseUserAdmin):
         "patronymic",
         "department",
         "position",
+        "is_department_head",
         "is_active",
     )
-    list_filter = ("is_active", "is_staff", "department", "company")
+    list_filter = ("is_active", "is_staff", "is_department_head", "department", "company")
     search_fields = ("username", "first_name", "last_name", "patronymic", "email")
 
     fieldsets = BaseUserAdmin.fieldsets + (
@@ -39,6 +40,7 @@ class UserAdmin(BaseUserAdmin):
                     "department",
                     "company",
                     "avatar",
+                    "is_department_head",
                 ),
             },
         ),
