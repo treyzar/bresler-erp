@@ -583,6 +583,59 @@ export interface CommercialOfferDetail extends BaseEntity {
   specification: OfferSpecification | null
 }
 
+// Calculation
+
+export const OVERHEAD_TYPES = {
+  equipment: "Оборудование (15%)",
+  purchased: "Покупное (30%)",
+  nku: "НКУ (30%)",
+  custom: "Произвольный",
+} as const
+
+export const OVERHEAD_DEFAULTS: Record<string, number> = {
+  equipment: 15,
+  purchased: 30,
+  nku: 30,
+  custom: 0,
+}
+
+export interface CalculationLine {
+  id?: number
+  line_number: number
+  product: number | null
+  product_name?: string | null
+  device_rza: number | null
+  device_rza_name?: string | null
+  mod_rza: number | null
+  mod_rza_name?: string | null
+  name: string
+  quantity: number
+  base_price: string
+  overhead_type: string
+  overhead_percent: string
+  price_with_overhead: string
+  project_coeff: string
+  estimated_price: string
+  discount_coeff: string
+  discounted_price: string
+  total_price: string
+  note: string
+}
+
+export interface OfferCalculation {
+  id: number
+  default_overhead_percent: string
+  default_project_coeff: string
+  default_discount_coeff: string
+  note: string
+  lines: CalculationLine[]
+  total: {
+    base: string
+    estimated: string
+    discounted: string
+  }
+}
+
 export interface ParticipantContact {
   id: number
   participant: number

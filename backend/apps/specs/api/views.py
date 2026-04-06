@@ -6,7 +6,9 @@ from rest_framework.response import Response
 
 from apps.orders.models import Order, OrderParticipant
 from apps.specs.models import (
+    CalculationLine,
     CommercialOffer,
+    OfferCalculation,
     OfferWorkItem,
     ParticipantContact,
     Specification,
@@ -16,9 +18,11 @@ from apps.specs.services import offer_service, specification_service, document_s
 
 from .filters import CommercialOfferFilter
 from .serializers import (
+    CalculationLineSerializer,
     CommercialOfferCreateSerializer,
     CommercialOfferDetailSerializer,
     CommercialOfferListSerializer,
+    OfferCalculationSerializer,
     OfferWorkItemSerializer,
     ParticipantContactSerializer,
     SpecificationFillSerializer,
@@ -163,6 +167,93 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
             )
             specification_service.fill_from_offer(spec, source_offer)
 
+        return Response(SpecificationSerializer(spec).data)
+
+    # ── Calculation (расчёт) ───────────────────────────────────
+
+    @action(detail=True, methods=["get", "patch"], url_path="calculation")
+    def calculation(self, request, **kwargs):
+        offer = self.get_object()
+        calc, _ = OfferCalculation.objects.get_or_create(offer=offer)
+
+        if request.method == "GET":
+            return Response(OfferCalculationSerializer(calc).data)
+
+        # PATCH: update defaults + lines
+        # Update defaults
+        for field in ("default_overhead_percent", "default_project_coeff", "default_discount_coeff", "note"):
+            if field in request.data:
+                setattr(calc, field, request.data[field])
+        calc.save()
+
+        # Update lines if provided
+        lines_data = request.data.get("lines")
+        if lines_data is not None:
+            incoming_ids = {l.get("id") for l in lines_data if l.get("id")}
+            calc.lines.exclude(id__in=incoming_ids).delete()
+
+            readonly_fields = {
+                "id", "price_with_overhead", "estimated_price",
+                "discounted_price", "total_price", "product_name",
+                "device_rza_name", "mod_rza_name",
+            }
+            for line_data in lines_data:
+                line_id = line_data.pop("id", None)
+                for rf in readonly_fields:
+                    line_data.pop(rf, None)
+                if line_id:
+                    try:
+                        line = calc.lines.get(id=line_id)
+                        for k, v in line_data.items():
+                            setattr(line, k, v)
+                        line.save()
+                    except CalculationLine.DoesNotExist:
+                        CalculationLine.objects.create(calculation=calc, **line_data)
+                else:
+                    CalculationLine.objects.create(calculation=calc, **line_data)
+
+        return Response(OfferCalculationSerializer(calc).data)
+
+    @action(detail=True, methods=["post"], url_path="calculation/apply-defaults")
+    def calculation_apply_defaults(self, request, **kwargs):
+        """Apply default coefficients to all lines."""
+        offer = self.get_object()
+        calc, _ = OfferCalculation.objects.get_or_create(offer=offer)
+
+        for line in calc.lines.all():
+            line.overhead_percent = calc.default_overhead_percent
+            line.project_coeff = calc.default_project_coeff
+            line.discount_coeff = calc.default_discount_coeff
+            line.save()
+
+        return Response(OfferCalculationSerializer(calc).data)
+
+    @action(detail=True, methods=["post"], url_path="calculation/to-specification")
+    def calculation_to_specification(self, request, **kwargs):
+        """Fill specification from calculation results."""
+        offer = self.get_object()
+        calc = offer.calculation
+        spec, _ = Specification.objects.get_or_create(offer=offer)
+
+        # Clear existing spec lines
+        spec.lines.all().delete()
+
+        # Create spec lines from calc lines
+        for cl in calc.lines.all():
+            SpecificationLine.objects.create(
+                specification=spec,
+                line_number=cl.line_number,
+                product=cl.product,
+                device_rza=cl.device_rza,
+                mod_rza=cl.mod_rza,
+                name=cl.name,
+                quantity=cl.quantity,
+                unit_price=cl.discounted_price,
+                delivery_date=None,
+                note=cl.note,
+            )
+
+        spec.recalculate()
         return Response(SpecificationSerializer(spec).data)
 
     # ── DOCX export ──────────────────────────────────────────────

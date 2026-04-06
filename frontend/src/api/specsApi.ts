@@ -2,6 +2,7 @@ import apiClient from "./client"
 import type {
   CommercialOfferDetail,
   CommercialOfferListItem,
+  OfferCalculation,
   OfferWorkItem,
   OfferSpecification,
   ParticipantContact,
@@ -122,5 +123,26 @@ export const specsApi = {
 
   removeParticipantContact: async (participantId: number, contactLinkId: number) => {
     await apiClient.delete(`/participants/${participantId}/contacts/${contactLinkId}/`)
+  },
+
+  // Calculation
+  getCalculation: async (offerId: number) => {
+    const { data } = await apiClient.get<OfferCalculation>(`/offers/${offerId}/calculation/`)
+    return data
+  },
+
+  updateCalculation: async (offerId: number, payload: Record<string, unknown>) => {
+    const { data } = await apiClient.patch<OfferCalculation>(`/offers/${offerId}/calculation/`, payload)
+    return data
+  },
+
+  applyCalcDefaults: async (offerId: number) => {
+    const { data } = await apiClient.post<OfferCalculation>(`/offers/${offerId}/calculation/apply-defaults/`)
+    return data
+  },
+
+  calcToSpecification: async (offerId: number) => {
+    const { data } = await apiClient.post<OfferSpecification>(`/offers/${offerId}/calculation/to-specification/`)
+    return data
   },
 }

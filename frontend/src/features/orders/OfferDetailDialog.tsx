@@ -23,6 +23,7 @@ import { useOffer, useUpdateOffer } from "@/api/hooks/useSpecs"
 import { specsApi } from "@/api/specsApi"
 import { WorkItemsTable } from "./WorkItemsTable"
 import { SpecificationEditor } from "./SpecificationEditor"
+import { CalculationEditor } from "./CalculationEditor"
 import { ParticipantContacts } from "./ParticipantContacts"
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -130,6 +131,7 @@ export function OfferDetailDialog({ offerId, orderId, participants, onClose }: O
         <Tabs defaultValue="conditions">
           <TabsList>
             <TabsTrigger value="conditions">Условия</TabsTrigger>
+            <TabsTrigger value="calculation">Расчёт</TabsTrigger>
             <TabsTrigger value="specification">
               Спецификация
               {offer.specification && ` (${offer.specification.lines.length})`}
@@ -232,6 +234,11 @@ export function OfferDetailDialog({ offerId, orderId, participants, onClose }: O
                 <span>С НДС: {Number(offer.specification.total_amount_with_vat).toLocaleString("ru-RU")} руб.</span>
               </div>
             )}
+          </TabsContent>
+
+          {/* ── Calculation tab ── */}
+          <TabsContent value="calculation" className="mt-4">
+            <CalculationEditor offerId={offerId} />
           </TabsContent>
 
           {/* ── Specification tab ── */}

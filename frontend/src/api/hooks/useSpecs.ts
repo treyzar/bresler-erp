@@ -144,3 +144,44 @@ export function useRemoveParticipantContact(participantId: number) {
     },
   })
 }
+
+// ── Calculation ─────────────────────────────────────────────────
+
+export function useCalculation(offerId: number | null) {
+  return useQuery({
+    queryKey: ["calculation", offerId],
+    queryFn: () => specsApi.getCalculation(offerId!),
+    enabled: !!offerId,
+  })
+}
+
+export function useUpdateCalculation(offerId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) => specsApi.updateCalculation(offerId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calculation", offerId] })
+    },
+  })
+}
+
+export function useApplyCalcDefaults(offerId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => specsApi.applyCalcDefaults(offerId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calculation", offerId] })
+    },
+  })
+}
+
+export function useCalcToSpecification(offerId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => specsApi.calcToSpecification(offerId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["specification", offerId] })
+      qc.invalidateQueries({ queryKey: ["offer", offerId] })
+    },
+  })
+}

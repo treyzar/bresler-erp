@@ -1,7 +1,9 @@
 from rest_framework import serializers
 
 from apps.specs.models import (
+    CalculationLine,
     CommercialOffer,
+    OfferCalculation,
     OfferWorkItem,
     ParticipantContact,
     Specification,
@@ -146,3 +148,45 @@ class SpecificationFillSerializer(serializers.Serializer):
         child=serializers.IntegerField(), required=False, default=[],
     )
     source_offer_id = serializers.IntegerField(required=False)
+
+
+class CalculationLineSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product.name", read_only=True, default=None)
+    device_rza_name = serializers.CharField(source="device_rza.rza_name", read_only=True, default=None)
+    mod_rza_name = serializers.CharField(source="mod_rza.mod_name", read_only=True, default=None)
+
+    class Meta:
+        model = CalculationLine
+        fields = (
+            "id", "line_number", "product", "product_name",
+            "device_rza", "device_rza_name", "mod_rza", "mod_rza_name",
+            "name", "quantity",
+            "base_price", "overhead_type", "overhead_percent",
+            "price_with_overhead", "project_coeff", "estimated_price",
+            "discount_coeff", "discounted_price", "total_price", "note",
+        )
+        read_only_fields = ("id", "price_with_overhead", "estimated_price", "discounted_price", "total_price")
+
+
+class OfferCalculationSerializer(serializers.ModelSerializer):
+    lines = CalculationLineSerializer(many=True, read_only=True)
+    total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OfferCalculation
+        fields = (
+            "id", "default_overhead_percent", "default_project_coeff",
+            "default_discount_coeff", "note", "lines", "total",
+        )
+        read_only_fields = ("id",)
+
+    def get_total(self, obj) -> dict:
+        lines = obj.lines.all()
+        total_base = sum(l.base_price * l.quantity for l in lines)
+        total_estimated = sum(l.estimated_price * l.quantity for l in lines)
+        total_discounted = sum(l.total_price for l in lines)
+        return {
+            "base": str(total_base),
+            "estimated": str(total_estimated),
+            "discounted": str(total_discounted),
+        }

@@ -27,6 +27,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { ProductNameInput } from "@/components/shared/ProductNameInput"
 import apiClient from "@/api/client"
 import type {
   PaginatedResponse, Product, DeviceRZA, ModRZA,
@@ -92,11 +93,12 @@ function useModRZASearch(deviceRzaId: number | null, search: string) {
 // ── Sortable row ────────────────────────────────────────────────
 
 function SortableRow({
-  line, idx, updateLine, removeLine,
+  line, idx, updateLine, updateLineMulti, removeLine,
 }: {
   line: SpecificationLine
   idx: number
   updateLine: (idx: number, field: keyof SpecificationLine, value: unknown) => void
+  updateLineMulti: (idx: number, updates: Partial<SpecificationLine>) => void
   removeLine: (idx: number) => void
 }) {
   const sortableId = line.id ? `line-${line.id}` : `new-${idx}`
@@ -125,10 +127,14 @@ function SortableRow({
         {line.line_number}
       </TableCell>
       <TableCell className="min-w-[250px]">
-        <Input
+        <ProductNameInput
           value={line.name}
-          onChange={(e) => updateLine(idx, "name", e.target.value)}
-          placeholder="Наименование"
+          productId={line.product}
+          onChange={(name, productId, basePrice) => {
+            const updates: Partial<SpecificationLine> = { name, product: productId }
+            if (basePrice && productId) updates.unit_price = basePrice
+            updateLineMulti(idx, updates)
+          }}
           className="h-8 text-sm"
         />
         {catalogLabel && (
@@ -264,6 +270,18 @@ export function SpecificationEditor({ offerId, orderId, vatRate, onExport }: Spe
     setDirty(true)
   }
 
+  const updateLineMulti = (idx: number, updates: Partial<SpecificationLine>) => {
+    setLines(lines.map((line, i) => {
+      if (i !== idx) return line
+      const updated = { ...line, ...updates }
+      const qty = Number(updated.quantity)
+      const price = Number(updated.unit_price)
+      updated.total_price = (qty * price).toFixed(2)
+      return updated
+    }))
+    setDirty(true)
+  }
+
   const handleSave = () => {
     updateMutation.mutate(lines, {
       onSuccess: () => { toast.success("Спецификация сохранена"); setDirty(false) },
@@ -334,6 +352,7 @@ export function SpecificationEditor({ offerId, orderId, vatRate, onExport }: Spe
                       line={line}
                       idx={idx}
                       updateLine={updateLine}
+                      updateLineMulti={updateLineMulti}
                       removeLine={removeLine}
                     />
                   ))}
