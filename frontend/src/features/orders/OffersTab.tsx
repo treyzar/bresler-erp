@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
-import type { OrderParticipantEntry, CommercialOfferListItem } from "@/api/types"
+import type { OrderParticipantEntry, CommercialOfferListItem, ShipmentBatch } from "@/api/types"
 import { OFFER_STATUSES, PAYMENT_TERMS } from "@/api/types"
 import { useOfferList, useDeleteOffer, useCopyOffer } from "@/api/hooks/useSpecs"
 import { specsApi } from "@/api/specsApi"
@@ -25,9 +25,10 @@ interface OffersTabProps {
   orderId: number
   orderNumber: number
   participants: OrderParticipantEntry[]
+  shipmentBatches?: ShipmentBatch[]
 }
 
-export function OffersTab({ orderId, orderNumber, participants }: OffersTabProps) {
+export function OffersTab({ orderId, orderNumber, participants, shipmentBatches }: OffersTabProps) {
   const { data, isLoading } = useOfferList(orderId)
   const deleteMutation = useDeleteOffer(orderId)
   const copyMutation = useCopyOffer(orderId)
@@ -175,6 +176,7 @@ export function OffersTab({ orderId, orderNumber, participants }: OffersTabProps
           offerId={detailOfferId}
           orderId={orderId}
           participants={participants}
+          shipmentBatches={shipmentBatches}
           onClose={() => setDetailOfferId(null)}
         />
       )}

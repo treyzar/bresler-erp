@@ -86,6 +86,14 @@ class SpecificationLine(BaseModel):
         "Срок поставки", null=True, blank=True,
         help_text="Если отличается от общего срока (для отдельных партий)",
     )
+    shipment_batch = models.ForeignKey(
+        "orders.ShipmentBatch",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="specification_lines",
+        verbose_name="Партия отгрузки",
+    )
     note = models.TextField("Примечание", blank=True)
 
     class Meta:

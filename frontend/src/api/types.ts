@@ -527,6 +527,8 @@ export interface SpecificationLine {
   unit_price: string
   total_price: string
   delivery_date: string | null
+  shipment_batch: number | null
+  shipment_batch_number?: number | null
   note: string
 }
 
@@ -776,4 +778,159 @@ export const BOM_ROLES: Record<string, string> = {
   ACCESSORY: "Аксессуар/узел",
   WIRING: "Проводка/шкафной монтаж",
   MISC: "Прочее",
+}
+
+// ── Purchasing ─────────────────────────────────────────────────
+
+export interface StockItemType {
+  id: number
+  product: number
+  product_name: string
+  product_code: string
+  quantity: number
+  reserved: number
+  available: number
+}
+
+export interface StockMovementType {
+  id: number
+  movement_type: "receipt" | "issue" | "reserve" | "unreserve"
+  quantity: number
+  order: number | null
+  order_number: number | null
+  user: number | null
+  user_name: string
+  comment: string
+  created_at: string
+}
+
+export interface PurchaseRequestLine {
+  id?: number
+  product: number | null
+  product_name?: string | null
+  name: string
+  quantity: number
+  target_description: string
+  note: string
+  stock_available?: number | null
+}
+
+export interface PurchaseRequestListItem {
+  id: number
+  order: number
+  order_number: number
+  created_by: number
+  created_by_name: string
+  status: string
+  required_date: string | null
+  note: string
+  lines_count: number
+  created_at: string
+}
+
+export interface PurchaseRequestDetail extends PurchaseRequestListItem {
+  lines: PurchaseRequestLine[]
+  updated_at: string
+}
+
+export interface PurchaseOrderLine {
+  id?: number
+  product: number | null
+  product_name?: string | null
+  name: string
+  quantity: number
+  unit_price: string
+  total_price: string
+  delivery_date: string | null
+  delivered_quantity: number
+  note: string
+}
+
+export interface PurchaseOrderFile {
+  id: number
+  file: string
+  original_name: string
+  file_size: number
+  description: string
+  created_at: string
+}
+
+export interface PurchaseOrderListItem {
+  id: number
+  supplier: number
+  supplier_name: string
+  order: number | null
+  order_number: number | null
+  purchaser: number | null
+  purchaser_name: string
+  status: string
+  order_date: string | null
+  expected_date: string | null
+  total_amount: string
+  lines_count: number
+  created_at: string
+}
+
+export interface PurchaseOrderDetail extends PurchaseOrderListItem {
+  purchase_request: number | null
+  note: string
+  lines: PurchaseOrderLine[]
+  files: PurchaseOrderFile[]
+  updated_at: string
+}
+
+export interface SupplierConditionsType {
+  id: number
+  supplier: number
+  supplier_name: string
+  discount_percent: string
+  payment_terms: string
+  delivery_terms: string
+  notes: string
+}
+
+export interface PurchasePaymentType {
+  id: number
+  purchase_order: number
+  supplier_name: string
+  amount: string
+  payment_date: string | null
+  due_date: string | null
+  status: string
+  approved_by: number | null
+  approved_by_name: string
+  invoice_file: string
+  invoice_number: string
+  note: string
+  created_at: string
+}
+
+export const PURCHASE_REQUEST_STATUSES: Record<string, string> = {
+  draft: "Черновик",
+  submitted: "Подана",
+  in_progress: "В работе",
+  completed: "Выполнена",
+  cancelled: "Отменена",
+}
+
+export const PURCHASE_ORDER_STATUSES: Record<string, string> = {
+  draft: "Черновик",
+  ordered: "Заказано",
+  partial: "Частично",
+  delivered: "Доставлено",
+  cancelled: "Отменено",
+}
+
+export const PAYMENT_STATUSES: Record<string, string> = {
+  pending_approval: "На согласовании",
+  approved: "Согласовано",
+  paid: "Оплачено",
+  rejected: "Отклонено",
+}
+
+export const STOCK_MOVEMENT_TYPES: Record<string, string> = {
+  receipt: "Приход",
+  issue: "Расход",
+  reserve: "Резерв",
+  unreserve: "Снятие резерва",
 }

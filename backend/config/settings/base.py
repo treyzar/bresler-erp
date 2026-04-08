@@ -56,6 +56,7 @@ LOCAL_APPS = [
     "apps.edo.parser_app",
     "apps.edo.templates_app",
     "apps.edo.registry",
+    "apps.purchasing",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -209,6 +210,10 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup-old-notifications": {
         "task": "apps.notifications.tasks.cleanup_old_notifications",
         "schedule": 604800.0,  # 7 days
+    },
+    "check-payment-deadlines": {
+        "task": "apps.purchasing.tasks.check_payment_deadlines",
+        "schedule": 86400.0,  # 24 hours
     },
 }
 

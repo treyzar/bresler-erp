@@ -27,6 +27,9 @@ class SpecificationLineSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True, default=None)
     device_rza_name = serializers.CharField(source="device_rza.rza_name", read_only=True, default=None)
     mod_rza_name = serializers.CharField(source="mod_rza.mod_name", read_only=True, default=None)
+    shipment_batch_number = serializers.IntegerField(
+        source="shipment_batch.batch_number", read_only=True, default=None,
+    )
 
     class Meta:
         model = SpecificationLine
@@ -34,7 +37,8 @@ class SpecificationLineSerializer(serializers.ModelSerializer):
             "id", "line_number", "product", "product_name",
             "device_rza", "device_rza_name", "mod_rza", "mod_rza_name",
             "name", "quantity",
-            "unit_price", "total_price", "delivery_date", "note",
+            "unit_price", "total_price", "delivery_date",
+            "shipment_batch", "shipment_batch_number", "note",
         )
         read_only_fields = ("id", "total_price")
 

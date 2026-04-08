@@ -31,7 +31,7 @@ import { ProductNameInput } from "@/components/shared/ProductNameInput"
 import apiClient from "@/api/client"
 import type {
   PaginatedResponse, Product, DeviceRZA, ModRZA,
-  SpecificationLine, CommercialOfferListItem,
+  SpecificationLine, CommercialOfferListItem, ShipmentBatch,
 } from "@/api/types"
 import { useSpecification, useUpdateSpecification, useFillSpecification } from "@/api/hooks/useSpecs"
 import { useDebounce } from "@/hooks/useDebounce"
@@ -41,6 +41,7 @@ interface SpecificationEditorProps {
   orderId: number
   vatRate: number
   onExport: () => void
+  shipmentBatches?: ShipmentBatch[]
 }
 
 // ── Search hooks ────────────────────────────────────────────────
@@ -93,13 +94,14 @@ function useModRZASearch(deviceRzaId: number | null, search: string) {
 // ── Sortable row ────────────────────────────────────────────────
 
 function SortableRow({
-  line, idx, updateLine, updateLineMulti, removeLine,
+  line, idx, updateLine, updateLineMulti, removeLine, shipmentBatches,
 }: {
   line: SpecificationLine
   idx: number
   updateLine: (idx: number, field: keyof SpecificationLine, value: unknown) => void
   updateLineMulti: (idx: number, updates: Partial<SpecificationLine>) => void
   removeLine: (idx: number) => void
+  shipmentBatches?: ShipmentBatch[]
 }) {
   const sortableId = line.id ? `line-${line.id}` : `new-${idx}`
   const {
@@ -173,6 +175,26 @@ function SortableRow({
           className="h-8 text-sm w-full"
         />
       </TableCell>
+      {shipmentBatches && shipmentBatches.length > 0 && (
+        <TableCell className="w-32">
+          <Select
+            value={line.shipment_batch?.toString() ?? "none"}
+            onValueChange={(v) => updateLine(idx, "shipment_batch", v === "none" ? null : Number(v))}
+          >
+            <SelectTrigger className="h-8 text-sm">
+              <SelectValue placeholder="—" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">—</SelectItem>
+              {shipmentBatches.map((b) => (
+                <SelectItem key={b.id} value={b.id.toString()}>
+                  Партия {b.batch_number}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </TableCell>
+      )}
       <TableCell className="w-10">
         <Button
           variant="ghost" size="icon" className="size-7"
@@ -187,7 +209,7 @@ function SortableRow({
 
 // ── Main editor ─────────────────────────────────────────────────
 
-export function SpecificationEditor({ offerId, orderId, vatRate, onExport }: SpecificationEditorProps) {
+export function SpecificationEditor({ offerId, orderId, vatRate, onExport, shipmentBatches }: SpecificationEditorProps) {
   const { data: spec, isLoading } = useSpecification(offerId)
   const updateMutation = useUpdateSpecification(offerId)
   const [lines, setLines] = useState<SpecificationLine[]>([])
@@ -239,6 +261,7 @@ export function SpecificationEditor({ offerId, orderId, vatRate, onExport }: Spe
       unit_price: "0.00",
       total_price: "0.00",
       delivery_date: null,
+      shipment_batch: null,
       note: "",
     }])
     setDirty(true)
@@ -334,13 +357,16 @@ export function SpecificationEditor({ offerId, orderId, vatRate, onExport }: Spe
                 <TableHead className="w-36">Цена за ед.</TableHead>
                 <TableHead className="w-36">Итого</TableHead>
                 <TableHead className="w-36">Срок поставки</TableHead>
+                {shipmentBatches && shipmentBatches.length > 0 && (
+                  <TableHead className="w-32">Партия</TableHead>
+                )}
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {lines.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={shipmentBatches?.length ? 9 : 8} className="h-24 text-center text-muted-foreground">
                     Нет позиций. Нажмите &laquo;Добавить позицию&raquo; или &laquo;Из каталога&raquo;.
                   </TableCell>
                 </TableRow>
@@ -354,6 +380,7 @@ export function SpecificationEditor({ offerId, orderId, vatRate, onExport }: Spe
                       updateLine={updateLine}
                       updateLineMulti={updateLineMulti}
                       removeLine={removeLine}
+                      shipmentBatches={shipmentBatches}
                     />
                   ))}
                 </SortableContext>
@@ -488,6 +515,7 @@ function CatalogPickerDialog({
         unit_price: p.base_price || "0.00",
         total_price: p.base_price || "0.00",
         delivery_date: null,
+        shipment_batch: null,
         note: "",
       })
     })
@@ -510,6 +538,7 @@ function CatalogPickerDialog({
         unit_price: "0.00",
         total_price: "0.00",
         delivery_date: null,
+        shipment_batch: null,
         note: "",
       })
     })

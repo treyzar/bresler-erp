@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Navigate, useNavigate } from "react-router"
-import { useQuery } from "@tanstack/react-query"
-import { Users, Eye } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { Users, Eye, Building2, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,8 +14,14 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import apiClient from "@/api/client"
-import type { ManagerStats } from "@/api/usersApi"
+import type { ManagerStats, MyCustomer } from "@/api/usersApi"
+import { usersApi } from "@/api/usersApi"
+import type { PaginatedResponse, OrgUnit } from "@/api/types"
+import { ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
 import { useAuthStore } from "@/stores/useAuthStore"
+import { useDebounce } from "@/hooks/useDebounce"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -162,6 +168,9 @@ export function ManagerDashboard() {
         </CardContent>
       </Card>
 
+      {/* My customers (head also has own customers) */}
+      <MyCustomersSection />
+
       {/* Manager detail dialog */}
       {selectedManager && (
         <ManagerDetailDialog
@@ -171,6 +180,154 @@ export function ManagerDashboard() {
         />
       )}
     </div>
+  )
+}
+
+// ── My customers section (for the head manager) ────────────────
+
+function MyCustomersSection() {
+  const qc = useQueryClient()
+  const { data: customers = [], isLoading } = useQuery({
+    queryKey: ["users", "me", "customers"],
+    queryFn: () => usersApi.myCustomers(),
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: (id: number) => usersApi.removeCustomer(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users", "me", "customers"] }),
+  })
+
+  const [addOpen, setAddOpen] = useState(false)
+
+  if (isLoading) return <Skeleton className="h-24 w-full" />
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="size-4" />
+          Мои заказчики
+        </CardTitle>
+        <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
+          <Plus className="size-4 mr-1" /> Добавить
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {customers.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground">
+            <Building2 className="size-8 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">Нет привязанных заказчиков</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {customers.map((c) => (
+              <div key={c.id} className="flex items-center justify-between p-2 rounded-lg border hover:bg-muted/30">
+                <div>
+                  <span className="text-sm font-medium">{c.name}</span>
+                  {c.business_role && (
+                    <Badge variant="outline" className="ml-2 text-[10px]">
+                      {ORG_UNIT_BUSINESS_ROLES[c.business_role] ?? c.business_role}
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  variant="ghost" size="icon" className="size-7"
+                  onClick={() => removeMutation.mutate(c.id)}
+                  disabled={removeMutation.isPending}
+                >
+                  <Trash2 className="size-3.5 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <AddCustomerDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        existingIds={customers.map((c) => c.id)}
+      />
+    </Card>
+  )
+}
+
+function AddCustomerDialog({ open, onOpenChange, existingIds }: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  existingIds: number[]
+}) {
+  const qc = useQueryClient()
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebounce(search, 300)
+
+  const { data: results = [], isLoading } = useQuery({
+    queryKey: ["orgunits-search-mgr", debouncedSearch],
+    queryFn: async () => {
+      const { data } = await apiClient.get<PaginatedResponse<OrgUnit>>(
+        "/directory/orgunits/", { params: { search: debouncedSearch, page_size: 20 } },
+      )
+      return data.results
+    },
+    enabled: debouncedSearch.length >= 2,
+  })
+
+  const addMutation = useMutation({
+    mutationFn: (id: number) => usersApi.addCustomer(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users", "me", "customers"] })
+      onOpenChange(false)
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[80vh]" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>Добавить заказчика</DialogTitle>
+        </DialogHeader>
+        <Input
+          placeholder="Поиск организации (мин. 2 символа)..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          autoFocus
+        />
+        <ScrollArea className="h-[350px] rounded-md border">
+          {isLoading ? (
+            <div className="p-4 space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : results.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground text-center">
+              {search.length < 2 ? "Введите минимум 2 символа" : "Не найдено"}
+            </p>
+          ) : (
+            <div className="p-1 space-y-1">
+              {results.map((org) => {
+                const alreadyAdded = existingIds.includes(org.id)
+                return (
+                  <div
+                    key={org.id}
+                    className={`flex items-center justify-between p-2 rounded text-sm ${alreadyAdded ? "opacity-40" : "cursor-pointer hover:bg-muted/50"}`}
+                    onClick={() => !alreadyAdded && addMutation.mutate(org.id)}
+                  >
+                    <div>
+                      <span className="font-medium">{org.name}</span>
+                      {org.business_role && (
+                        <Badge variant="outline" className="ml-2 text-[10px]">
+                          {ORG_UNIT_BUSINESS_ROLES[org.business_role] ?? org.business_role}
+                        </Badge>
+                      )}
+                    </div>
+                    {alreadyAdded && <Badge variant="outline" className="text-[10px]">Добавлен</Badge>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   )
 }
 

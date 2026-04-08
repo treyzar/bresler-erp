@@ -43,6 +43,19 @@ const navItems: NavItemWithModule[] = [
       { to: "/edo/parser", label: "Распознавание документов" },
     ],
   },
+  {
+    to: "/purchasing",
+    label: "Закупки",
+    module: "purchasing",
+    subItems: [
+      { to: "/purchasing/dashboard", label: "Панель" },
+      { to: "/purchasing/orders", label: "Закупочные ордера" },
+      { to: "/purchasing/requests", label: "Заявки" },
+      { to: "/purchasing/stock", label: "Склад" },
+      { to: "/purchasing/payments", label: "Оплаты" },
+      { to: "/purchasing/suppliers", label: "Поставщики" },
+    ],
+  },
   { to: "/profile", label: "Профиль" },
   { to: "/manager-dashboard", label: "Руководитель", requireAccess: "dashboard" },
 ]

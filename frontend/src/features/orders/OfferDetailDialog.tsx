@@ -18,7 +18,7 @@ import {
   OFFER_STATUSES, PAYMENT_TERMS, MANUFACTURING_PERIODS,
   WARRANTY_MONTHS_OPTIONS,
 } from "@/api/types"
-import type { CommercialOfferDetail, OrderParticipantEntry } from "@/api/types"
+import type { CommercialOfferDetail, OrderParticipantEntry, ShipmentBatch } from "@/api/types"
 import { useOffer, useUpdateOffer } from "@/api/hooks/useSpecs"
 import { specsApi } from "@/api/specsApi"
 import { WorkItemsTable } from "./WorkItemsTable"
@@ -38,10 +38,11 @@ interface OfferDetailDialogProps {
   offerId: number
   orderId: number
   participants: OrderParticipantEntry[]
+  shipmentBatches?: ShipmentBatch[]
   onClose: () => void
 }
 
-export function OfferDetailDialog({ offerId, orderId, participants, onClose }: OfferDetailDialogProps) {
+export function OfferDetailDialog({ offerId, orderId, participants, shipmentBatches, onClose }: OfferDetailDialogProps) {
   const { data: offer, isLoading } = useOffer(offerId)
   const updateMutation = useUpdateOffer(offerId, orderId)
   const [editing, setEditing] = useState(false)
@@ -252,6 +253,7 @@ export function OfferDetailDialog({ offerId, orderId, participants, onClose }: O
               orderId={orderId}
               vatRate={vatRate}
               onExport={handleExportSpec}
+              shipmentBatches={shipmentBatches}
             />
           </TabsContent>
 

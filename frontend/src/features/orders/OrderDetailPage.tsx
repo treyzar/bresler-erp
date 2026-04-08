@@ -379,6 +379,7 @@ export function OrderDetailPage() {
             orderId={order.id}
             orderNumber={order.order_number}
             participants={order.order_participants}
+            shipmentBatches={order.shipment_batches}
           />
         </TabsContent>
 

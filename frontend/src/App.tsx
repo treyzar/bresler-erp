@@ -36,6 +36,12 @@ import { ComponentsPage } from "@/features/devices/ComponentsPage"
 import { CatalogPage } from "@/features/devices/CatalogPage"
 import { VoltageClassesPage } from "@/features/devices/VoltageClassesPage"
 import { ProductTypesPage } from "@/features/devices/ProductTypesPage"
+import { StockPage } from "@/features/purchasing/StockPage"
+import { PurchaseOrdersPage } from "@/features/purchasing/PurchaseOrdersPage"
+import { PurchaseRequestsPage } from "@/features/purchasing/PurchaseRequestsPage"
+import { PaymentsPage } from "@/features/purchasing/PaymentsPage"
+import { SupplierPage } from "@/features/purchasing/SupplierPage"
+import { PurchasingDashboard } from "@/features/purchasing/PurchasingDashboard"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -98,6 +104,18 @@ function App() {
                 <Route path="parser" element={<Parser />} />
                 <Route path="templates" element={<Dashboard />} />
                 <Route path="templates/:id" element={<RenderTemplate />} />
+              </Route>
+            </Route>
+
+            <Route element={<ModuleGuard module="purchasing" />}>
+              <Route path="/purchasing">
+                <Route path="stock" element={<StockPage />} />
+                <Route path="orders" element={<PurchaseOrdersPage />} />
+                <Route path="requests" element={<PurchaseRequestsPage />} />
+                <Route path="payments" element={<PaymentsPage />} />
+                <Route path="suppliers" element={<SupplierPage />} />
+                <Route path="dashboard" element={<PurchasingDashboard />} />
+                <Route index element={<Navigate to="orders" replace />} />
               </Route>
             </Route>
 

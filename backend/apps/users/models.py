@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 
-ALL_MODULES = ["orders", "directory", "devices", "edo", "reports"]
+ALL_MODULES = ["orders", "directory", "devices", "edo", "reports", "purchasing"]
 
 PREDEFINED_GROUPS = [
     {
@@ -20,9 +20,9 @@ PREDEFINED_GROUPS = [
         "allowed_modules": ["orders", "directory", "devices", "edo"],
     },
     {
-        "name": "procurement",
+        "name": "purchasing",
         "description": "Отдел снабжения",
-        "allowed_modules": ["orders", "directory", "devices", "edo"],
+        "allowed_modules": ["orders", "directory", "devices", "edo", "purchasing"],
     },
     {
         "name": "accounting",
