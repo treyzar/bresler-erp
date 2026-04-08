@@ -5,12 +5,14 @@ import { generateId } from "../../../utils/help/generateID";
 interface TableNodeProps {
   element: any; 
   isSelected: boolean;
+  isEditing?: boolean;
   onUpdateProp: (id: string, props: any) => void;
 }
 
 export const TableNode: React.FC<TableNodeProps> = ({
   element,
   isSelected,
+  isEditing = false,
   onUpdateProp,
 }) => {
   const props = element.properties;
@@ -135,14 +137,15 @@ export const TableNode: React.FC<TableNodeProps> = ({
       onMerge={handleMerge}
       onSplit={() => {}}
     >
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <table 
-          style={{ 
-            width: "100%", 
-            height: "100%", 
-            borderCollapse: "collapse", 
+      <div style={{ position: "relative", width: "100%", height: "100%", pointerEvents: isEditing ? "auto" : "none" }}>
+        <table
+          style={{
+            width: "100%",
+            height: "100%",
+            borderCollapse: "collapse",
             tableLayout: "fixed",
-            border: `${props.borderWidth}px solid ${props.borderColor}`
+            border: `${props.borderWidth}px solid ${props.borderColor}`,
+            pointerEvents: isEditing ? "auto" : "none",
           }}
         >
           <colgroup>
@@ -160,9 +163,16 @@ export const TableNode: React.FC<TableNodeProps> = ({
                       key={`${rIdx}-${cIdx}`}
                       rowSpan={cell.rowSpan}
                       colSpan={cell.colSpan}
-                      contentEditable
+                      contentEditable={isEditing}
                       suppressContentEditableWarning
+                      onClick={(e) => {
+                        if (isEditing) e.stopPropagation();
+                      }}
+                      onMouseDown={(e) => {
+                        if (isEditing) e.stopPropagation();
+                      }}
                       onBlur={(e) => {
+                        if (!isEditing) return;
                         const newCells = [...props.cells];
                         newCells[rIdx][cIdx] = { ...cell, content: e.currentTarget.textContent || "" };
                         onUpdateProp(element.id, { cells: newCells });
@@ -178,11 +188,13 @@ export const TableNode: React.FC<TableNodeProps> = ({
                         outline: "none",
                         position: "relative",
                         wordBreak: "break-word",
-                        verticalAlign: "top"
+                        verticalAlign: "top",
+                        pointerEvents: isEditing ? "auto" : "none",
+                        cursor: isEditing ? "text" : "default",
                       }}
                     >
                       {cell.content}
-                      {isSelected && rIdx === 0 && (
+                      {isSelected && isEditing && rIdx === 0 && (
                         <div
                           onMouseDown={(e) => handleResizeStart(e, cIdx)}
                           style={{
@@ -193,9 +205,10 @@ export const TableNode: React.FC<TableNodeProps> = ({
                             width: 6,
                             cursor: "col-resize",
                             zIndex: 20,
-                            backgroundColor: resizingCol === cIdx ? "var(--c-accent)" : "transparent"
+                            pointerEvents: "auto",
+                            backgroundColor: resizingCol === cIdx ? "hsl(var(--primary))" : "transparent"
                           }}
-                          className="hover:bg-blue-400/30"
+                          className="hover:bg-primary/30"
                         />
                       )}
                     </td>

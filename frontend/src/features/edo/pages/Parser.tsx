@@ -61,6 +61,7 @@ const ParserPage: React.FC<Props> = ({ onResultChange }) => {
         navigate("/edo/builder", {
           state: {
             importedElements: elements,
+            importedMetadata: (res as any).editor_metadata,
             prefillText: res.extracted_text,
             title: res.original_filename,
           },
@@ -99,7 +100,7 @@ const ParserPage: React.FC<Props> = ({ onResultChange }) => {
           Извлечь текст из документа
         </h1>
         <p className="text-muted-foreground mt-3">
-          Умный парсинг таблиц и текста. Поддерживаются PDF, DOCX и HTML (до 20 МБ).
+          Автоматическое распознавание таблиц и текста. Поддерживаются PDF, DOCX и HTML (до 20 МБ).
         </p>
       </div>
 

@@ -31,8 +31,6 @@ import type {
   ISignatureProperties,
   IDividerProperties,
   ICellStyle,
-  ITableCell,
-  ITableColumn,
 } from "../../utils/types/editor.types";
 
 interface Props {
@@ -65,11 +63,11 @@ const PropertiesPanel: React.FC<Props> = ({
 
   if (!selected)
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-6 text-muted-foreground opacity-70">
-        <div className="bg-muted p-4 rounded-full mb-4">
+      <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed bg-muted/30 p-6 text-center text-muted-foreground">
+        <div className="mb-4 rounded-full bg-background p-4 shadow-sm">
           <Type size={32} />
         </div>
-        <h3 className="font-medium text-foreground mb-2">Выберите элемент</h3>
+        <h3 className="mb-2 font-medium text-foreground">Выберите элемент</h3>
         <p className="text-sm">
           Нажмите на любой элемент на холсте, чтобы настроить его свойства
         </p>
@@ -119,9 +117,11 @@ const PropertiesPanel: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Позиция и размер */}
-      <div className="space-y-4">
+    <div className="flex flex-col gap-4">
+      <div className="rounded-xl border bg-card/60 p-3">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Геометрия
+        </p>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Позиция X</Label>
@@ -178,9 +178,11 @@ const PropertiesPanel: React.FC<Props> = ({
         </div>
       </div>
 
-      <Separator />
-
-      <div className="flex flex-col gap-5">
+      <div className="rounded-xl border bg-card/60 p-3">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Параметры
+        </p>
+        <div className="flex flex-col gap-5">
         {selected.type === "text" && (
           <TextProps el={selected} onUpdate={onUpdateProps} />
         )}
@@ -200,12 +202,13 @@ const PropertiesPanel: React.FC<Props> = ({
         {selected.type === "divider" && (
           <DividerProps el={selected} onUpdate={onUpdateProps} />
         )}
+        </div>
       </div>
 
-      <Separator />
-
-      {/* Действия */}
-      <div className="space-y-2 pb-4">
+      <div className="space-y-2 rounded-xl border bg-card/60 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Действия
+        </p>
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
@@ -603,7 +606,7 @@ const TableProps: React.FC<{
   const [selectedCol, setSelectedCol] = React.useState(0);
 
   const currentCell = isNew ? p.cells?.[selectedRow]?.[selectedCol] : null;
-  const currentStyle = currentCell?.style || {};
+  const currentStyle: Partial<ICellStyle> = currentCell?.style || {};
 
   const updateCellStyle = (styleUpd: Partial<ICellStyle>) => {
     if (!isNew || !p.cells) return;

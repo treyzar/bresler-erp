@@ -39,7 +39,7 @@ const navItems: NavItemWithModule[] = [
       { to: "/edo/registry", label: "Реестр писем" },
       { to: "/edo/templates", label: "Шаблоны" },
       { to: "/edo/builder", label: "Конструктор" },
-      { to: "/edo/parser", label: "Парсер" },
+      { to: "/edo/parser", label: "Распознавание документов" },
     ],
   },
   { to: "/profile", label: "Профиль" },

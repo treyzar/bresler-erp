@@ -37,9 +37,59 @@ def make_text_element(x, y, width, height, content, font="Inter", size=14, bold=
             "bold": bold,
             "italic": italic,
             "underline": False,
-            "align": align
+            "align": align,
+            "textIndent": 0,
+            "lineHeight": 1.5,
+            "letterSpacing": 0,
+            "whiteSpace": "pre-wrap",
+            "wordBreak": "break-word",
+            "paragraphSpacing": 8,
         }
     }
+
+def _normalize_table_data(data):
+    if not data:
+        return []
+
+    normalized = []
+    max_cols = 0
+    for row in data:
+        if row is None:
+            normalized_row = []
+        else:
+            normalized_row = ["" if cell is None else str(cell) for cell in row]
+        max_cols = max(max_cols, len(normalized_row))
+        normalized.append(normalized_row)
+
+    for row in normalized:
+        while len(row) < max_cols:
+            row.append("")
+    return normalized
+
+
+def _build_table_cells(final_data, final_colors):
+    cells = []
+    for row_idx, row in enumerate(final_data):
+        cell_row = []
+        for col_idx, value in enumerate(row):
+            color = "#000000"
+            if row_idx < len(final_colors) and col_idx < len(final_colors[row_idx]):
+                color = final_colors[row_idx][col_idx] or "#000000"
+            cell_row.append(
+                {
+                    "id": generate_id(),
+                    "content": value,
+                    "rowSpan": 1,
+                    "colSpan": 1,
+                    "style": {
+                        "color": color,
+                        "textAlign": "left",
+                    },
+                }
+            )
+        cells.append(cell_row)
+    return cells
+
 
 def make_table_element(x, y, width, height, table=None, rows=2, cols=2, data=None, cell_text_colors=None):
     final_data = []
@@ -47,9 +97,9 @@ def make_table_element(x, y, width, height, table=None, rows=2, cols=2, data=Non
     
     # Если переданы сырые данные (из PDF/HTML)
     if data:
-        final_data = data
-        rows = len(data)
-        cols = len(data[0]) if data else 0
+        final_data = _normalize_table_data(data)
+        rows = len(final_data)
+        cols = len(final_data[0]) if final_data else 0
         # Инициализируем цвета, если не переданы
         if cell_text_colors:
             final_colors = cell_text_colors
@@ -60,12 +110,26 @@ def make_table_element(x, y, width, height, table=None, rows=2, cols=2, data=Non
         for row in table.rows:
             row_data = [cell.text.strip() for cell in row.cells]
             final_data.append(row_data)
+        final_data = _normalize_table_data(final_data)
         rows = len(final_data)
         cols = len(final_data[0]) if final_data else 0
         final_colors = [["#000000" for _ in range(cols)] for _ in range(rows)]
     else:
         final_data = [["" for _ in range(cols)] for _ in range(rows)]
         final_colors = [["#000000" for _ in range(cols)] for _ in range(rows)]
+
+    if rows <= 0:
+        rows = len(final_data)
+    if cols <= 0 and final_data:
+        cols = len(final_data[0])
+
+    columns = []
+    if cols > 0:
+        safe_width = max(120, int(width))
+        base_col_width = max(80, int(safe_width / cols))
+        columns = [{"width": base_col_width} for _ in range(cols)]
+
+    cells = _build_table_cells(final_data, final_colors)
 
     return {
         "id": generate_id(),
@@ -82,7 +146,10 @@ def make_table_element(x, y, width, height, table=None, rows=2, cols=2, data=Non
             "borderColor": "#000000",
             "cellBg": "transparent",
             "data": final_data,
-            "cellTextColors": final_colors
+            "cellTextColors": final_colors,
+            # Новая структура (совместима с новым редактором таблиц)
+            "columns": columns,
+            "cells": cells,
         }
     }
 
@@ -127,6 +194,7 @@ def make_signature_element(x, y, width, height, image_bytes=None, ext="png", src
         "properties": {
             "image": src or "",
             "text": "",
+            "fontSize": 16,
             "color": "#000000"
         }
     }

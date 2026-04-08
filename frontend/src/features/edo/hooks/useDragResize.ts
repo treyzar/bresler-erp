@@ -1,12 +1,6 @@
-// src/hooks/editorHooks/useDragResize.ts
 import { useCallback, useRef, useState } from "react";
 import type { IEditorElement } from "../utils/types/editor.types";
-import {
-  MIN_WIDTH,
-  MIN_HEIGHT,
-  A4_WIDTH,
-  A4_HEIGHT,
-} from "../utils/constants/editor.constants";
+import { MIN_WIDTH, MIN_HEIGHT, A4_WIDTH } from "../utils/constants/editor.constants";
 
 interface DragResizeHook {
   isDragging: boolean;
@@ -37,14 +31,11 @@ export const useDragResize = (): DragResizeHook => {
   const dragOffset = useRef({ x: 0, y: 0 });
   const resizeHandle = useRef("");
 
-  const startDrag = useCallback(
-    (_id: string, offsetX: number, offsetY: number) => {
-      dragOffset.current = { x: offsetX, y: offsetY };
-      isDragging.current = true;
-      setIsDraggingState(true);
-    },
-    [],
-  );
+  const startDrag = useCallback((_id: string, offsetX: number, offsetY: number) => {
+    dragOffset.current = { x: offsetX, y: offsetY };
+    isDragging.current = true;
+    setIsDraggingState(true);
+  }, []);
 
   const startResize = useCallback((_id: string, handle: string) => {
     resizeHandle.current = handle;
@@ -57,7 +48,6 @@ export const useDragResize = (): DragResizeHook => {
     isDragging.current = false;
     isResizing.current = false;
     resizeHandle.current = "";
-
     setIsDraggingState(false);
     setIsResizingState(false);
     setResizeHandleState("");
@@ -80,90 +70,52 @@ export const useDragResize = (): DragResizeHook => {
       if (!el) return;
 
       const snap = (v: number) => (isGridEnabled ? snapToGrid(v) : v);
-
-      // Координаты мыши относительно канваса (с учетом зума)
       const mouseX = (e.clientX - canvasRect.left) / zoom;
       const mouseY = (e.clientY - canvasRect.top) / zoom;
 
-      // --- ЛОГИКА ПЕРЕТАСКИВАНИЯ ---
       if (isDragging.current) {
         let nx = mouseX - dragOffset.current.x;
         let ny = mouseY - dragOffset.current.y;
 
-        nx = snap(nx);
-        ny = snap(ny);
+        nx = snap(Math.max(0, Math.min(nx, A4_WIDTH - el.width)));
+        ny = snap(Math.max(0, ny));
 
-        const constrainedX = Math.max(0, Math.min(nx, A4_WIDTH - el.width));
-        const constrainedY = Math.max(0, Math.min(ny, A4_HEIGHT - el.height));
-
-        if (el.x !== constrainedX || el.y !== constrainedY) {
-          updateElement(selectedId, { x: constrainedX, y: constrainedY });
-        }
+        updateElement(selectedId, { x: nx, y: ny });
       }
 
-      // --- ЛОГИКА ИЗМЕНЕНИЯ РАЗМЕРА ---
       if (isResizing.current) {
         const handle = resizeHandle.current;
-
         let newX = el.x;
         let newY = el.y;
         let newWidth = el.width;
         let newHeight = el.height;
 
-        // Правый край (e = east)
         if (handle.includes("e")) {
-          const desiredWidth = snap(mouseX - el.x);
-          newWidth = Math.max(MIN_WIDTH, desiredWidth);
-          // Ограничение по правому краю страницы
-          if (el.x + newWidth > A4_WIDTH) {
-            newWidth = A4_WIDTH - el.x;
-          }
+          newWidth = snap(Math.max(MIN_WIDTH, Math.min(mouseX - el.x, A4_WIDTH - el.x)));
         }
-
-        // Нижний край (s = south)
         if (handle.includes("s")) {
-          const desiredHeight = snap(mouseY - el.y);
-          newHeight = Math.max(MIN_HEIGHT, desiredHeight);
-          // Ограничение по высоте (опционально, если нужно)
+          newHeight = snap(Math.max(MIN_HEIGHT, mouseY - el.y));
         }
-
-        // Левый край (w = west)
         if (handle.includes("w")) {
           const rightEdge = el.x + el.width;
-          const desiredLeft = snap(mouseX);
+          const desiredLeft = snap(Math.max(0, mouseX));
           const desiredWidth = rightEdge - desiredLeft;
-
-          if (desiredWidth >= MIN_WIDTH && desiredLeft >= 0) {
+          if (desiredWidth >= MIN_WIDTH) {
             newX = desiredLeft;
             newWidth = desiredWidth;
-          } else if (desiredLeft < 0) {
-            newX = 0;
-            newWidth = snap(rightEdge);
           }
         }
-
-        // Верхний край (n = north)
         if (handle.includes("n")) {
           const bottomEdge = el.y + el.height;
-          const desiredTop = snap(mouseY);
+          const desiredTop = snap(Math.max(0, mouseY));
           const desiredHeight = bottomEdge - desiredTop;
-
-          if (desiredHeight >= MIN_HEIGHT && desiredTop >= 0) {
+          if (desiredHeight >= MIN_HEIGHT) {
             newY = desiredTop;
             newHeight = desiredHeight;
-          } else if (desiredTop < 0) {
-            newY = 0;
-            newHeight = snap(bottomEdge);
           }
         }
 
-        // Применяем изменения
-        updateElement(selectedId, {
-          x: newX,
-          y: newY,
-          width: newWidth,
-          height: newHeight,
-        });
+        updateElement(selectedId, { x: newX, y: newY, width: newWidth, height: newHeight });
       }
     },
     [],

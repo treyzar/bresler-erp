@@ -10,6 +10,7 @@ import {
   ZoomIn,
   RotateCcw,
   Grid,
+  Magnet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TElementType } from "../../utils/types/editor.types";
@@ -27,14 +28,13 @@ interface Props {
   onZoomChange: (z: number, manual: boolean) => void;
 }
 
-const buttons: { type: TElementType; icon: React.ReactNode; label: string }[] =
-  [
-    { type: "text", icon: <FileText size={20} />, label: "Текст" },
-    { type: "image", icon: <ImageIcon size={20} />, label: "Картинка" },
-    { type: "table", icon: <TableIcon size={20} />, label: "Таблица" },
-    { type: "signature", icon: <PenTool size={20} />, label: "Подпись" },
-    { type: "divider", icon: <Minus size={20} />, label: "Линия" },
-  ];
+const buttons: { type: TElementType; icon: React.ReactNode; label: string }[] = [
+  { type: "text", icon: <FileText size={18} />, label: "Текст" },
+  { type: "image", icon: <ImageIcon size={18} />, label: "Картинка" },
+  { type: "table", icon: <TableIcon size={18} />, label: "Таблица" },
+  { type: "signature", icon: <PenTool size={18} />, label: "Подпись" },
+  { type: "divider", icon: <Minus size={18} />, label: "Линия" },
+];
 
 const ElementsPanel: React.FC<Props> = ({
   onAdd,
@@ -49,59 +49,36 @@ const ElementsPanel: React.FC<Props> = ({
   onZoomChange,
 }) => {
   const fileRef = useRef<HTMLInputElement>(null);
-
-  // Текущий отображаемый зум
-  const displayZoom = zoom;
-  const zoomPercent = Math.round(displayZoom * 100);
-
-  // Пресеты масштаба
+  const zoomPercent = Math.round(zoom * 100);
   const zoomPresets = [0.5, 0.75, 1, 1.25, 1.5];
 
-  // Обработчик изменения зума через слайдер
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    onZoomChange(value, true); // true = manual
-  };
-
-  // Обработчик пресетов
-  const handlePresetClick = (preset: number) => {
-    onZoomChange(preset, true);
-  };
-
-  // Сброс зума
-  const handleResetZoom = () => {
-    onZoomChange(autoZoom, false); // false = auto mode
-  };
-
   return (
-    <div className="flex flex-col gap-6 w-full">
-      {/* Секция добавления элементов */}
-      <div className="pb-4 border-b">
-        <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+    <div className="flex flex-col gap-4">
+      <section className="rounded-xl border bg-card/70 p-3">
+        <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <Plus size={14} />
-          Добавить элемент
+          Библиотека блоков
         </h4>
         <div className="grid grid-cols-2 gap-2">
           {buttons.map((b) => (
             <Button
               key={b.type}
               variant="outline"
-              className="flex flex-col items-center justify-center gap-2 h-auto py-4 hover:border-primary hover:bg-primary/5 hover:text-primary transition-colors duration-200"
+              className="h-auto min-h-[70px] flex-col gap-2 rounded-lg border-dashed"
               onClick={() => onAdd(b.type)}
               title={`Добавить ${b.label}`}
             >
-              <div className="text-primary">{b.icon}</div>
+              <span className="text-primary">{b.icon}</span>
               <span className="text-xs font-medium">{b.label}</span>
             </Button>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Загрузка изображения */}
-      <div className="pb-4 border-b">
-        <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+      <section className="rounded-xl border bg-card/70 p-3">
+        <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <Upload size={14} />
-          Загрузка
+          Импорт
         </h4>
         <input
           ref={fileRef}
@@ -117,93 +94,94 @@ const ElementsPanel: React.FC<Props> = ({
         />
         <Button
           variant="secondary"
-          className="w-full flex items-center justify-center gap-2"
+          className="w-full justify-center"
           onClick={() => fileRef.current?.click()}
         >
-          <Upload size={16} />
+          <Upload size={16} className="mr-2" />
           Загрузить изображение
         </Button>
-      </div>
+      </section>
 
-      {/* Секция масштаба */}
-      <div className="bg-muted -mx-4 p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground m-0">
+      <section className="rounded-xl border bg-card/70 p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <ZoomIn size={14} />
             Масштаб
           </h4>
-          <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-md min-w-[60px] text-center">
+          <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
             {zoomPercent}%
           </span>
         </div>
 
-        {/* Слайдер */}
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-[10px] text-muted-foreground min-w-[28px]">50%</span>
-          <input
-            type="range"
-            min={0.5}
-            max={2}
-            step={0.05}
-            value={displayZoom}
-            onChange={handleSliderChange}
-            className="flex-1 h-1.5 bg-input rounded-full appearance-none cursor-pointer accent-primary"
-          />
-          <span className="text-[10px] text-muted-foreground min-w-[28px] text-right">200%</span>
-        </div>
+        <input
+          type="range"
+          min={0.5}
+          max={2}
+          step={0.05}
+          value={zoom}
+          onChange={(e) => onZoomChange(parseFloat(e.target.value), true)}
+          className="mb-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-input accent-primary"
+        />
 
-        {/* Пресеты */}
-        <div className="flex gap-1.5 mb-3">
+        <div className="mb-3 grid grid-cols-5 gap-1">
           {zoomPresets.map((preset) => (
             <Button
               key={preset}
-              variant={Math.abs(displayZoom - preset) < 0.03 ? "default" : "outline"}
+              variant={Math.abs(zoom - preset) < 0.03 ? "default" : "outline"}
               size="sm"
-              className="flex-1 h-7 text-[10px] font-semibold px-1 min-w-0"
-              onClick={() => handlePresetClick(preset)}
+              className="h-7 px-1 text-[10px]"
+              onClick={() => onZoomChange(preset, true)}
             >
               {Math.round(preset * 100)}%
             </Button>
           ))}
         </div>
 
-        {/* Кнопка сброса */}
         {isManualZoom && (
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10"
-            onClick={handleResetZoom}
+            className="w-full text-xs"
+            onClick={() => onZoomChange(autoZoom, false)}
           >
             <RotateCcw size={14} className="mr-2" />
-            Сбросить (Авто: {Math.round(autoZoom * 100)}%)
+            Автомасштаб ({Math.round(autoZoom * 100)}%)
           </Button>
         )}
-      </div>
+      </section>
 
-      {/* Сетка и Привязка */}
-      <div className="pb-4 space-y-1">
-        <label className="flex items-center gap-3 cursor-pointer text-sm py-2 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
-          <input
-            type="checkbox"
-            className="w-[18px] h-[18px] accent-primary cursor-pointer rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-            checked={gridVisible}
-            onChange={(e) => onToggleGrid(e.target.checked)}
-          />
-          <Grid size={14} className="text-muted-foreground" />
-          <span className="font-medium text-foreground">Показать сетку</span>
-        </label>
-        <label className="flex items-center gap-3 cursor-pointer text-sm py-2 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
-          <input
-            type="checkbox"
-            className="w-[18px] h-[18px] accent-primary cursor-pointer rounded border-gray-300 text-primary shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-            checked={gridSnap}
-            onChange={(e) => onToggleSnap(e.target.checked)}
-          />
-          <PenTool size={14} className="text-muted-foreground" />
-          <span className="font-medium text-foreground">Привязка (Магнит)</span>
-        </label>
-      </div>
+      <section className="rounded-xl border bg-card/70 p-3">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Точность
+        </h4>
+        <div className="space-y-2">
+          <label className="flex items-center justify-between gap-3 rounded-md border px-2 py-2 text-sm">
+            <span className="flex items-center gap-2">
+              <Grid size={14} className="text-muted-foreground" />
+              Показать сетку
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={gridVisible}
+              onChange={(e) => onToggleGrid(e.target.checked)}
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-md border px-2 py-2 text-sm">
+            <span className="flex items-center gap-2">
+              <Magnet size={14} className="text-muted-foreground" />
+              Привязка к сетке
+            </span>
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={gridSnap}
+              onChange={(e) => onToggleSnap(e.target.checked)}
+            />
+          </label>
+        </div>
+      </section>
     </div>
   );
 };

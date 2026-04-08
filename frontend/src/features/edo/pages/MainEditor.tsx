@@ -21,6 +21,8 @@ import {
   HelpCircle,
   Save,
   ChevronLeft,
+  Settings2,
+  Shield,
 } from "lucide-react";
 
 /* ---------- компоненты ---------- */
@@ -29,6 +31,7 @@ import CanvasToolbar from "../components/editor/CanvasToolbar";
 import ElementsPanel from "../components/editor/ElementsPanel";
 import PropertiesPanel from "../components/editor/PropertiesPanel";
 import Modal from "../components/editor/documentation/Modal";
+import HelpModal from "../components/editor/documentation/HelpModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -60,6 +63,9 @@ export default function Editor() {
   const importedElements = state?.importedElements as
     | IEditorElement[]
     | undefined;
+  const importedMetadata = state?.importedMetadata as
+    | Record<string, any>
+    | undefined;
   const importedTitle = state?.title as string | undefined;
   const editingTemplateId = state?.templateId as number | undefined;
   const letterId = state?.letterId as number | undefined;
@@ -77,6 +83,7 @@ export default function Editor() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const [gridVisible, setGridVisible] = useState(true);
   const [gridSnap, setGridSnap] = useState(true);
@@ -88,6 +95,7 @@ export default function Editor() {
   /* подпись: редактирование */
   const [isSigOpen, setIsSigOpen] = useState(false);
   const [sigEditId, setSigEditId] = useState<string | null>(null);
+  const [pendingSignatureId, setPendingSignatureId] = useState<string | null>(null);
   const sigCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const sigDrawing = useRef(false);
 
@@ -389,41 +397,69 @@ export default function Editor() {
   useEffect(() => {
     /* 1. ПРИОРИТЕТ: Импорт из парсера (PDF/DOCX/HTML) */
     if (importedElements && importedElements.length > 0) {
+      const clamp = (v: number, min: number, max: number) =>
+        Math.max(min, Math.min(max, v));
+      const sourcePageHeight =
+        Number(importedMetadata?.page_height) ||
+        Number(importedMetadata?.pages?.[0]?.height) ||
+        A4_HEIGHT;
+      const sourcePageWidth =
+        Number(importedMetadata?.page_width) ||
+        Number(importedMetadata?.pages?.[0]?.width) ||
+        A4_WIDTH;
+      const sourcePageGap = Number(importedMetadata?.page_gap) || 0;
+      const sourcePageWithGap = Math.max(1, sourcePageHeight + sourcePageGap);
+      const widthScale = A4_WIDTH / Math.max(1, sourcePageWidth);
+      const heightScale = A4_HEIGHT / Math.max(1, sourcePageHeight);
+
       const adjustedElements = importedElements.map((el) => {
-        if (el.type === "text") {
-          const p = el.properties as any;
-          if (p.content) {
-            const fontSize = p.fontSize || 14;
-            const width = el.width || 300;
-            const charsPerLine = Math.max(10, width / (fontSize * 0.6));
-            const explicitLines = (p.content as string).split("\n");
-            let totalLines = 0;
-            for (const line of explicitLines) {
-              totalLines += Math.max(1, Math.ceil(line.length / charsPerLine));
-            }
-            const estimatedHeight = totalLines * fontSize * 1.5;
-            return {
-              ...el,
-              height: Math.max(el.height, estimatedHeight + 40),
-            };
-          }
-        } else if (el.type === "table") {
-          const p = el.properties as any;
-          const cols = p.cols || 1;
-          const rows = p.rows || 1;
-          const estimatedWidth = Math.max(el.width || 400, cols * 80);
-          const estimatedHeight = Math.max(el.height || 200, rows * 40);
-          return {
-            ...el,
-            width: estimatedWidth,
-            height: estimatedHeight,
-          };
-        }
-        return el;
+        const rawX = Number(el.x) || 0;
+        const rawY = Number(el.y) || 0;
+        const rawWidth = Number(el.width) || 120;
+        const rawHeight = Number(el.height) || 40;
+
+        const pageIdx = Math.max(0, Math.floor(rawY / sourcePageWithGap));
+        const localY = rawY - pageIdx * sourcePageWithGap;
+
+        let normalizedX = rawX * widthScale;
+        let normalizedY = pageIdx * A4_HEIGHT + localY * heightScale;
+        let normalizedWidth = Math.max(20, rawWidth * widthScale);
+        let normalizedHeight = Math.max(20, rawHeight * heightScale);
+        normalizedY = Math.max(0, normalizedY);
+        normalizedX = clamp(normalizedX, 0, A4_WIDTH - 20);
+        normalizedWidth = clamp(normalizedWidth, 20, A4_WIDTH - normalizedX);
+        normalizedHeight = Math.max(20, normalizedHeight);
+
+        return {
+          ...el,
+          x: normalizedX,
+          y: normalizedY,
+          width: normalizedWidth,
+          height: normalizedHeight,
+        };
       });
 
-      setElements(adjustedElements);
-      saveToHistory(adjustedElements);
+      const sortedAdjustedElements = adjustedElements
+        .map((el, idx) => ({
+          ...el,
+          zIndex: Number.isFinite(el.zIndex) ? el.zIndex : idx,
+        }))
+        .sort((a, b) => {
+          const ay = Math.floor((a.y || 0) / A4_HEIGHT);
+          const by = Math.floor((b.y || 0) / A4_HEIGHT);
+          if (ay !== by) return ay - by;
+          if (a.y !== b.y) return (a.y || 0) - (b.y || 0);
+          return (a.x || 0) - (b.x || 0);
+        })
+        .map((el, idx) => ({ ...el, zIndex: idx }));
+
+      setElements(sortedAdjustedElements);
+      saveToHistory(sortedAdjustedElements);
+      const firstPage = Math.max(
+        0,
+        Math.floor((sortedAdjustedElements[0]?.y || 0) / A4_HEIGHT),
+      );
+      setCurrentPage(firstPage);
       if (importedTitle) setTitle(importedTitle);
       localStorage.removeItem(LOCALSTORAGE_KEY);
       return;
@@ -523,6 +559,18 @@ export default function Editor() {
     }
   }, []); // Выполняется один раз при монтировании
 
+  // Если выбранный элемент ушел на другую страницу, переключаемся на нее,
+  // чтобы элемент не "исчезал" во время перетаскивания/изменения.
+  useEffect(() => {
+    if (!selectedId || isDragging || isResizing) return;
+    const selected = elements.find((el) => el.id === selectedId);
+    if (!selected) return;
+    const page = Math.max(0, Math.floor((selected.y || 0) / A4_HEIGHT));
+    if (page !== currentPage) setCurrentPage(page);
+    // Важно: не зависим от `elements`, чтобы не "телепортироваться" при drag.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, isDragging, isResizing]);
+
   /* Автосохранение черновика */
   useEffect(() => {
     const t = setInterval(() => {
@@ -566,6 +614,22 @@ export default function Editor() {
     if (!sigEditId || !sigCanvasRef.current) return;
     const data = sigCanvasRef.current.toDataURL("image/png");
     updateProperties(sigEditId, { image: data });
+    setPendingSignatureId(null);
+    setIsSigOpen(false);
+    setSigEditId(null);
+  };
+
+  const closeSignatureModal = () => {
+    if (pendingSignatureId) {
+      setElements((prev) => {
+        const next = prev.filter((el) => el.id !== pendingSignatureId);
+        saveToHistory(next);
+        return next;
+      });
+      setSelectedId((prev) => (prev === pendingSignatureId ? null : prev));
+      setPendingSignatureId(null);
+    }
+
     setIsSigOpen(false);
     setSigEditId(null);
   };
@@ -593,11 +657,10 @@ export default function Editor() {
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!isDragging && !isResizing) return;
-
       const node = canvasRef.current;
       if (!node) return;
 
-      const currentSnap = e.shiftKey ? (v: number) => v : (v: number) => snapToGrid(v, GRID_SIZE);
+      const currentSnap = e.shiftKey ? (v: number) => v : snapToGrid;
 
       handleMouseMove(
         e,
@@ -613,7 +676,7 @@ export default function Editor() {
 
     const onUp = () => {
       if (isDragging || isResizing) {
-        saveToHistory(elementsRef.current);
+        setTimeout(() => saveToHistory(elementsRef.current), 0);
       }
       stopDragResize();
     };
@@ -626,120 +689,120 @@ export default function Editor() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [
-    isDragging,
-    isResizing,
-    selectedId,
-    zoom,
-    gridSnap,
-    handleMouseMove,
-    updateElementPosition,
-    saveToHistory,
-    stopDragResize,
-  ]);
+  }, [isDragging, isResizing, selectedId, zoom, gridSnap]);
 
   // Вычисляем общее количество страниц
   const totalPages = React.useMemo(() => {
     if (elements.length === 0) return 1;
-    const maxY = Math.max(...elements.map((el) => {
-      let h = el.height;
-      if (el.type === "table") {
-         const props = el.properties as any;
-         const rows = props.rows || 1;
-         h = Math.max(h, rows * 40); 
-      }
-      return el.y + h;
-    }));
-    return Math.max(1, Math.ceil(maxY / 1123)); // 1123 is PAGE_HEIGHT from Canvas
+    const maxY = Math.max(
+      A4_HEIGHT,
+      ...elements.map((el) => (Number(el.y) || 0) + Math.max(1, Number(el.height) || 0)),
+    );
+    return Math.max(1, Math.ceil(maxY / A4_HEIGHT));
   }, [elements]);
 
   /* ---------- RENDER ---------- */
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-background">
-      {/* 1. Навигация & Область настроек */}
-      <div className="border-b bg-card text-card-foreground">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="-ml-3 hidden sm:inline-flex"
-              onClick={() => navigate("/edo/templates")}
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Назад
-            </Button>
-            <div className="h-6 w-px bg-border hidden sm:block" />
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <Input
-                className="h-8 border-transparent hover:border-border focus-visible:ring-1 bg-transparent font-medium text-lg w-[200px]"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Без названия"
-              />
-              <Input
-                className="h-8 border-transparent hover:border-border focus-visible:ring-1 bg-transparent text-sm text-muted-foreground w-[300px]"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Добавить описание..."
-              />
+    <div className="flex h-[calc(100vh-4rem)] flex-col bg-gradient-to-b from-muted/40 via-background to-background">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="px-4 py-3 lg:px-6">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/edo/templates")}
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                К шаблонам
+              </Button>
+              <div className="hidden h-5 w-px bg-border sm:block" />
+              <p className="text-sm font-medium text-muted-foreground">
+                Конструктор документов
+              </p>
             </div>
+
+            <Button variant="outline" size="sm" onClick={() => setIsHelpOpen(true)}>
+              <HelpCircle className="mr-2 h-4 w-4" />
+              Справка
+            </Button>
           </div>
 
-          <div className="flex items-center gap-3">
-             <Button variant="outline" size="sm">
-                <HelpCircle className="mr-2 h-4 w-4" />
-                Справка
-             </Button>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_auto]">
+            <div className="rounded-xl border bg-card/80 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Метаданные
+              </p>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                <Input
+                  className="h-9 bg-background"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Название шаблона"
+                />
+                <Input
+                  className="h-9 bg-background"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Краткое описание назначения шаблона"
+                />
+              </div>
+            </div>
 
-              <div className="flex items-center gap-2 border-l pl-3">
+            <div className="rounded-xl border bg-card/80 p-3">
+              <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <Settings2 className="h-3.5 w-3.5" />
+                Режим публикации
+              </p>
+              <div className="grid grid-cols-2 gap-2">
                 <select
-                  className="h-9 w-[120px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={templateType}
                   onChange={(e) => setTemplateType(e.target.value as any)}
                 >
-                  <option value="PDF">PDF формат</option>
-                  <option value="HTML">HTML шаблон</option>
-                  <option value="DOCX">DOCX файл</option>
+                  <option value="PDF">PDF</option>
+                  <option value="HTML">HTML</option>
+                  <option value="DOCX">DOCX</option>
                 </select>
-
                 <select
-                  className="h-9 w-[130px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={visibility}
-                  onChange={(e) =>
-                    setVisibility(e.target.value as TVisibilityType)
-                  }
+                  onChange={(e) => setVisibility(e.target.value as TVisibilityType)}
                 >
                   <option value="PUBLIC">Публичный</option>
                   <option value="RESTRICTED">Ограниченный</option>
                 </select>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={loading}
-                  className="min-w-[120px]"
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  {loading ? "Сохранение..." : "Сохранить"}
-                </Button>
               </div>
+            </div>
+
+            <div className="flex flex-col justify-end gap-2 rounded-xl border bg-card/80 p-3">
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Shield className="h-3.5 w-3.5" />
+                Черновик автосохраняется локально
+              </p>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={loading}
+                className="h-9 min-w-[180px]"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {loading ? "Сохранение..." : "Сохранить шаблон"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
       {error && (
-        <div className="bg-destructive/10 text-destructive border-b border-destructive/20 p-2 text-center text-sm">
+        <div className="mx-4 mt-3 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive lg:mx-6">
           {error}
         </div>
       )}
 
-      {/* 3. Основная рабочая область - 3 колонки */}
-      <div className="flex-1 overflow-hidden grid grid-cols-[280px_1fr_320px] divide-x">
-        {/* Левая панель - Инструменты */}
-        <div className="bg-card text-card-foreground flex flex-col overflow-y-auto w-[280px]">
-          <div className="p-4 border-b font-semibold text-sm">Инструменты</div>
-          <div className="flex-1 p-4">
+      <div className="min-h-0 flex-1 p-4 lg:p-6">
+        <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
+          <div className="min-h-0 overflow-auto rounded-2xl border bg-card/75 p-3">
+            <p className="mb-3 text-sm font-semibold">Инструменты</p>
             <ElementsPanel
               onAdd={(type) => {
                 const el = createDefaultElement(type, generateId(), snapToGrid);
@@ -748,6 +811,7 @@ export default function Editor() {
                 saveToHistory(next);
                 setSelectedId(el.id);
                 if (type === "signature") {
+                  setPendingSignatureId(el.id);
                   handleOpenSignatureEditor(el.id);
                 }
               }}
@@ -764,36 +828,32 @@ export default function Editor() {
               }
             />
           </div>
-        </div>
 
-        {/* Центральная панель - Холст */}
-        <div className="bg-muted/30 relative flex flex-col" ref={canvasContainerRef}>
-          <div className="border-b bg-card p-2 flex justify-center sticky top-0 z-10">
-              <CanvasToolbar
-                canUndo={canUndo}
-                canRedo={canRedo}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                onClear={() => {
-                  if (confirm("Очистить холст?")) {
-                    setElements([]);
-                    saveToHistory([]);
-                    setSelectedId(null);
-                  }
-                }}
-                onExportDocx={exportDocx}
-                onExportHtml={exportHtml}
-                onExportPdf={exportPdf}
-                gridVisible={gridVisible}
-                gridSnap={gridSnap}
-                onToggleGrid={setGridVisible}
-                onToggleSnap={setGridSnap}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-          </div>
-          <div className="flex-1 overflow-auto p-8 flex items-start justify-center relative bg-muted/20">
+          <div
+            className="min-h-0 overflow-hidden rounded-2xl border bg-card/75 p-3"
+            ref={canvasContainerRef}
+          >
+            <CanvasToolbar
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onClear={() => {
+                if (confirm("Очистить холст?")) {
+                  setElements([]);
+                  saveToHistory([]);
+                  setSelectedId(null);
+                }
+              }}
+              onExportDocx={exportDocx}
+              onExportHtml={exportHtml}
+              onExportPdf={exportPdf}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+
+            <div className="mt-3 flex h-[calc(100%-64px)] min-h-0 items-start justify-center overflow-auto rounded-xl border bg-[radial-gradient(circle_at_top,_hsl(var(--muted))_0,_transparent_45%),linear-gradient(180deg,rgba(148,163,184,0.12),transparent_40%)] p-4 lg:p-6">
               <Canvas
                 ref={canvasRef}
                 elements={elements}
@@ -814,12 +874,10 @@ export default function Editor() {
                 currentPage={currentPage}
               />
             </div>
-        </div>
+          </div>
 
-        {/* Правая панель - Свойства */}
-        <div className="bg-card text-card-foreground flex flex-col overflow-y-auto w-[320px]">
-          <div className="p-4 border-b font-semibold text-sm">Свойства элемента</div>
-          <div className="flex-1 p-4">
+          <div className="min-h-0 overflow-auto rounded-2xl border bg-card/75 p-3">
+            <p className="mb-3 text-sm font-semibold">Свойства элемента</p>
             <PropertiesPanel
               selected={elements.find((el) => el.id === selectedId) || null}
               onUpdateEl={updateElement}
@@ -832,13 +890,15 @@ export default function Editor() {
         </div>
       </div>
 
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+      />
+
       {/* Модальное окно ПОДПИСИ */}
       <Modal
         isOpen={isSigOpen}
-        onClose={() => {
-          setIsSigOpen(false);
-          setSigEditId(null);
-        }}
+        onClose={closeSignatureModal}
         title="Редактор подписи"
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -915,10 +975,7 @@ export default function Editor() {
             </Button>
             <Button
               variant="secondary"
-              onClick={() => {
-                setIsSigOpen(false);
-                setSigEditId(null);
-              }}
+              onClick={closeSignatureModal}
             >
               Отмена
             </Button>

@@ -57,6 +57,8 @@ export interface ParsedDocument {
   file_size: number;
   page_count: number | null;
   extracted_text: string;
+  editor_elements?: unknown[];
+  editor_metadata?: Record<string, unknown>;
   original_file: string;
   created_at: string;
 }
