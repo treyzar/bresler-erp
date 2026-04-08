@@ -5,12 +5,13 @@ from ..models.models import ParsedDocument
 
 class ParsedDocumentSerializer(serializers.ModelSerializer):
     editor_elements = serializers.SerializerMethodField()
+    editor_metadata = serializers.SerializerMethodField()
 
     class Meta:
         model = ParsedDocument
         fields = [
             'id', 'original_filename', 'file_type', 'file_size',
-            'page_count', 'extracted_text', 'editor_elements', # <-- поле тут
+            'page_count', 'extracted_text', 'editor_elements', 'editor_metadata',
             'original_file', 'created_at'
         ]
         read_only_fields = fields
@@ -19,6 +20,9 @@ class ParsedDocumentSerializer(serializers.ModelSerializer):
         # Возвращаем элементы ВСЕГДА, если они есть. 
         # Фронтенду они нужны сразу после парсинга.
         return obj.editor_json.get('elements', [])
+
+    def get_editor_metadata(self, obj: ParsedDocument):
+        return obj.editor_json.get('metadata', {})
 
 class ParseUploadSerializer(serializers.Serializer):
     file = serializers.FileField()

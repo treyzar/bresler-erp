@@ -18,27 +18,39 @@ PT_TO_PX = 1.3333333333333333  # 96 DPI / 72 DPI (pt to px)
 MM_TO_PX = 3.937007874015748   # 96 DPI / 25.4 mm
 
 # A4 при 96 DPI
-PAGE_WIDTH = int(210 * MM_TO_PX)      # 794px
-PAGE_HEIGHT = int(297 * MM_TO_PX)     # 1123px
+DEFAULT_PAGE_WIDTH = int(210 * MM_TO_PX)      # 794px
+DEFAULT_PAGE_HEIGHT = int(297 * MM_TO_PX)     # 1123px
+# Для редактора используем непрерывные координаты по высоте страницы,
+# без промежутков между страницами.
+PAGE_GAP = 0
 
 # Стандартные поля Word (2.54 см)
 DEFAULT_MARGIN = int(25.4 * MM_TO_PX)  # 96px
-LEFT_MARGIN = DEFAULT_MARGIN
-RIGHT_MARGIN = DEFAULT_MARGIN
-TOP_MARGIN = DEFAULT_MARGIN
-BOTTOM_MARGIN = DEFAULT_MARGIN
+DEFAULT_LEFT_MARGIN = DEFAULT_MARGIN
+DEFAULT_RIGHT_MARGIN = DEFAULT_MARGIN
+DEFAULT_TOP_MARGIN = DEFAULT_MARGIN
+DEFAULT_BOTTOM_MARGIN = DEFAULT_MARGIN
 
+PAGE_WIDTH = DEFAULT_PAGE_WIDTH
+PAGE_HEIGHT = DEFAULT_PAGE_HEIGHT
+LEFT_MARGIN = DEFAULT_LEFT_MARGIN
+RIGHT_MARGIN = DEFAULT_RIGHT_MARGIN
+TOP_MARGIN = DEFAULT_TOP_MARGIN
+BOTTOM_MARGIN = DEFAULT_BOTTOM_MARGIN
 CONTENT_WIDTH = PAGE_WIDTH - (LEFT_MARGIN + RIGHT_MARGIN)
 
 def parse_docx(file_obj) -> Dict[str, Any]:
     """Главная функция парсинга с АБСОЛЮТНЫМ позиционированием"""
+    _reset_layout_defaults()
     doc = Document(file_obj)
     elements: List[Dict[str, Any]] = []
     plain_chunks: List[str] = []
     y_offset = TOP_MARGIN
+    current_page_idx = 0
     
     # Загрузка реальных полей документа
     _load_document_margins(doc)
+    y_offset = TOP_MARGIN
     
     # Кэш стилей
     style_cache = _build_style_cache(doc)
@@ -57,7 +69,8 @@ def parse_docx(file_obj) -> Dict[str, Any]:
         if kind == 'paragraph':
             # Разрыв страницы
             if _has_page_break(block):
-                y_offset = TOP_MARGIN
+                current_page_idx += 1
+                y_offset = _page_top(current_page_idx)
                 plain_chunks.append("[Page Break]")
             
             # Форматирование параграфа
@@ -89,7 +102,7 @@ def parse_docx(file_obj) -> Dict[str, Any]:
                         plain_chunks.append("[Image]")
             
             # === ТЕКСТ ===
-            text_content = block.text.strip()
+            text_content = _extract_paragraph_text(block)
             if text_content:
                 # X с учетом всех отступов
                 final_x = LEFT_MARGIN + fmt.left_indent + fmt.first_line_indent
@@ -114,8 +127,9 @@ def parse_docx(file_obj) -> Dict[str, Any]:
                 y_offset += 8
             
             # Контроль высоты страницы
-            if y_offset > PAGE_HEIGHT - BOTTOM_MARGIN - 40:
-                y_offset = TOP_MARGIN
+            if y_offset > _page_bottom_limit(current_page_idx):
+                current_page_idx += 1
+                y_offset = _page_top(current_page_idx)
         
         # === ОБРАБОТКА ТАБЛИЦЫ ===
         elif kind == 'table':
@@ -129,8 +143,9 @@ def parse_docx(file_obj) -> Dict[str, Any]:
                 table_data = _parse_table(block, y_offset, style_cache)
                 if table_data:
                     # Проверка, помещается ли таблица
-                    if y_offset + table_data['total_height'] > PAGE_HEIGHT - BOTTOM_MARGIN - 20:
-                        y_offset = TOP_MARGIN
+                    if y_offset + table_data['total_height'] > _page_bottom_limit(current_page_idx, reserved=20):
+                        current_page_idx += 1
+                        y_offset = _page_top(current_page_idx)
                     
                     # X позиция с учетом отступов таблицы
                     table_x = LEFT_MARGIN + table_format.get('left_indent', 0)
@@ -154,6 +169,8 @@ def parse_docx(file_obj) -> Dict[str, Any]:
         "metadata": {
             "page_width": PAGE_WIDTH,
             "page_height": PAGE_HEIGHT,
+            "page_gap": PAGE_GAP,
+            "pages_estimated": current_page_idx + 1,
             "margins": {
                 "left": LEFT_MARGIN,
                 "right": RIGHT_MARGIN,
@@ -254,6 +271,46 @@ class ParagraphFormat:
         self.has_border_bottom = False
         self.border_width = 2
 
+def _reset_layout_defaults():
+    global PAGE_WIDTH, PAGE_HEIGHT, LEFT_MARGIN, RIGHT_MARGIN, TOP_MARGIN, BOTTOM_MARGIN, CONTENT_WIDTH
+    PAGE_WIDTH = DEFAULT_PAGE_WIDTH
+    PAGE_HEIGHT = DEFAULT_PAGE_HEIGHT
+    LEFT_MARGIN = DEFAULT_LEFT_MARGIN
+    RIGHT_MARGIN = DEFAULT_RIGHT_MARGIN
+    TOP_MARGIN = DEFAULT_TOP_MARGIN
+    BOTTOM_MARGIN = DEFAULT_BOTTOM_MARGIN
+    CONTENT_WIDTH = PAGE_WIDTH - (LEFT_MARGIN + RIGHT_MARGIN)
+
+def _page_top(page_idx: int) -> int:
+    return page_idx * (PAGE_HEIGHT + PAGE_GAP) + TOP_MARGIN
+
+def _page_bottom_limit(page_idx: int, reserved: int = 40) -> int:
+    return ((page_idx + 1) * PAGE_HEIGHT) + (page_idx * PAGE_GAP) - BOTTOM_MARGIN - reserved
+
+def _extract_paragraph_text(par: Paragraph) -> str:
+    """Извлекает текст абзаца, сохраняя переносы и табуляции."""
+    chunks: List[str] = []
+    for run in par.runs:
+        if run.text:
+            chunks.append(run.text)
+
+        brs = run._element.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}br')
+        for br in brs:
+            if br.get(qn('w:type')) in ('textWrapping', None):
+                chunks.append('\n')
+
+        tabs = run._element.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tab')
+        for _ in tabs:
+            chunks.append('\t')
+
+    if not chunks:
+        return par.text.strip()
+
+    text = "".join(chunks).replace('\r\n', '\n').replace('\r', '\n')
+    lines = [line.rstrip() for line in text.split('\n')]
+    normalized = "\n".join(lines).strip()
+    return normalized
+
 def _get_paragraph_format(par: Paragraph, style_cache: Dict[str, ParagraphFormat]) -> ParagraphFormat:
     """Получение форматирования с учетом стилей"""
     fmt = ParagraphFormat()
@@ -344,7 +401,7 @@ def _parse_table(table: Table, current_y: int, style_cache: Dict[str, ParagraphF
             cell_color = "#000000"  # Цвет по умолчанию
             
             for par in cell.paragraphs:
-                par_text = par.text.strip()
+                par_text = _extract_paragraph_text(par)
                 if par_text:
                     cell_paragraphs.append(par_text)
                     # Извлекаем цвет текста из первого параграфа с текстом
@@ -399,22 +456,15 @@ def _parse_table(table: Table, current_y: int, style_cache: Dict[str, ParagraphF
         while len(r) < max_cols:
             r.append("#000000")
     
-    # Удаляем полностью пустые строки в конце
-    while rows_data and all(not cell.strip() for cell in rows_data[-1]):
-        rows_data.pop()
-        cell_colors.pop()
-        row_heights.pop()
-    
     if not rows_data:
         return None
-    
-    # Улучшенный расчет общей высоты таблицы
-    # Добавляем больше отступов между строками для лучшей видимости
-    row_spacing = 4  # Отступ между строками
-    total_height = sum(row_heights) + (len(row_heights) * row_spacing) + 8  # +8px padding сверху и снизу
-    
-    # Минимальная высота таблицы
-    min_table_height = len(rows_data) * 35  # Минимум 35px на строку
+
+    # Более консервативная высота: важнее не потерять строки, чем сделать плотнее.
+    row_spacing = 8
+    total_height = sum(row_heights) + (len(row_heights) * row_spacing) + 12
+
+    # Минимум на строку под многострочный контент (особенно кириллица + переносы)
+    min_table_height = len(rows_data) * 44
     total_height = max(total_height, min_table_height)
     
     return {
@@ -426,7 +476,7 @@ def _parse_table(table: Table, current_y: int, style_cache: Dict[str, ParagraphF
 
 def _calculate_table_cell_height(cell: _Cell, width_px: int, style_cache: Dict[str, ParagraphFormat]) -> int:
     """ТОЧНЫЙ расчет высоты ячейки с улучшенной видимостью"""
-    total_height = 12  # Увеличенный padding top + bottom
+    total_height = 16
     
     has_content = False
     for par in cell.paragraphs:
@@ -439,17 +489,17 @@ def _calculate_table_cell_height(cell: _Cell, width_px: int, style_cache: Dict[s
             total_height += h + cell_fmt.space_before + cell_fmt.space_after
         else:
             # Для пустых параграфов используем минимальную высоту
-            min_par_height = max(20, int(cell_fmt.size * 1.5))
+            min_par_height = max(24, int(cell_fmt.size * 1.7))
             total_height += min_par_height
     
     # Минимальная высота ячейки для лучшей видимости
-    min_cell_height = 32
+    min_cell_height = 42
     if not has_content:
         # Если ячейка пустая, все равно даем минимальную высоту
         total_height = min_cell_height
     
     total_height = max(total_height, min_cell_height)
-    total_height += 4  # Дополнительный padding
+    total_height += 8
     
     return total_height
 
@@ -458,10 +508,13 @@ def _calculate_text_height_exact(text: str, font_size: int, width_px: int, line_
     if not text:
         return max(20, int(font_size * 1.5))  # Минимальная высота даже для пустого текста
     
-    # Улучшенный расчет высоты строки с учетом межстрочного интервала
-    # Используем больший коэффициент для лучшей читаемости
-    base_line_h = max(int(font_size * 1.6), int(line_spacing)) if line_spacing > 0 else int(font_size * 1.6)
-    char_w = font_size * 0.6  # Немного увеличенная ширина символа для более точного расчета
+    # Консервативная оценка: лучше дать больше высоты, чем обрезать строки.
+    base_line_h = (
+        max(int(font_size * 1.8), int(line_spacing * 1.15))
+        if line_spacing > 0
+        else int(font_size * 1.8)
+    )
+    char_w = font_size * 0.72
     
     # Символов в строке
     chars_per_line = max(1, int(width_px // char_w))
@@ -493,8 +546,8 @@ def _calculate_text_height_exact(text: str, font_size: int, width_px: int, line_
     
     # Добавляем padding сверху и снизу для лучшей видимости
     calculated_height = total_lines * base_line_h
-    min_height = max(24, int(font_size * 1.8))  # Минимальная высота для одной строки
-    return max(calculated_height, min_height) + 8  # +8px padding
+    min_height = max(30, int(font_size * 2.2))
+    return max(calculated_height, min_height) + 12
 
 def _get_table_column_widths(table: Table) -> List[int]:
     """ТОЧНЫЕ ширины колонок из XML"""
@@ -540,11 +593,15 @@ def _has_page_break(par: Paragraph) -> bool:
 
 def _load_document_margins(doc: DocumentObject):
     """Загрузка полей документа"""
-    global LEFT_MARGIN, RIGHT_MARGIN, TOP_MARGIN, BOTTOM_MARGIN, CONTENT_WIDTH
+    global PAGE_WIDTH, PAGE_HEIGHT, LEFT_MARGIN, RIGHT_MARGIN, TOP_MARGIN, BOTTOM_MARGIN, CONTENT_WIDTH
     
     try:
         if doc.sections:
             section = doc.sections[0]
+            if section.page_width:
+                PAGE_WIDTH = int(section.page_width.pt * PT_TO_PX)
+            if section.page_height:
+                PAGE_HEIGHT = int(section.page_height.pt * PT_TO_PX)
             if section.left_margin: LEFT_MARGIN = int(section.left_margin.pt * PT_TO_PX)
             if section.right_margin: RIGHT_MARGIN = int(section.right_margin.pt * PT_TO_PX)
             if section.top_margin: TOP_MARGIN = int(section.top_margin.pt * PT_TO_PX)
@@ -617,25 +674,34 @@ def _get_merged_cells_map(table: Table) -> Dict[tuple, tuple]:
     merged_map = {}
     
     try:
-        # Обрабатываем вертикальные объединения
         for row_idx, row in enumerate(table.rows):
             for cell_idx, cell in enumerate(row.cells):
-                tc = cell._element
-                v_merge = tc.get(qn('w:vMerge'))
-                
-                if v_merge and v_merge != 'restart':
-                    # Вертикальное объединение - ищем основную ячейку выше
+                tc_pr = cell._element.find(qn('w:tcPr'))
+                if tc_pr is None:
+                    continue
+
+                v_merge = tc_pr.find(qn('w:vMerge'))
+                if v_merge is None:
+                    continue
+
+                v_val = v_merge.get(qn('w:val'))
+                if v_val in (None, "continue"):
                     for prev_row_idx in range(row_idx - 1, -1, -1):
-                        if prev_row_idx < len(table.rows) and cell_idx < len(table.rows[prev_row_idx].cells):
-                            prev_cell = table.rows[prev_row_idx].cells[cell_idx]
-                            prev_tc = prev_cell._element
-                            prev_v_merge = prev_tc.get(qn('w:vMerge'))
-                            if prev_v_merge == 'restart':
-                                merged_map[(row_idx, cell_idx)] = (prev_row_idx, cell_idx)
-                                break
+                        if cell_idx >= len(table.rows[prev_row_idx].cells):
+                            continue
+
+                        prev_tc_pr = table.rows[prev_row_idx].cells[cell_idx]._element.find(qn('w:tcPr'))
+                        if prev_tc_pr is None:
+                            continue
+                        prev_v_merge = prev_tc_pr.find(qn('w:vMerge'))
+                        if prev_v_merge is None:
+                            continue
+
+                        prev_val = prev_v_merge.get(qn('w:val'))
+                        if prev_val in ("restart", None):
+                            merged_map[(row_idx, cell_idx)] = (prev_row_idx, cell_idx)
+                            break
     except Exception as e:
         print(f"Error processing merged cells: {e}")
-        import traceback
-        traceback.print_exc()
     
     return merged_map

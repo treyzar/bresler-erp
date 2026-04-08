@@ -11,7 +11,6 @@ import type {
   IDividerProperties,
 } from "../../utils/types/editor.types";
 import { TableNode } from "./TableElement/TableNode";
-import { DragHandle } from "./TableElement/DragHandle";
 
 interface IElementRendererProps {
   element: IEditorElement;
@@ -76,12 +75,14 @@ export const ElementRenderer: React.FC<IElementRendererProps> = ({
     top: element.y,
     width: element.width,
     height: element.height,
-    border: isSelected ? "2px solid var(--c-accent)" : "2px solid transparent",
+    border: isSelected
+      ? "2px dashed #3b82f6"
+      : "1px dashed hsl(var(--border))",
     cursor: isEditing ? "text" : "move",
-    transition: "border-color 0.1s ease-out",
+    transition: "border-color 0.15s ease",
     boxSizing: "border-box",
-    transform: "translate(0, 0)",
     zIndex: element.zIndex ?? 0,
+    boxShadow: isSelected ? "0 0 0 3px rgba(59, 130, 246, 0.25)" : "none",
   };
 
   const handleMouseDown = (e: React.MouseEvent, handle?: string) => {
@@ -238,17 +239,8 @@ export const ElementRenderer: React.FC<IElementRendererProps> = ({
 
     const handleImageClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-
-      // Если уже есть src — просто выделяем и ничего не делаем
-      if (props.src) {
-        onSelect();
-        return;
-      }
-
-      // Если src нет — открываем загрузку
-      createFileInputAndRead((file, src) =>
-        onUpdateProp(element.id, { src, alt: file.name, file }),
-      );
+      // Один клик только выделяет элемент (для перемещения/ресайза).
+      onSelect();
     };
 
     return (
@@ -276,9 +268,42 @@ export const ElementRenderer: React.FC<IElementRendererProps> = ({
             }}
           />
         ) : (
-          <div className="dropzone">
-            <div className="dropzone-icon">Фото</div>
-            <p>Нажмите для загрузки</p>
+          <div
+            className="dropzone"
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              background: "#f8fafc",
+              color: "#1f2937",
+              border: "1px dashed #94a3b8",
+              textAlign: "center",
+              padding: 8,
+            }}
+          >
+            <div
+              className="dropzone-icon"
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#0f172a",
+              }}
+            >
+              Фото
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                color: "#334155",
+              }}
+            >
+              Двойной клик, чтобы вставить изображение
+            </p>
           </div>
         )}
       </div>
@@ -287,26 +312,72 @@ export const ElementRenderer: React.FC<IElementRendererProps> = ({
 
   // ===== TABLE =====
   if (element.type === "table") {
+    const [isEditingTable, setIsEditingTable] = useState(false);
+
+    const tableStyle: React.CSSProperties = {
+      position: "absolute",
+      left: element.x,
+      top: element.y,
+      width: element.width,
+      height: element.height,
+      cursor: isEditingTable ? "default" : "move",
+      boxSizing: "border-box",
+      zIndex: element.zIndex ?? 0,
+      border: isSelected 
+        ? "2px dashed hsl(var(--primary))" 
+        : "1px dashed hsl(var(--border))",
+      boxShadow: isSelected ? "0 0 0 2px hsl(var(--primary) / 0.2)" : "none",
+    };
+
+    useEffect(() => {
+      if (!isSelected && isEditingTable) {
+        setIsEditingTable(false);
+      }
+    }, [isSelected, isEditingTable]);
+
     return (
       <div
-        style={{
-          ...commonStyle,
-          cursor: "default",
-        }}
+        style={tableStyle}
         onClick={(e) => {
+          if (!isEditingTable) {
+            e.stopPropagation();
+            onSelect();
+          }
+        }}
+        onMouseDown={(e) => {
+          if (!isEditingTable) {
+            handleMouseDown(e);
+          } else {
+            e.stopPropagation();
+          }
+        }}
+        onDoubleClick={(e) => {
           e.stopPropagation();
-          onSelect();
+          setIsEditingTable(true);
         }}
         className="table-element group"
       >
-        {isSelected && (
-          <DragHandle onMouseDown={(e) => onMouseDown(e, element.id)} />
-        )}
         <TableNode
           element={element}
           isSelected={isSelected}
+          isEditing={isEditingTable}
           onUpdateProp={onUpdateProp}
         />
+        {isSelected && !isEditingTable && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: -24,
+              left: 0,
+              fontSize: 11,
+              color: "#888",
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+            }}
+          >
+            Двойной клик для редактирования
+          </div>
+        )}
       </div>
     );
   }

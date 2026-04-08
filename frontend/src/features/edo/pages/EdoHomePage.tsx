@@ -56,8 +56,8 @@ const sections: EdoSection[] = [
     available: true,
   },
   {
-    title: "Парсер",
-    description: "Загрузка и разбор документов PDF, DOCX, HTML в формат редактора.",
+    title: "Распознавание документов",
+    description: "Загрузка и автоматическое извлечение данных из PDF, DOCX и HTML в формат редактора.",
     href: "/edo/parser",
     icon: <Scan className="h-8 w-8" />,
     available: true,
