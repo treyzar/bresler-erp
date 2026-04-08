@@ -238,7 +238,11 @@ export function OfferDetailDialog({ offerId, orderId, participants, onClose }: O
 
           {/* ── Calculation tab ── */}
           <TabsContent value="calculation" className="mt-4">
-            <CalculationEditor offerId={offerId} />
+            <CalculationEditor
+              offerId={offerId}
+              deliveryIncluded={offer.delivery_included}
+              deliveryCity={offer.delivery_city}
+            />
           </TabsContent>
 
           {/* ── Specification tab ── */}

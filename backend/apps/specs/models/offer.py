@@ -203,6 +203,14 @@ class OfferWorkItem(models.Model):
     days = models.PositiveIntegerField("Кол-во дней", default=15)
     specialists = models.PositiveIntegerField("Кол-во специалистов", default=1)
     trips = models.PositiveIntegerField("Кол-во выездов", default=1)
+    unit_price = models.DecimalField(
+        "Цена за единицу", max_digits=14, decimal_places=2, default=0,
+    )
+    pricing_mode = models.CharField(
+        "Режим цены", max_length=20,
+        choices=[("separate", "Отдельная строка"), ("included", "Включено в стоимость")],
+        default="separate",
+    )
 
     class Meta:
         verbose_name = "Работа в КП"

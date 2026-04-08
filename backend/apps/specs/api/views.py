@@ -1,3 +1,4 @@
+from django.db import models
 from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -181,7 +182,7 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
 
         # PATCH: update defaults + lines
         # Update defaults
-        for field in ("default_overhead_percent", "default_project_coeff", "default_discount_coeff", "note"):
+        for field in ("default_overhead_percent", "default_project_coeff", "default_discount_coeff", "delivery_price", "delivery_pricing_mode", "note"):
             if field in request.data:
                 setattr(calc, field, request.data[field])
         calc.save()
@@ -238,11 +239,13 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
         # Clear existing spec lines
         spec.lines.all().delete()
 
-        # Create spec lines from calc lines
+        # Main calc lines
+        line_num = 0
         for cl in calc.lines.all():
+            line_num += 1
             SpecificationLine.objects.create(
                 specification=spec,
-                line_number=cl.line_number,
+                line_number=line_num,
                 product=cl.product,
                 device_rza=cl.device_rza,
                 mod_rza=cl.mod_rza,
@@ -253,8 +256,78 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
                 note=cl.note,
             )
 
+        # Delivery as separate line (if enabled and separate mode)
+        if offer.delivery_included and float(calc.delivery_price) > 0 and calc.delivery_pricing_mode == "separate":
+            line_num += 1
+            city = f" до {offer.delivery_city}" if offer.delivery_city else ""
+            SpecificationLine.objects.create(
+                specification=spec,
+                line_number=line_num,
+                name=f"Доставка{city}",
+                quantity=1,
+                unit_price=calc.delivery_price,
+            )
+
+        # Works as separate lines (included work items with prices in separate mode)
+        for wi in offer.work_items.filter(included=True, unit_price__gt=0, pricing_mode="separate"):
+            line_num += 1
+            SpecificationLine.objects.create(
+                specification=spec,
+                line_number=line_num,
+                name=wi.work_type.name,
+                quantity=1,
+                unit_price=wi.unit_price,
+            )
+
         spec.recalculate()
         return Response(SpecificationSerializer(spec).data)
+
+    @action(detail=True, methods=["post"], url_path="calculation/add-parameters")
+    def calculation_add_parameters(self, request, **kwargs):
+        """Add device/mod parameters as optional lines to calculation."""
+        from apps.devices.models.junctions import DeviceRZAParameter, ModRZAParameter
+
+        offer = self.get_object()
+        calc, _ = OfferCalculation.objects.get_or_create(offer=offer)
+        device_rza_id = request.data.get("device_rza_id")
+        mod_rza_id = request.data.get("mod_rza_id")
+        parent_line_id = request.data.get("parent_line_id")
+        pricing_mode = request.data.get("pricing_mode", "separate")
+
+        params = []
+        if mod_rza_id:
+            params = ModRZAParameter.objects.filter(
+                mod_rza_id=mod_rza_id,
+            ).select_related("parameter", "mod_rza__device_rza")
+        elif device_rza_id:
+            params = DeviceRZAParameter.objects.filter(
+                device_rza_id=device_rza_id,
+            ).select_related("parameter")
+
+        last_num = calc.lines.aggregate(m=models.Max("line_number"))["m"] or 0
+        created = []
+        for p in params:
+            if float(p.price) == 0:
+                continue
+            last_num += 1
+            line = CalculationLine.objects.create(
+                calculation=calc,
+                line_number=last_num,
+                name=p.parameter.name,
+                quantity=1,
+                base_price=p.price,
+                is_optional=True,
+                option_type="parameter",
+                pricing_mode=pricing_mode,
+                parent_line_id=parent_line_id,
+                overhead_type="equipment",
+                overhead_percent=calc.default_overhead_percent,
+                project_coeff=calc.default_project_coeff,
+                discount_coeff=calc.default_discount_coeff,
+            )
+            created.append(line)
+
+        return Response(OfferCalculationSerializer(calc).data)
 
     # ── DOCX export ──────────────────────────────────────────────
 

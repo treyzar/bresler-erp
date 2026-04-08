@@ -141,6 +141,15 @@ export const specsApi = {
     return data
   },
 
+  addCalcParameters: async (offerId: number, payload: {
+    device_rza_id?: number; mod_rza_id?: number; parent_line_id?: number; pricing_mode?: string
+  }) => {
+    const { data } = await apiClient.post<OfferCalculation>(
+      `/offers/${offerId}/calculation/add-parameters/`, payload,
+    )
+    return data
+  },
+
   calcToSpecification: async (offerId: number) => {
     const { data } = await apiClient.post<OfferSpecification>(`/offers/${offerId}/calculation/to-specification/`)
     return data

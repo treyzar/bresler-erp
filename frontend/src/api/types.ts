@@ -509,6 +509,8 @@ export interface OfferWorkItem {
   days: number
   specialists: number
   trips: number
+  unit_price: string
+  pricing_mode: string
 }
 
 export interface SpecificationLine {
@@ -599,6 +601,19 @@ export const OVERHEAD_DEFAULTS: Record<string, number> = {
   custom: 0,
 }
 
+export const OPTION_TYPES = {
+  none: "Основная позиция",
+  parameter: "Параметр/функция",
+  delivery: "Доставка",
+  work: "Работа",
+  other: "Прочее",
+} as const
+
+export const PRICING_MODES = {
+  separate: "Отдельная строка",
+  included: "Включено в стоимость",
+} as const
+
 export interface CalculationLine {
   id?: number
   line_number: number
@@ -610,6 +625,10 @@ export interface CalculationLine {
   mod_rza_name?: string | null
   name: string
   quantity: number
+  is_optional: boolean
+  option_type: string
+  pricing_mode: string
+  parent_line: number | null
   base_price: string
   overhead_type: string
   overhead_percent: string
@@ -627,6 +646,8 @@ export interface OfferCalculation {
   default_overhead_percent: string
   default_project_coeff: string
   default_discount_coeff: string
+  delivery_price: string
+  delivery_pricing_mode: string
   note: string
   lines: CalculationLine[]
   total: {

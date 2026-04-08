@@ -19,6 +19,7 @@ class OfferWorkItemSerializer(serializers.ModelSerializer):
         fields = (
             "id", "work_type", "work_type_name",
             "included", "days", "specialists", "trips",
+            "unit_price", "pricing_mode",
         )
 
 
@@ -161,6 +162,7 @@ class CalculationLineSerializer(serializers.ModelSerializer):
             "id", "line_number", "product", "product_name",
             "device_rza", "device_rza_name", "mod_rza", "mod_rza_name",
             "name", "quantity",
+            "is_optional", "option_type", "pricing_mode", "parent_line",
             "base_price", "overhead_type", "overhead_percent",
             "price_with_overhead", "project_coeff", "estimated_price",
             "discount_coeff", "discounted_price", "total_price", "note",
@@ -176,7 +178,9 @@ class OfferCalculationSerializer(serializers.ModelSerializer):
         model = OfferCalculation
         fields = (
             "id", "default_overhead_percent", "default_project_coeff",
-            "default_discount_coeff", "note", "lines", "total",
+            "default_discount_coeff",
+            "delivery_price", "delivery_pricing_mode",
+            "note", "lines", "total",
         )
         read_only_fields = ("id",)
 

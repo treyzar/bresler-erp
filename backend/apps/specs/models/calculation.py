@@ -40,6 +40,14 @@ class OfferCalculation(BaseModel):
         "Скидочный коэффициент по умолчанию",
         max_digits=6, decimal_places=4, default=1,
     )
+    delivery_price = models.DecimalField(
+        "Стоимость доставки", max_digits=14, decimal_places=2, default=0,
+    )
+    delivery_pricing_mode = models.CharField(
+        "Режим доставки", max_length=20,
+        choices=[("separate", "Отдельная строка"), ("included", "Включено в стоимость")],
+        default="separate",
+    )
     note = models.TextField("Примечание", blank=True, default="")
     history = HistoricalRecords()
 
@@ -54,6 +62,19 @@ class OfferCalculation(BaseModel):
         """Recalculate all lines."""
         for line in self.lines.all():
             line.save()  # triggers auto-calculation in save()
+
+
+class OptionType(models.TextChoices):
+    NONE = "none", "Основная позиция"
+    PARAMETER = "parameter", "Параметр/функция"
+    DELIVERY = "delivery", "Доставка"
+    WORK = "work", "Работа"
+    OTHER = "other", "Прочее"
+
+
+class PricingMode(models.TextChoices):
+    SEPARATE = "separate", "Отдельная строка"
+    INCLUDED = "included", "Включено в стоимость"
 
 
 class CalculationLine(BaseModel):
@@ -80,6 +101,23 @@ class CalculationLine(BaseModel):
     )
     name = models.CharField("Наименование", max_length=500)
     quantity = models.PositiveIntegerField("Количество", default=1)
+
+    # Option fields
+    is_optional = models.BooleanField("Опция", default=False)
+    option_type = models.CharField(
+        "Тип опции", max_length=20,
+        choices=OptionType.choices, default=OptionType.NONE,
+    )
+    pricing_mode = models.CharField(
+        "Режим ценообразования", max_length=20,
+        choices=PricingMode.choices, default=PricingMode.SEPARATE,
+    )
+    parent_line = models.ForeignKey(
+        "self", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="option_lines",
+        verbose_name="Родительская позиция",
+        help_text="Если pricing_mode=included, цена прибавляется к этой позиции",
+    )
 
     # Pricing
     base_price = models.DecimalField(
