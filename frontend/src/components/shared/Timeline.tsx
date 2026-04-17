@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { useComments, useCreateComment, useDeleteComment } from "@/api/hooks/useComments"
+import { useCommentsSocket } from "@/hooks/useCommentsSocket"
 import type { Comment } from "@/api/types"
 import { formatDistanceToNow } from "@/lib/utils"
 
@@ -60,6 +61,8 @@ export function Timeline({
   const createComment = useCreateComment(targetModel, targetId)
   const deleteComment = useDeleteComment(targetModel, targetId)
   const currentUser = useAuthStore((s) => s.user)
+
+  useCommentsSocket(targetModel, targetId)
 
   const [commentText, setCommentText] = useState("")
 

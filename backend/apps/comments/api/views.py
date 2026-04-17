@@ -6,6 +6,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from apps.comments.api.serializers import CommentCreateSerializer, CommentSerializer
 from apps.comments.models import Comment
+from apps.comments.ws import broadcast_comment_event
 from apps.core.events import trigger_event
 
 
@@ -76,6 +77,7 @@ class CommentViewSet(ModelViewSet):
             user=request.user,
             target=comment.content_object,
         )
+        broadcast_comment_event(comment, "created")
 
         return Response(
             CommentSerializer(comment).data,
@@ -98,4 +100,5 @@ class CommentViewSet(ModelViewSet):
                 {"detail": "Можно удалять только свои комментарии."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        broadcast_comment_event(comment, "deleted")
         return super().destroy(request, *args, **kwargs)
