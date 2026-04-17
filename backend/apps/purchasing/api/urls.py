@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .dashboard import PurchasingDashboardView
+from .dashboard import BOMCostView, PurchasingDashboardView
 from .views import (
     PurchaseOrderViewSet,
     PurchasePaymentViewSet,
@@ -19,4 +19,5 @@ router.register("payments", PurchasePaymentViewSet, basename="purchase-payment")
 
 urlpatterns = [
     path("dashboard/", PurchasingDashboardView.as_view(), name="purchasing-dashboard"),
+    path("bom-cost/<int:product_id>/", BOMCostView.as_view(), name="bom-cost"),
 ] + router.urls

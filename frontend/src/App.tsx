@@ -42,6 +42,7 @@ import { PurchaseRequestsPage } from "@/features/purchasing/PurchaseRequestsPage
 import { PaymentsPage } from "@/features/purchasing/PaymentsPage"
 import { SupplierPage } from "@/features/purchasing/SupplierPage"
 import { PurchasingDashboard } from "@/features/purchasing/PurchasingDashboard"
+import { BOMCostPage } from "@/features/purchasing/BOMCostPage"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -115,6 +116,7 @@ function App() {
                 <Route path="payments" element={<PaymentsPage />} />
                 <Route path="suppliers" element={<SupplierPage />} />
                 <Route path="dashboard" element={<PurchasingDashboard />} />
+                <Route path="bom-cost" element={<BOMCostPage />} />
                 <Route index element={<Navigate to="orders" replace />} />
               </Route>
             </Route>

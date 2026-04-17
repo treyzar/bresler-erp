@@ -66,3 +66,9 @@ docker/nginx/ssl/*.key
 docker/nginx/ssl/*.crt
 
 edo_backend/
+
+# Project documents (local only)
+BRESLER_ERP_ANALYSIS.pdf
+BRESLER_ERP_PRESENTATION.pdf
+workflow.vsdx
+НЕ ПОТЕРЯЙ Типо ТЗ!.docx

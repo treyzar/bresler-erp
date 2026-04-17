@@ -54,6 +54,7 @@ const navItems: NavItemWithModule[] = [
       { to: "/purchasing/stock", label: "Склад" },
       { to: "/purchasing/payments", label: "Оплаты" },
       { to: "/purchasing/suppliers", label: "Поставщики" },
+      { to: "/purchasing/bom-cost", label: "Себестоимость" },
     ],
   },
   { to: "/profile", label: "Профиль" },
