@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router"
-import { Sun, Moon, Palette, Check } from "lucide-react"
+import { Sun, Moon, Palette, Check, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ export function Header() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const { theme, setTheme } = useUIStore()
 
@@ -35,8 +36,13 @@ export function Header() {
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-background px-4">
-      <Button variant="ghost" size="sm" onClick={toggleSidebar}>
-        Menu
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleSidebar}
+        aria-label={sidebarOpen ? "Свернуть меню" : "Развернуть меню"}
+      >
+        {sidebarOpen ? <PanelLeftClose className="size-5" /> : <PanelLeftOpen className="size-5" />}
       </Button>
       <div className="flex items-center gap-3">
         <NotificationBell />

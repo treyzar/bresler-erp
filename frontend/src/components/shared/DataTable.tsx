@@ -106,23 +106,42 @@ export function DataTable<T>({
   const selectionColumn: ColumnDef<T, unknown> = {
     id: "select",
     header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Выбрать все"
-      />
+      <div
+        className="-m-2 flex cursor-pointer items-center justify-center p-2"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('[role="checkbox"]') === null) {
+            table.toggleAllPageRowsSelected(!table.getIsAllPageRowsSelected())
+          }
+        }}
+      >
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Выбрать все"
+        />
+      </div>
     ),
     cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Выбрать строку"
-      />
+      <div
+        className="-m-2 flex cursor-pointer items-center justify-center p-2"
+        onClick={(e) => {
+          e.stopPropagation()
+          if ((e.target as HTMLElement).closest('[role="checkbox"]') === null) {
+            row.toggleSelected(!row.getIsSelected())
+          }
+        }}
+      >
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Выбрать строку"
+        />
+      </div>
     ),
-    size: 40,
+    size: 32,
     enableSorting: false,
     enableHiding: false,
   }
