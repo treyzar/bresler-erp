@@ -5,7 +5,6 @@ import { voltageClassHooks } from "@/api/hooks/useDevices"
 import { ReferenceTablePage, type FormFieldConfig } from "@/features/directory/shared/ReferenceTablePage"
 
 const columns: ColumnDef<VoltageClass, unknown>[] = [
-  { accessorKey: "id", header: "ID", size: 80 },
   { accessorKey: "name", header: "Класс напряжения" },
   { accessorKey: "description", header: "Описание" },
 ]

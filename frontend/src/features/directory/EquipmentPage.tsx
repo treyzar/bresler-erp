@@ -5,7 +5,6 @@ import { equipmentHooks } from "@/api/hooks/useEquipment"
 import { ReferenceTablePage, type FormFieldConfig } from "./shared/ReferenceTablePage"
 
 const columns: ColumnDef<Equipment, unknown>[] = [
-  { accessorKey: "id", header: "ID", size: 80 },
   { accessorKey: "name", header: "Название" },
 ]
 

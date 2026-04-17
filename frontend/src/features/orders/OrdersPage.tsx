@@ -206,17 +206,19 @@ export function OrdersPage() {
     {
       accessorKey: "status",
       header: "Статус",
-      size: 110,
+      size: 150,
       cell: ({ row }) => (
-        <Badge variant={statusVariant[row.original.status] ?? "outline"} className="whitespace-nowrap">
-          {row.original.status_display}
-        </Badge>
+        <div className="overflow-hidden">
+          <Badge variant={statusVariant[row.original.status] ?? "outline"} className="whitespace-nowrap">
+            {row.original.status_display}
+          </Badge>
+        </div>
       ),
     },
     {
       accessorKey: "ship_date",
       header: "Отгрузка",
-      size: 100,
+      size: 110,
       cell: ({ row }) => row.original.ship_date ? new Date(row.original.ship_date).toLocaleDateString("ru") : "—",
     },
   ]

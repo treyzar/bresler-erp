@@ -5,7 +5,6 @@ import { worksHooks } from "@/api/hooks/useWorks"
 import { ReferenceTablePage, type FormFieldConfig } from "./shared/ReferenceTablePage"
 
 const columns: ColumnDef<TypeOfWork, unknown>[] = [
-  { accessorKey: "id", header: "ID", size: 80 },
   { accessorKey: "name", header: "Название" },
 ]
 

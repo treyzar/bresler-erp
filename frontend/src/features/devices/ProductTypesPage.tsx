@@ -5,7 +5,6 @@ import { productTypeHooks } from "@/api/hooks/useDevices"
 import { ReferenceTablePage, type FormFieldConfig } from "@/features/directory/shared/ReferenceTablePage"
 
 const columns: ColumnDef<ProductType, unknown>[] = [
-  { accessorKey: "id", header: "ID", size: 80 },
   { accessorKey: "name", header: "Тип продукта" },
   { accessorKey: "code", header: "Код", size: 120 },
   { accessorKey: "mark", header: "Обозначение", size: 150 },

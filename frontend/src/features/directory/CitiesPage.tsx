@@ -40,7 +40,6 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 const columns: ColumnDef<City, unknown>[] = [
-  { accessorKey: "id", header: "ID", size: 80 },
   { accessorKey: "name", header: "Название" },
   { accessorKey: "country_name", header: "Страна", size: 200 },
 ]

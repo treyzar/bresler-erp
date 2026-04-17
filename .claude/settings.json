@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -v http://localhost:8000/api/reports/reference_export/?format=xlsx)",
+      "Bash(curl -s http://localhost:8000/api/reports/reference_export/?format=xlsx)",
+      "Bash(curl -s http://localhost:8000/api/reports/reference_export/)",
+      "Bash(python3 -c ':*)",
+      "Bash(wc -l /home/serj/PyCharm/Projects/bresler-erp/backend/apps/**/*.py)",
+      "Bash(wc -l /home/serj/PyCharm/Projects/bresler-erp/backend/config/*.py)",
+      "Bash(wc -l src/api/*.ts src/api/hooks/*.ts)",
+      "Bash(find /home/serj/PyCharm/Projects/bresler-erp/backend/apps -path \"*tests/test*.py\" -exec grep -h \"def test_\\\\|class Test\" {} \\\\;)",
+      "Bash(du -sh /home/serj/PyCharm/Projects/bresler-erp/* --exclude=node_modules --exclude=venv --exclude=.git)",
+      "Read(//home/serj/PyCharm/Projects/bresler-erp/{if \\(NF\\) {depth=gsub\\(/\\\\/**)",
+      "Bash(head -20 src/lib/*.ts)",
+      "Bash(wc -l src/api/types.ts src/features/edo/api/*.ts)",
+      "Bash(find src:*)",
+      "Read(//home/serj/PyCharm/Projects/bresler-erp/{sum+=$1} END {print \"Total Lines of Code \\(src/**)",
+      "Read(//home/serj/PyCharm/Projects/bresler-erp/**)",
+      "Bash(rm models.py views.py tests.py)",
+      "Bash(mkdir -p models api services tests)",
+      "Bash(find /home/serj/PyCharm/Projects/bresler-erp/frontend/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /home/serj/PyCharm/Projects/bresler-erp/backend/apps -type f -name \"*.py\" -path \"*/apps/*\" ! -path \"*/venv/*\" ! -path \"*/__pycache__/*\" ! -path \"*/migrations/*\" -exec wc -l {} +)",
+      "Bash(find /home/serj/PyCharm/Projects/bresler-erp/backend/apps -type f -name \"models.py\" ! -path \"*/migrations/*\" ! -path \"*/__pycache__/*\" -exec wc -l {} +)",
+      "Read(//usr/share/fonts/**)",
+      "Bash(fc-list :lang=ru)",
+      "Bash(pdfinfo /home/serj/PyCharm/Projects/bresler-erp/BRESLER_ERP_ANALYSIS.pdf)",
+      "Bash(pdfinfo /home/serj/PyCharm/Projects/bresler-erp/BRESLER_ERP_PRESENTATION.pdf)",
+      "Bash(python3 -c \"import secrets; print\\(secrets.token_urlsafe\\(50\\)\\)\")",
+      "Bash(python3 -c \"import secrets; print\\(secrets.token_urlsafe\\(32\\)\\)\")",
+      "Read(//home/serj/PyCharm/Projects/marketing/**)"
+    ]
+  }
+}

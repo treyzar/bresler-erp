@@ -5,7 +5,6 @@ import { countryHooks } from "@/api/hooks/useCountries"
 import { ReferenceTablePage, type FormFieldConfig } from "./shared/ReferenceTablePage"
 
 const columns: ColumnDef<Country, unknown>[] = [
-  { accessorKey: "id", header: "ID", size: 80 },
   { accessorKey: "name", header: "Название" },
   { accessorKey: "code", header: "Код ISO", size: 120 },
 ]

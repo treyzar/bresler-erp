@@ -71,9 +71,14 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
         {user && (
-          <span className="text-sm text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/profile")}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
             {user.full_name || user.username}
-          </span>
+          </Button>
         )}
         <Button variant="ghost" size="sm" onClick={handleLogout}>
           Выход
