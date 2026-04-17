@@ -1,5 +1,5 @@
 # ── Base stage: runtime system libraries ────────────────────
-FROM python:3.12-slim AS base
+FROM python:3.12-slim-bookworm AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
