@@ -1,6 +1,10 @@
 """Event handlers for comments — notify relevant users when a comment is posted."""
 
+import re
+
 from apps.core.events import on_event
+
+MENTION_PATTERN = re.compile(r"@([\w.-]+)")
 
 
 @on_event("comment.created", async_task=True)
@@ -28,6 +32,36 @@ def on_comment_created(event_name, instance, user=None, target=None, **kwargs):
         target=target,
         deduplicate_key=f"comment.{model_name}",
         deduplicate_hours=1,  # Allow comments more frequently than other notifications
+    )
+
+
+@on_event("comment.created", async_task=True)
+def notify_mentioned_users(event_name, instance, user=None, target=None, **kwargs):
+    """Notify users explicitly @mentioned in the comment text."""
+    from django.contrib.auth import get_user_model
+
+    from apps.notifications.services import create_notification
+
+    usernames = set(MENTION_PATTERN.findall(instance.text or ""))
+    if not usernames:
+        return
+
+    User = get_user_model()
+    mentioned = User.objects.filter(username__in=usernames, is_active=True)
+    if user:
+        mentioned = mentioned.exclude(pk=user.pk)
+
+    if not mentioned.exists():
+        return
+
+    author_name = user.get_full_name() if user else "Пользователь"
+    create_notification(
+        recipients=list(mentioned),
+        title=f"{author_name} упомянул вас в комментарии",
+        message=instance.text[:200],
+        target=target,
+        deduplicate_key=f"comment.mention.{instance.id}",
+        deduplicate_hours=0,
     )
 
 

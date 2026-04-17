@@ -8,8 +8,8 @@ import {
   Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { MentionTextarea } from "@/components/shared/MentionTextarea"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { useComments, useCreateComment, useDeleteComment } from "@/api/hooks/useComments"
 import { useCommentsSocket } from "@/hooks/useCommentsSocket"
@@ -101,10 +101,10 @@ export function Timeline({
     <div className="space-y-4">
       {/* Comment form */}
       <div className="space-y-2">
-        <Textarea
-          placeholder="Оставить комментарий... (Ctrl+Enter для отправки)"
+        <MentionTextarea
+          placeholder="Оставить комментарий... (@ для упоминаний, Ctrl+Enter для отправки)"
           value={commentText}
-          onChange={(e) => setCommentText(e.target.value)}
+          onChange={setCommentText}
           onKeyDown={handleKeyDown}
           rows={3}
           className="resize-none"
@@ -193,7 +193,7 @@ function CommentEntry({
             </Button>
           )}
         </div>
-        <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
+        <p className="text-sm whitespace-pre-wrap">{renderCommentText(comment.text)}</p>
       </div>
     </div>
   )
@@ -269,5 +269,20 @@ function HistoryEntry({ record }: { record: HistoryRecord }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function renderCommentText(text: string) {
+  return text.split(/(@[\w.-]+)/g).map((part, i) =>
+    /^@[\w.-]+$/.test(part) ? (
+      <span
+        key={i}
+        className="font-medium text-primary bg-primary/10 rounded px-1"
+      >
+        {part}
+      </span>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
   )
 }
