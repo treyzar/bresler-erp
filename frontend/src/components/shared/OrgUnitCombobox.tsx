@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Check, ChevronsUpDown, X } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useOrgUnitSearch } from "@/api/hooks/useOrgUnits"
 import { useDebounce } from "@/hooks/useDebounce"
+import apiClient from "@/api/client"
 
 interface OrgUnitComboboxSingleProps {
   mode?: "single"
@@ -71,8 +73,24 @@ export function OrgUnitCombobox(props: OrgUnitComboboxProps) {
     }
   }
 
-  // Show selected item names from current search results (best effort)
-  const selectedNames = results
+  // Fetch names for selected IDs that aren't in the current search results
+  // (e.g. when the form is first opened with pre-selected values).
+  const missingIds = selectedIds.filter((id) => !results.some((r) => r.id === id))
+  const { data: missingOrgs = [] } = useQuery({
+    queryKey: ["orgunits-by-ids", missingIds.sort().join(",")],
+    queryFn: async () => {
+      if (missingIds.length === 0) return []
+      const { data } = await apiClient.get<{ results: { id: number; name: string }[] }>(
+        "/directory/orgunits/",
+        { params: { ids: missingIds.join(","), page_size: missingIds.length } },
+      )
+      return data.results ?? []
+    },
+    enabled: missingIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const selectedNames = [...results, ...missingOrgs]
     .filter((r) => selectedIds.includes(r.id))
     .reduce<Record<number, string>>((acc, r) => {
       acc[r.id] = r.name
@@ -89,11 +107,13 @@ export function OrgUnitCombobox(props: OrgUnitComboboxProps) {
             aria-expanded={open}
             className="w-full justify-between font-normal"
           >
-            {selectedIds.length === 0
-              ? "Выберите организацию..."
-              : isMulti
-                ? `Выбрано: ${selectedIds.length}`
-                : selectedNames[selectedIds[0]] ?? `ID: ${selectedIds[0]}`}
+            <span className="truncate">
+              {selectedIds.length === 0
+                ? "Выберите организацию..."
+                : isMulti
+                  ? `Выбрано: ${selectedIds.length}`
+                  : selectedNames[selectedIds[0]] ?? `ID: ${selectedIds[0]}`}
+            </span>
             <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>

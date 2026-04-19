@@ -224,39 +224,38 @@ export function DataTable<T>({
             </Button>
           )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-auto flex h-9">
-                <Settings2 className="mr-2 h-4 w-4" />
-                Вид
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px]">
-              <DropdownMenuLabel>Отображение колонок</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" && column.getCanHide()
-                )
-                .map((column) => {
-                  return (
+          {(() => {
+            const hideableColumns = table
+              .getAllColumns()
+              .filter((c) => typeof c.accessorFn !== "undefined" && c.getCanHide())
+            if (hideableColumns.length < 2) return null
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="ml-auto flex h-9">
+                    <Settings2 className="mr-2 h-4 w-4" />
+                    Вид
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[180px]">
+                  <DropdownMenuLabel>Отображение колонок</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {hideableColumns.map((column) => (
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       className="capitalize"
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                     >
-                      {/* Try to get a string header, otherwise use ID */}
-                      {typeof column.columnDef.header === "string" 
-                        ? column.columnDef.header 
+                      {typeof column.columnDef.header === "string"
+                        ? column.columnDef.header
                         : column.id}
                     </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          })()}
 
           {toolbar}
         </div>

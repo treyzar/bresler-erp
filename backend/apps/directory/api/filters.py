@@ -10,6 +10,7 @@ class OrgUnitFilter(filters.FilterSet):
     is_active = filters.BooleanFilter()
     parent = filters.NumberFilter(method="parent_filter")
     search = filters.CharFilter(method="search_filter")
+    ids = filters.BaseInFilter(field_name="id", lookup_expr="in")
 
     class Meta:
         model = OrgUnit

@@ -120,10 +120,7 @@ export const MentionTextarea = forwardRef<HTMLTextAreaElement, Props>(function M
                 insertMention(u)
               }}
             >
-              <span className="font-medium">@{u.username}</span>
-              {u.full_name && (
-                <span className="ml-2 text-muted-foreground">{u.full_name}</span>
-              )}
+              <span className="font-medium">{u.full_name || u.username}</span>
             </button>
           ))}
         </div>

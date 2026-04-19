@@ -29,7 +29,8 @@
       "Bash(python3 -c \"import secrets; print\\(secrets.token_urlsafe\\(32\\)\\)\")",
       "Read(//home/serj/PyCharm/Projects/marketing/**)",
       "Bash(python -m py_compile apps/comments/consumers.py apps/comments/routing.py apps/comments/ws.py apps/comments/api/views.py config/asgi.py)",
-      "Bash(python -m py_compile apps/comments/handlers.py)"
+      "Bash(python -m py_compile apps/comments/handlers.py)",
+      "Bash(python -m py_compile apps/directory/api/filters.py apps/users/api/serializers.py)"
     ]
   }
 }

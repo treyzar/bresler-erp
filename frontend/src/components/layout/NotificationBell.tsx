@@ -64,7 +64,7 @@ export function NotificationBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0">
+      <PopoverContent align="end" className="w-[420px] p-0">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h3 className="font-semibold text-sm">Уведомления</h3>
           <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export function NotificationBell() {
                     <Icon className={`size-4 mt-0.5 shrink-0 ${color}`} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className={`text-sm truncate ${!n.is_read ? "font-medium" : ""}`}>
+                        <p className={`text-sm line-clamp-2 break-words ${!n.is_read ? "font-medium" : ""}`}>
                           {n.title}
                         </p>
                         {!n.is_read && (
@@ -112,7 +112,7 @@ export function NotificationBell() {
                         )}
                       </div>
                       {n.message && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 break-words">
                           {n.message}
                         </p>
                       )}

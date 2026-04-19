@@ -87,8 +87,18 @@ class ProfileSerializer(serializers.ModelSerializer):
             "is_department_head",
             "groups",
             "allowed_modules",
+            "date_joined",
+            "last_login",
         )
-        read_only_fields = ("id", "username", "is_department_head", "groups", "allowed_modules")
+        read_only_fields = (
+            "id",
+            "username",
+            "is_department_head",
+            "groups",
+            "allowed_modules",
+            "date_joined",
+            "last_login",
+        )
 
     def get_avatar(self, obj) -> str | None:
         return _avatar_url(obj)

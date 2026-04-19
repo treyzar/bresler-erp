@@ -32,7 +32,7 @@ const profileSchema = z.object({
   first_name: z.string(),
   last_name: z.string(),
   patronymic: z.string(),
-  email: z.string(),
+  email: z.string().email("Некорректный email"),
   phone: z.string(),
   extension_number: z.string(),
   position: z.string(),
@@ -347,7 +347,9 @@ export function ProfilePage() {
                 {user.last_login && (
                   <InfoRow label="Последний вход" value={new Date(user.last_login).toLocaleString("ru")} />
                 )}
-                <InfoRow label="Дата регистрации" value={new Date(user.date_joined).toLocaleString("ru")} />
+                {user.date_joined && (
+                  <InfoRow label="Дата регистрации" value={new Date(user.date_joined).toLocaleString("ru")} />
+                )}
                 {user.groups && user.groups.length > 0 && (
                   <InfoRow label="Группы" value={user.groups.join(", ")} />
                 )}
