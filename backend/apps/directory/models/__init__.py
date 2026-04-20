@@ -1,4 +1,4 @@
-from .contacts import Contact
+from .contacts import Contact, ContactEmployment
 from .facility import Facility
 from .geography import City, Country
 from .orgunit import OrgUnit
@@ -13,6 +13,7 @@ __all__ = [
     "City",
     "OrgUnit",
     "Contact",
+    "ContactEmployment",
     "Equipment",
     "TypeOfWork",
     "DeliveryType",

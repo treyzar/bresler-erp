@@ -8,7 +8,13 @@ from .orgunit import OrgUnit
 
 
 class Contact(BaseModel):
-    """Contact person linked to org units."""
+    """Contact person linked to org units.
+
+    Following the Salesforce / SAP pattern we treat one org as the
+    "current" employer via the first entry in `org_units`; `employments`
+    is the historical / parallel-employment log. Form UI restricts input
+    to a single current organization; history is edited separately.
+    """
 
     full_name = models.CharField("ФИО", max_length=300)
     position = models.CharField("Должность", max_length=255, blank=True)
@@ -40,3 +46,41 @@ class Contact(BaseModel):
 
     def __str__(self):
         return self.full_name
+
+
+class ContactEmployment(BaseModel):
+    """
+    Historical / parallel employment record. A contact can have many of
+    these; the one with is_current=True represents their current job.
+    Independent from Contact.org_units for now (both are kept until a
+    future migration consolidates them).
+    """
+
+    contact = models.ForeignKey(
+        Contact,
+        on_delete=models.CASCADE,
+        related_name="employments",
+        verbose_name="Контакт",
+    )
+    org_unit = models.ForeignKey(
+        OrgUnit,
+        on_delete=models.CASCADE,
+        related_name="employments",
+        verbose_name="Организация",
+    )
+    position = models.CharField("Должность", max_length=255, blank=True)
+    start_date = models.DateField("Начало", null=True, blank=True)
+    end_date = models.DateField("Окончание", null=True, blank=True)
+    is_current = models.BooleanField("Текущая", default=False)
+    note = models.CharField("Комментарий", max_length=500, blank=True)
+
+    class Meta:
+        verbose_name = "Место работы контакта"
+        verbose_name_plural = "Места работы контактов"
+        ordering = ["-is_current", "-start_date"]
+        indexes = [
+            models.Index(fields=["contact", "is_current"]),
+        ]
+
+    def __str__(self):
+        return f"{self.contact_id} @ {self.org_unit_id}"

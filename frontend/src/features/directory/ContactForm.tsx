@@ -157,14 +157,17 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
             name="org_units"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Организации</FormLabel>
+                <FormLabel>Организация</FormLabel>
                 <FormControl>
                   <OrgUnitCombobox
-                    mode="multi"
-                    value={field.value}
-                    onChange={field.onChange}
+                    mode="single"
+                    value={field.value[0] ?? null}
+                    onChange={(id) => field.onChange(id ? [id] : [])}
                   />
                 </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  Текущий работодатель. История мест работы ведётся отдельно.
+                </p>
               </FormItem>
             )}
           />
