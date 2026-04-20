@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from apps.directory.tests.factories import OrgUnitFactory
+from apps.directory.tests.factories import FacilityFactory, OrgUnitFactory
 from apps.orders.models import Order, OrderFile
 from apps.users.tests.factories import UserFactory
 
@@ -219,6 +219,26 @@ class TestOrderListOrgUnitDecomposition:
         assert row["customer_name"] == ""
         assert row["branch_name"] == ""
         assert row["division_name"] == ""
+
+    def test_facility_names_come_from_facilities_m2m(self):
+        # Regression: previously the list serializer pulled facility_names
+        # from obj.org_units (wrong M2M), so the column was always empty.
+        f1 = FacilityFactory(name="Площадка №1")
+        f2 = FacilityFactory(name="Площадка №2")
+        order = OrderFactory()
+        order.facilities.add(f1, f2)
+
+        row = self._row_for(order)
+
+        names = set(row["facility_names"].split(", "))
+        assert names == {"Площадка №1", "Площадка №2"}
+
+    def test_facility_names_empty_when_no_facilities(self):
+        order = OrderFactory()
+
+        row = self._row_for(order)
+
+        assert row["facility_names"] == ""
 
     def test_customer_path_shows_breadcrumb(self):
         company = OrgUnitFactory(name="Газпром", unit_type="company")

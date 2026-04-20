@@ -190,7 +190,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         return self._breadcrumb(ou)
 
     def get_facility_names(self, obj):
-        return ", ".join(ou.name for ou in obj.org_units.all() if ou.unit_type == "site")
+        return ", ".join(f.name for f in obj.facilities.all())
 
     def get_equipment_names(self, obj):
         return ", ".join(e.name for e in obj.equipments.all())
