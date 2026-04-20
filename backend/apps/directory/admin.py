@@ -37,9 +37,9 @@ class CityAdmin(admin.ModelAdmin):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "position", "email", "phone")
+    list_display = ("full_name", "position", "email", "phone", "org_unit")
     search_fields = ("full_name", "email", "phone")
-    filter_horizontal = ("org_units",)
+    raw_id_fields = ("org_unit",)
 
 
 @admin.register(Equipment)
