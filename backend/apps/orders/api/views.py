@@ -253,6 +253,8 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
         old_snapshot = _snapshot_order(instance)
 
         order = serializer.save()
+        # Ensure diff sees committed DB state (scalar fields + M2M both).
+        order.refresh_from_db()
         new_snapshot = _snapshot_order(order)
 
         status_changed = old_status != order.status

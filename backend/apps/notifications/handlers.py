@@ -66,10 +66,12 @@ def _get_customer_name(order):
 
 @on_event("order.updated", async_task=True)
 def on_order_updated(event_name, instance, user=None, changed_fields=None, **kwargs):
-    """Notify order managers when order fields (other than status) change."""
-    if not changed_fields:
-        return
+    """Notify order managers when order fields (other than status) change.
 
+    Triggered only from OrderViewSet.perform_update (not from post_save),
+    so changed_fields is always a real diff; fallback to "данные" just in
+    case an older caller passes nothing.
+    """
     recipients = instance.managers.filter(is_active=True)
     if user:
         recipients = recipients.exclude(pk=user.pk)
@@ -77,20 +79,22 @@ def on_order_updated(event_name, instance, user=None, changed_fields=None, **kwa
     if not recipients.exists():
         return
 
-    labels = []
-    for f in changed_fields:
-        try:
-            labels.append(str(instance._meta.get_field(f).verbose_name))
-        except Exception:
-            labels.append(f)
+    if changed_fields:
+        labels = []
+        for f in changed_fields:
+            try:
+                labels.append(str(instance._meta.get_field(f).verbose_name))
+            except Exception:
+                labels.append(f)
+        message = f"Изменено: {', '.join(labels)}"
+    else:
+        message = "Данные изменены"
 
     create_notification(
         recipients=recipients,
         title=f"Заказ #{instance.order_number} обновлён",
-        message=f"Изменено: {', '.join(labels)}",
+        message=message,
         target=instance,
-        deduplicate_key="order.updated",
-        deduplicate_hours=1,
     )
 
 
