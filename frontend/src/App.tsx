@@ -43,6 +43,7 @@ import { PaymentsPage } from "@/features/purchasing/PaymentsPage"
 import { SupplierPage } from "@/features/purchasing/SupplierPage"
 import { PurchasingDashboard } from "@/features/purchasing/PurchasingDashboard"
 import { BOMCostPage } from "@/features/purchasing/BOMCostPage"
+import { ComingSoon } from "@/components/shared/ComingSoon"
 
 function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -62,10 +63,14 @@ function App() {
 
             <Route element={<ModuleGuard module="orders" />}>
               <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/orders/offers" element={<ComingSoon title="Все ТКП" hint="Здесь будет сводная таблица технико-коммерческих предложений по всем заказам." />} />
+              <Route path="/orders/contracts" element={<ComingSoon title="Все договоры" hint="Здесь будет сводная таблица договоров по всем заказам." />} />
               <Route path="/orders/new" element={<OrderFormPage />} />
               <Route path="/orders/:orderNumber" element={<OrderDetailPage />} />
               <Route path="/orders/:orderNumber/edit" element={<OrderFormPage />} />
             </Route>
+
+            <Route path="/accounting" element={<ComingSoon title="Бухгалтерия" hint="Модуль бухгалтерии запланирован на будущие релизы." />} />
 
             <Route element={<ModuleGuard module="directory" />}>
               <Route path="/directory">

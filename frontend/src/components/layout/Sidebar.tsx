@@ -11,15 +11,31 @@ type NavItemWithModule = NavItem & {
 
 const navItems: NavItemWithModule[] = [
   { to: "/dashboard", label: "Главная" },
-  { to: "/orders", label: "Заказы", module: "orders" },
-  { to: "/directory/orgunits", label: "Организации", module: "directory" },
-  { to: "/directory/contacts", label: "Контакты", module: "directory" },
-  { to: "/directory/facilities", label: "Объекты", module: "directory" },
-  { to: "/directory/countries", label: "Страны", module: "directory" },
-  { to: "/directory/cities", label: "Города", module: "directory" },
-  { to: "/directory/equipment", label: "Оборудование", module: "directory" },
-  { to: "/directory/works", label: "Виды работ", module: "directory" },
-  { to: "/directory/delivery-types", label: "Типы доставки", module: "directory" },
+  {
+    to: "/orders",
+    label: "Заказы",
+    module: "orders",
+    subItems: [
+      { to: "/orders", label: "Все заказы" },
+      { to: "/orders/offers", label: "ТКП" },
+      { to: "/orders/contracts", label: "Договоры" },
+    ],
+  },
+  {
+    to: "/directory",
+    label: "Справочники",
+    module: "directory",
+    subItems: [
+      { to: "/directory/orgunits", label: "Организации" },
+      { to: "/directory/contacts", label: "Контакты" },
+      { to: "/directory/facilities", label: "Объекты" },
+      { to: "/directory/countries", label: "Страны" },
+      { to: "/directory/cities", label: "Города" },
+      { to: "/directory/equipment", label: "Оборудование" },
+      { to: "/directory/works", label: "Виды работ" },
+      { to: "/directory/delivery-types", label: "Типы доставки" },
+    ],
+  },
   {
     to: "/devices",
     label: "Устройства",
@@ -57,6 +73,7 @@ const navItems: NavItemWithModule[] = [
       { to: "/purchasing/bom-cost", label: "Себестоимость" },
     ],
   },
+  { to: "/accounting", label: "Бухгалтерия" },
   { to: "/profile", label: "Профиль" },
   { to: "/manager-dashboard", label: "Руководитель", requireAccess: "dashboard" },
 ]
