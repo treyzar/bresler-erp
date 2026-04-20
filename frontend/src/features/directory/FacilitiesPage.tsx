@@ -50,6 +50,16 @@ const columns: ColumnDef<Facility, unknown>[] = [
   { accessorKey: "org_unit_name", header: "Организация", size: 200 },
   { accessorKey: "address", header: "Адрес", size: 250 },
   {
+    accessorKey: "description",
+    header: "Описание",
+    size: 240,
+    cell: ({ getValue }) => {
+      const v = getValue() as string | null
+      if (!v) return <span className="text-muted-foreground">—</span>
+      return <span className="line-clamp-2 text-sm" title={v}>{v}</span>
+    },
+  },
+  {
     accessorKey: "is_active",
     header: "Статус",
     size: 100,

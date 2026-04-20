@@ -87,6 +87,7 @@ class CommercialOfferDetailSerializer(serializers.ModelSerializer):
     )
     manager_name = serializers.SerializerMethodField()
     executor_name = serializers.SerializerMethodField()
+    order_managers = serializers.SerializerMethodField()
     work_items = OfferWorkItemSerializer(many=True, read_only=True)
     specification = SpecificationSerializer(read_only=True)
     shipment_condition_text = serializers.CharField(read_only=True)
@@ -101,6 +102,7 @@ class CommercialOfferDetailSerializer(serializers.ModelSerializer):
             "valid_days", "valid_until",
             "order", "participant", "participant_name",
             "manager", "manager_name", "executor", "executor_name",
+            "order_managers",
             "based_on", "based_on_number",
             "vat_rate", "payment_terms",
             "advance_percent", "pre_shipment_percent", "post_payment_percent",
@@ -121,6 +123,9 @@ class CommercialOfferDetailSerializer(serializers.ModelSerializer):
 
     def get_executor_name(self, obj) -> str:
         return obj.executor.get_full_name() if obj.executor else ""
+
+    def get_order_managers(self, obj) -> list[str]:
+        return [m.get_full_name() or m.username for m in obj.order.managers.all()]
 
 
 class CommercialOfferCreateSerializer(serializers.ModelSerializer):

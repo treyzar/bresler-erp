@@ -569,6 +569,7 @@ export interface CommercialOfferDetail extends BaseEntity {
   manager_name: string
   executor: number | null
   executor_name: string
+  order_managers: string[]
   based_on: number | null
   based_on_number: string | null
   vat_rate: string

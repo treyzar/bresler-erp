@@ -147,7 +147,10 @@ export function OfferDetailDialog({ offerId, orderId, participants, shipmentBatc
               <InfoRow label="Участник" value={offer.participant_name} />
               <InfoRow label="Дата" value={new Date(offer.date).toLocaleDateString("ru")} />
               <InfoRow label="Действует до" value={offer.valid_until ? new Date(offer.valid_until).toLocaleDateString("ru") : "—"} />
-              <InfoRow label="Менеджер" value={offer.manager_name || "—"} />
+              <InfoRow
+                label="Менеджеры"
+                value={offer.order_managers?.length ? offer.order_managers.join(", ") : (offer.manager_name || "—")}
+              />
               <InfoRow label="Исполнитель" value={offer.executor_name || "—"} />
               {offer.based_on_number && <InfoRow label="На основании" value={offer.based_on_number} />}
             </div>

@@ -196,7 +196,11 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
           <ArrowLeft className="size-4 mr-1" />
           Назад
         </Button>
-        <h1 className="text-2xl font-bold">{meta?.title || reportName}</h1>
+        {meta?.title ? (
+          <h1 className="text-2xl font-bold">{meta.title}</h1>
+        ) : (
+          <Skeleton className="h-8 w-72" />
+        )}
         <Badge variant="outline">{totalCount.toLocaleString("ru-RU")} записей</Badge>
         <div className="ml-auto">
           <Button

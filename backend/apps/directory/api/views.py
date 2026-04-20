@@ -37,8 +37,10 @@ class OrgUnitViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     search_fields = ["name", "full_name", "inn", "external_code"]
     meta_extra = {
         "country": {"widget": "combobox", "endpoint": "/api/directory/countries/"},
-        "parent": {"widget": "combobox", "endpoint": "/api/directory/orgunits/"},
     }
+    # 'ids' is used by OrgUnitCombobox to resolve pre-selected IDs;
+    # 'parent' drives tree breadcrumb navigation — not user filters.
+    meta_hidden_filters = ("ids", "parent")
     export_filename = "organizations"
     export_fields = {
         "name": "Наименование",

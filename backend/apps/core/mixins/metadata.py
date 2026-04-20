@@ -100,6 +100,9 @@ class MetadataMixin:
     """
 
     meta_extra: dict = {}
+    # Filter names that should never appear in the metadata response
+    # (used for programmatic filtering like tree navigation or ID lookups).
+    meta_hidden_filters: tuple[str, ...] = ()
 
     @action(detail=False, methods=["get"])
     def meta(self, request):
@@ -143,6 +146,8 @@ class MetadataMixin:
         for name, filter_inst in fs.filters.items():
             # Skip 'search' — it's handled by search_fields
             if name == "search":
+                continue
+            if name in self.meta_hidden_filters:
                 continue
 
             filter_type = _get_filter_type(filter_inst)

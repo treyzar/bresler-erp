@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useParams, useNavigate } from "react-router"
-import { ArrowLeft, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,7 @@ export function DeviceDetailPage() {
   const { data: components } = useDeviceComponents(deviceId)
 
   const [modFormOpen, setModFormOpen] = useState(false)
+  const [editingMod, setEditingMod] = useState<ModRZA | null>(null)
   const [paramDialogOpen, setParamDialogOpen] = useState(false)
   const [compDialogOpen, setCompDialogOpen] = useState(false)
   const [deleteModItem, setDeleteModItem] = useState<ModRZA | null>(null)
@@ -139,7 +140,13 @@ export function DeviceDetailPage() {
         {/* Modifications Tab */}
         <TabsContent value="modifications" className="space-y-3">
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => setModFormOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingMod(null)
+                setModFormOpen(true)
+              }}
+            >
               <Plus className="mr-1 size-4" /> Добавить модификацию
             </Button>
           </div>
@@ -150,26 +157,40 @@ export function DeviceDetailPage() {
                 <TableHead>Наименование</TableHead>
                 <TableHead>Полный код</TableHead>
                 <TableHead>Альт. код</TableHead>
-                <TableHead className="w-10" />
+                <TableHead>Код по ШЭТ</TableHead>
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {modifications?.results.map((mod) => (
-                <TableRow key={mod.id}>
-                  <TableCell className="font-mono">{mod.mod_code}</TableCell>
-                  <TableCell>{mod.mod_name || "—"}</TableCell>
-                  <TableCell className="font-mono text-xs">{mod.full_code}</TableCell>
-                  <TableCell className="text-xs">{mod.alter_mod_code || "—"}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteModItem(mod)}>
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {[...(modifications?.results ?? [])]
+                .sort((a, b) => a.mod_code.localeCompare(b.mod_code, "ru", { numeric: true }))
+                .map((mod) => (
+                  <TableRow key={mod.id}>
+                    <TableCell className="font-mono">{mod.mod_code}</TableCell>
+                    <TableCell>{mod.mod_name || "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{mod.full_code}</TableCell>
+                    <TableCell className="text-xs">{mod.alter_mod_code || "—"}</TableCell>
+                    <TableCell className="text-xs font-mono">{mod.sec_mod_code || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingMod(mod)
+                          setModFormOpen(true)
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteModItem(mod)}>
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               {!modifications?.results.length && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Нет модификаций
                   </TableCell>
                 </TableRow>
@@ -180,7 +201,10 @@ export function DeviceDetailPage() {
 
         {/* Parameters Tab */}
         <TabsContent value="parameters" className="space-y-3">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Параметры — опции, которые можно включать в модификации (тип, цена). Выберите справа «Добавить параметр».
+            </p>
             <Button size="sm" onClick={() => setParamDialogOpen(true)}>
               <Plus className="mr-1 size-4" /> Добавить параметр
             </Button>
@@ -269,7 +293,11 @@ export function DeviceDetailPage() {
           <ModificationFormDialog
             deviceId={deviceId}
             open={modFormOpen}
-            onOpenChange={setModFormOpen}
+            onOpenChange={(open) => {
+              setModFormOpen(open)
+              if (!open) setEditingMod(null)
+            }}
+            modification={editingMod}
           />
           <AddParameterDialog
             deviceId={deviceId}
