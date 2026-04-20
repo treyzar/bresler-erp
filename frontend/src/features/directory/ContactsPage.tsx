@@ -18,7 +18,15 @@ const columns: ColumnDef<Contact, unknown>[] = [
   { accessorKey: "position", header: "Должность", size: 160 },
   { accessorKey: "email", header: "Email", size: 200 },
   { accessorKey: "phone", header: "Телефон", size: 150 },
-  { accessorKey: "company", header: "Компания", size: 180 },
+  {
+    accessorKey: "org_unit_name",
+    header: "Организация",
+    size: 220,
+    cell: ({ getValue }) => {
+      const v = getValue() as string
+      return v ? v : <span className="text-muted-foreground">—</span>
+    },
+  },
 ]
 
 export function ContactsPage() {
