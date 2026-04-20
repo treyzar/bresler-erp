@@ -123,20 +123,37 @@ class OrderListSerializer(serializers.ModelSerializer):
             "created_at",
         )
 
-    def _orgunit_by_role(self, obj, role):
-        """Return the OrgUnit tagged with the given role in this order."""
-        link = obj.orderorgunit_set.select_related("org_unit").filter(role=role).first()
+    def _customer(self, obj):
+        """Resolve the customer OrgUnit — FK wins; legacy flows may use OrderOrgUnit(role=customer)."""
+        if obj.customer_org_unit_id:
+            return obj.customer_org_unit
+        link = obj.orderorgunit_set.select_related("org_unit").filter(role="customer").first()
         return link.org_unit if link else None
 
-    def _orgunit_by_unit_type(self, obj, unit_type):
-        """Return the first org_unit (tagged to this order) of the given type."""
-        for ou in obj.org_units.all():
+    def _customer_chain(self, obj):
+        """Return [ancestors..., customer] as a list, cached per-object."""
+        cached = getattr(obj, "_customer_chain_cache", None)
+        if cached is not None:
+            return cached
+        customer = self._customer(obj)
+        if customer is None:
+            chain: list = []
+        else:
+            try:
+                chain = [*customer.get_ancestors(), customer]
+            except Exception:
+                chain = [customer]
+        obj._customer_chain_cache = chain
+        return chain
+
+    @staticmethod
+    def _find_by_type(chain, unit_type):
+        for ou in chain:
             if ou.unit_type == unit_type:
                 return ou
         return None
 
     def _breadcrumb(self, org_unit):
-        """Return separator-joined ancestor names for tooltip display."""
         if not org_unit:
             return ""
         try:
@@ -145,33 +162,31 @@ class OrderListSerializer(serializers.ModelSerializer):
             chain = [org_unit]
         return " › ".join(ou.name for ou in chain)
 
-    def _customer(self, obj):
-        # FK wins; fall back to OrderOrgUnit(role=customer) for legacy /
-        # add-org-list flow
-        return obj.customer_org_unit or self._orgunit_by_role(obj, "customer")
-
     def get_customer_name(self, obj):
-        ou = self._customer(obj)
+        chain = self._customer_chain(obj)
+        # Prefer the company-level node; if none exists, fall back to the top of the chain
+        ou = self._find_by_type(chain, "company") or (chain[0] if chain else None)
         return ou.name if ou else ""
 
     def get_customer_path(self, obj):
-        return self._breadcrumb(self._customer(obj))
+        chain = self._customer_chain(obj)
+        ou = self._find_by_type(chain, "company") or (chain[0] if chain else None)
+        return self._breadcrumb(ou)
 
     def get_branch_name(self, obj):
-        # role=buyer_branch (legacy) first, then any unit_type=branch tagged
-        ou = self._orgunit_by_role(obj, "buyer_branch") or self._orgunit_by_unit_type(obj, "branch")
+        ou = self._find_by_type(self._customer_chain(obj), "branch")
         return ou.name if ou else ""
 
     def get_branch_path(self, obj):
-        ou = self._orgunit_by_role(obj, "buyer_branch") or self._orgunit_by_unit_type(obj, "branch")
+        ou = self._find_by_type(self._customer_chain(obj), "branch")
         return self._breadcrumb(ou)
 
     def get_division_name(self, obj):
-        ou = self._orgunit_by_role(obj, "shipment_site") or self._orgunit_by_unit_type(obj, "division")
+        ou = self._find_by_type(self._customer_chain(obj), "division")
         return ou.name if ou else ""
 
     def get_division_path(self, obj):
-        ou = self._orgunit_by_role(obj, "shipment_site") or self._orgunit_by_unit_type(obj, "division")
+        ou = self._find_by_type(self._customer_chain(obj), "division")
         return self._breadcrumb(ou)
 
     def get_facility_names(self, obj):

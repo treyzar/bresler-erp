@@ -131,6 +131,109 @@ class TestOrderAPI:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+@pytest.mark.django_db
+class TestOrderListOrgUnitDecomposition:
+    """
+    When an Order's customer points at a deep OrgUnit node, the list
+    serializer should decompose the ancestor chain into three columns:
+    customer (company), branch, division.
+    """
+
+    def setup_method(self):
+        self.client = APIClient()
+        self.user = UserFactory()
+        self.client.force_authenticate(user=self.user)
+
+    def _row_for(self, order):
+        url = reverse("orders:order-list")
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        return next(r for r in response.data["results"] if r["id"] == order.id)
+
+    def test_customer_is_deep_division_node(self):
+        # Газпром (company) → Газпром переработка Благовещенск (branch) → Амурский ГПЗ (division)
+        company = OrgUnitFactory(name="Газпром", unit_type="company")
+        branch = OrgUnitFactory(
+            name="Газпром переработка Благовещенск", unit_type="branch", parent=company
+        )
+        division = OrgUnitFactory(name="Амурский ГПЗ", unit_type="division", parent=branch)
+        order = OrderFactory(customer_org_unit=division)
+
+        row = self._row_for(order)
+
+        assert row["customer_name"] == "Газпром"
+        assert row["branch_name"] == "Газпром переработка Благовещенск"
+        assert row["division_name"] == "Амурский ГПЗ"
+
+    def test_customer_is_root_company(self):
+        company = OrgUnitFactory(name="Газпром", unit_type="company")
+        order = OrderFactory(customer_org_unit=company)
+
+        row = self._row_for(order)
+
+        assert row["customer_name"] == "Газпром"
+        assert row["branch_name"] == ""
+        assert row["division_name"] == ""
+
+    def test_customer_is_branch_under_company(self):
+        company = OrgUnitFactory(name="Газпром", unit_type="company")
+        branch = OrgUnitFactory(name="Филиал А", unit_type="branch", parent=company)
+        order = OrderFactory(customer_org_unit=branch)
+
+        row = self._row_for(order)
+
+        assert row["customer_name"] == "Газпром"
+        assert row["branch_name"] == "Филиал А"
+        assert row["division_name"] == ""
+
+    def test_customer_is_site_falls_through_full_chain(self):
+        company = OrgUnitFactory(name="Холдинг", unit_type="company")
+        branch = OrgUnitFactory(name="Филиал", unit_type="branch", parent=company)
+        division = OrgUnitFactory(name="Отделение", unit_type="division", parent=branch)
+        site = OrgUnitFactory(name="Площадка-1", unit_type="site", parent=division)
+        order = OrderFactory(customer_org_unit=site)
+
+        row = self._row_for(order)
+
+        assert row["customer_name"] == "Холдинг"
+        assert row["branch_name"] == "Филиал"
+        assert row["division_name"] == "Отделение"
+
+    def test_standalone_customer_without_company_ancestor(self):
+        # Edge case: selected unit has no company in its chain (weird data).
+        # Customer column should still show something (self), other columns empty.
+        standalone = OrgUnitFactory(name="Standalone", unit_type="branch")
+        order = OrderFactory(customer_org_unit=standalone)
+
+        row = self._row_for(order)
+
+        assert row["customer_name"] == "Standalone"
+        assert row["branch_name"] == "Standalone"
+        assert row["division_name"] == ""
+
+    def test_no_customer_set(self):
+        order = OrderFactory(customer_org_unit=None)
+
+        row = self._row_for(order)
+
+        assert row["customer_name"] == ""
+        assert row["branch_name"] == ""
+        assert row["division_name"] == ""
+
+    def test_customer_path_shows_breadcrumb(self):
+        company = OrgUnitFactory(name="Газпром", unit_type="company")
+        branch = OrgUnitFactory(name="Филиал", unit_type="branch", parent=company)
+        division = OrgUnitFactory(name="Отделение", unit_type="division", parent=branch)
+        order = OrderFactory(customer_org_unit=division)
+
+        row = self._row_for(order)
+
+        # Customer column resolves to 'Газпром' (company), which has no ancestors.
+        assert row["customer_path"] == "Газпром"
+        assert row["branch_path"] == "Газпром › Филиал"
+        assert row["division_path"] == "Газпром › Филиал › Отделение"
+
+
 # ---------------------------------------------------------------------------
 # Contract endpoint (via OrderViewSet actions)
 # ---------------------------------------------------------------------------
