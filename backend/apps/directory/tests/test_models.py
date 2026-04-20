@@ -1,4 +1,7 @@
+from io import StringIO
+
 import pytest
+from django.core.management import call_command
 from django.db import IntegrityError
 
 from apps.directory.models import (
@@ -254,6 +257,68 @@ class TestContactEmploymentAutoHistory:
         assert len(records) == 1
         assert records[0].is_current is False
         assert records[0].end_date is not None
+
+
+@pytest.mark.django_db
+class TestBackfillContactEmployments:
+    def _run(self, **kwargs):
+        out = StringIO()
+        call_command("backfill_contact_employments", stdout=out, **kwargs)
+        return out.getvalue()
+
+    def test_backfills_contact_with_org_unit_and_no_history(self):
+        org = OrgUnitFactory(name="A")
+        # Create without triggering the signal (bypass save-time creation)
+        contact = Contact.objects.create(full_name="X", position="p", address="addr", org_unit=org)
+        contact.employments.all().delete()
+        assert contact.employments.count() == 0
+
+        self._run()
+
+        records = list(contact.employments.all())
+        assert len(records) == 1
+        r = records[0]
+        assert r.is_current is True
+        assert r.org_unit_id == org.id
+        assert r.position == "p"
+        assert r.address == "addr"
+        assert r.start_date == contact.created_at.date()
+        assert r.end_date is None
+
+    def test_skips_contacts_without_org_unit(self):
+        Contact.objects.create(full_name="NoOrg")
+        self._run()
+        assert ContactEmployment.objects.count() == 0
+
+    def test_skips_contacts_that_already_have_employments(self):
+        org = OrgUnitFactory(name="A")
+        contact = Contact.objects.create(full_name="X", org_unit=org)
+        initial = contact.employments.count()
+        assert initial == 1
+
+        self._run()
+
+        assert contact.employments.count() == initial
+
+    def test_idempotent(self):
+        org = OrgUnitFactory(name="A")
+        contact = Contact.objects.create(full_name="X", org_unit=org)
+        contact.employments.all().delete()
+
+        self._run()
+        self._run()
+
+        assert contact.employments.count() == 1
+
+    def test_dry_run_does_not_write(self):
+        org = OrgUnitFactory(name="A")
+        contact = Contact.objects.create(full_name="X", org_unit=org)
+        contact.employments.all().delete()
+
+        output = self._run(dry_run=True)
+
+        assert "dry-run" in output
+        assert contact.employments.count() == 0
 
 
 @pytest.mark.django_db

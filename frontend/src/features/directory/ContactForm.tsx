@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -41,6 +42,7 @@ interface ContactFormProps {
 export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProps) {
   const createMutation = contactHooks.useCreate()
   const updateMutation = contactHooks.useUpdate()
+  const qc = useQueryClient()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,6 +69,7 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
     try {
       if (editingItem) {
         await updateMutation.mutateAsync({ id: editingItem.id, data: values as Partial<Contact> })
+        qc.invalidateQueries({ queryKey: ["contact-employments", editingItem.id] })
         toast.success("Контакт обновлён")
       } else {
         await createMutation.mutateAsync(values as Partial<Contact>)
