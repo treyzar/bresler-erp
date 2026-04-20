@@ -1,10 +1,14 @@
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
+import { Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import {
   Form,
   FormControl,
@@ -17,13 +21,17 @@ import { EntityFormDialog } from "@/components/shared/EntityFormDialog"
 import { OrgUnitCombobox } from "@/components/shared/OrgUnitCombobox"
 import type { Contact } from "@/api/types"
 import { contactHooks } from "@/api/hooks/useContacts"
+import {
+  useContactEmployments,
+  useCreateContactEmployment,
+  useDeleteContactEmployment,
+} from "@/api/hooks/useContactEmployments"
 
 const formSchema = z.object({
   full_name: z.string().min(1, "Обязательное поле"),
   position: z.string(),
   email: z.string().email("Некорректный email").or(z.literal("")),
   phone: z.string(),
-  company: z.string(),
   address: z.string(),
   org_unit: z.number().nullable(),
 })
@@ -48,7 +56,6 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
           position: editingItem.position,
           email: editingItem.email,
           phone: editingItem.phone,
-          company: editingItem.company,
           address: editingItem.address,
           org_unit: editingItem.org_unit,
         }
@@ -57,7 +64,6 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
           position: "",
           email: "",
           phone: "",
-          company: "",
           address: "",
           org_unit: null,
         },
@@ -134,16 +140,6 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
           </div>
           <FormField
             control={form.control}
-            name="company"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Компания</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
             name="address"
             render={({ field }) => (
               <FormItem>
@@ -181,6 +177,118 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
           </div>
         </form>
       </Form>
+
+      {editingItem && (
+        <>
+          <Separator className="my-4" />
+          <EmploymentHistorySection contactId={editingItem.id} />
+        </>
+      )}
     </EntityFormDialog>
+  )
+}
+
+function EmploymentHistorySection({ contactId }: { contactId: number }) {
+  const { data: employments = [] } = useContactEmployments(contactId)
+  const createMutation = useCreateContactEmployment()
+  const deleteMutation = useDeleteContactEmployment(contactId)
+
+  const [orgUnit, setOrgUnit] = useState<number | null>(null)
+  const [position, setPosition] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+
+  const handleAdd = async () => {
+    if (!orgUnit) {
+      toast.error("Выберите организацию")
+      return
+    }
+    try {
+      await createMutation.mutateAsync({
+        contact: contactId,
+        org_unit: orgUnit,
+        position,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        is_current: !endDate,
+      })
+      setOrgUnit(null)
+      setPosition("")
+      setStartDate("")
+      setEndDate("")
+      toast.success("Добавлено")
+    } catch {
+      toast.error("Ошибка")
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold">История мест работы</h3>
+
+      {employments.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Записей нет</p>
+      ) : (
+        <div className="space-y-2">
+          {employments.map((e) => (
+            <div
+              key={e.id}
+              className="flex items-center justify-between gap-2 rounded border p-2 text-sm"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium truncate">{e.org_unit_name}</span>
+                  {e.is_current && <Badge variant="default" className="text-[10px]">текущая</Badge>}
+                </div>
+                {e.position && <div className="text-xs text-muted-foreground">{e.position}</div>}
+                <div className="text-[10px] text-muted-foreground">
+                  {e.start_date ?? "—"} — {e.end_date ?? "по н.в."}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => deleteMutation.mutate(e.id)}
+              >
+                <Trash2 className="size-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2 rounded border p-3 bg-muted/30">
+        <p className="text-xs font-medium">Добавить запись</p>
+        <OrgUnitCombobox mode="single" value={orgUnit} onChange={setOrgUnit} />
+        <Input
+          placeholder="Должность"
+          value={position}
+          onChange={(e) => setPosition(e.target.value)}
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="date"
+            placeholder="Начало"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <Input
+            type="date"
+            placeholder="Окончание"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleAdd}
+          disabled={createMutation.isPending || !orgUnit}
+        >
+          <Plus className="size-4 mr-1" /> Добавить
+        </Button>
+      </div>
+    </div>
   )
 }

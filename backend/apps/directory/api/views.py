@@ -8,6 +8,7 @@ from apps.core.mixins.metadata import MetadataMixin
 from apps.directory.models import (
     City,
     Contact,
+    ContactEmployment,
     Country,
     DeliveryType,
     Equipment,
@@ -19,6 +20,7 @@ from apps.directory.models import (
 from .filters import ContactFilter, FacilityFilter, OrgUnitFilter
 from .serializers import (
     CitySerializer,
+    ContactEmploymentSerializer,
     ContactSerializer,
     CountrySerializer,
     DeliveryTypeSerializer,
@@ -203,6 +205,20 @@ class ContactViewSet(ExportMixin, viewsets.ModelViewSet):
         ids = request.data.get("ids", [])
         deleted, _ = Contact.objects.filter(id__in=ids).delete()
         return Response({"deleted": deleted})
+
+
+class ContactEmploymentViewSet(viewsets.ModelViewSet):
+    """CRUD for contact employment history (past / parallel employers)."""
+
+    queryset = ContactEmployment.objects.select_related("org_unit").all()
+    serializer_class = ContactEmploymentSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        contact_id = self.request.query_params.get("contact")
+        if contact_id:
+            qs = qs.filter(contact_id=contact_id)
+        return qs
 
 
 class EquipmentViewSet(viewsets.ModelViewSet):

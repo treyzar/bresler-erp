@@ -181,7 +181,11 @@ function RemoteCombobox({
     if (loaded || !filter.endpoint) return
     let cancelled = false
 
-    apiClient.get(filter.endpoint, { params: { page_size: 200 } }).then((res) => {
+    // Backend meta_extra stores paths like "/api/directory/…" but apiClient
+    // already has baseURL "/api" — strip the duplicate prefix.
+    const path = filter.endpoint.replace(/^\/api\//, "/")
+
+    apiClient.get(path, { params: { page_size: 200 } }).then((res) => {
       if (cancelled) return
       const results = res.data?.results ?? res.data ?? []
       const opts = results.map((item: { id: number; name: string }) => ({

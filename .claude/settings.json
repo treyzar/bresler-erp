@@ -38,7 +38,8 @@
       "Bash(python -m py_compile apps/orders/api/serializers.py)",
       "Bash(python -m py_compile apps/users/api/views.py)",
       "Bash(python -m py_compile apps/directory/models/contacts.py apps/directory/models/__init__.py apps/directory/migrations/0006_contact_employment.py)",
-      "Bash(python -m py_compile apps/directory/models/contacts.py apps/directory/api/serializers.py apps/directory/api/filters.py apps/directory/api/views.py apps/directory/tests/factories.py apps/directory/tests/test_models.py apps/directory/migrations/0007_contact_org_unit_fk.py apps/orders/api/serializers.py)"
+      "Bash(python -m py_compile apps/directory/models/contacts.py apps/directory/api/serializers.py apps/directory/api/filters.py apps/directory/api/views.py apps/directory/tests/factories.py apps/directory/tests/test_models.py apps/directory/migrations/0007_contact_org_unit_fk.py apps/orders/api/serializers.py)",
+      "Bash(python -m py_compile apps/directory/api/views.py apps/directory/api/serializers.py apps/directory/api/urls.py)"
     ]
   }
 }

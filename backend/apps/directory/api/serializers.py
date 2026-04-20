@@ -3,6 +3,7 @@ from rest_framework import serializers
 from apps.directory.models import (
     City,
     Contact,
+    ContactEmployment,
     Country,
     DeliveryType,
     Equipment,
@@ -93,6 +94,19 @@ class ContactSerializer(serializers.ModelSerializer):
             "org_unit_name",
             "created_at",
             "updated_at",
+        )
+        read_only_fields = ("id", "org_unit_name", "created_at", "updated_at")
+
+
+class ContactEmploymentSerializer(serializers.ModelSerializer):
+    org_unit_name = serializers.CharField(source="org_unit.name", read_only=True)
+
+    class Meta:
+        model = ContactEmployment
+        fields = (
+            "id", "contact", "org_unit", "org_unit_name",
+            "position", "start_date", "end_date", "is_current", "note",
+            "created_at", "updated_at",
         )
         read_only_fields = ("id", "org_unit_name", "created_at", "updated_at")
 
