@@ -31,7 +31,8 @@
       "Bash(python -m py_compile apps/comments/consumers.py apps/comments/routing.py apps/comments/ws.py apps/comments/api/views.py config/asgi.py)",
       "Bash(python -m py_compile apps/comments/handlers.py)",
       "Bash(python -m py_compile apps/directory/api/filters.py apps/users/api/serializers.py)",
-      "Bash(python -m py_compile apps/comments/api/serializers.py apps/orders/api/views.py apps/notifications/handlers.py)"
+      "Bash(python -m py_compile apps/comments/api/serializers.py apps/orders/api/views.py apps/notifications/handlers.py)",
+      "Bash(python -m py_compile apps/orders/api/views.py apps/notifications/handlers.py)"
     ]
   }
 }

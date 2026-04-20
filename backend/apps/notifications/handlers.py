@@ -67,6 +67,9 @@ def _get_customer_name(order):
 @on_event("order.updated", async_task=True)
 def on_order_updated(event_name, instance, user=None, changed_fields=None, **kwargs):
     """Notify order managers when order fields (other than status) change."""
+    if not changed_fields:
+        return
+
     recipients = instance.managers.filter(is_active=True)
     if user:
         recipients = recipients.exclude(pk=user.pk)
@@ -74,11 +77,17 @@ def on_order_updated(event_name, instance, user=None, changed_fields=None, **kwa
     if not recipients.exists():
         return
 
-    fields_str = ", ".join(changed_fields or []) if changed_fields else "данные"
+    labels = []
+    for f in changed_fields:
+        try:
+            labels.append(str(instance._meta.get_field(f).verbose_name))
+        except Exception:
+            labels.append(f)
+
     create_notification(
         recipients=recipients,
         title=f"Заказ #{instance.order_number} обновлён",
-        message=f"Изменено: {fields_str}",
+        message=f"Изменено: {', '.join(labels)}",
         target=instance,
         deduplicate_key="order.updated",
         deduplicate_hours=1,

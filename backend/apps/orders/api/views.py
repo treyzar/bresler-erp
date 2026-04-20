@@ -144,6 +144,24 @@ def _format_change(change):
     }
 
 
+_ORDER_SNAPSHOT_SCALARS = (
+    "order_type", "order_number", "tender_number", "status", "note",
+    "start_date", "ship_date",
+    "customer_org_unit_id", "intermediary_id", "designer_id", "country_id",
+)
+_ORDER_SNAPSHOT_M2M = ("contacts", "managers", "equipments", "works", "facilities", "related_orders")
+
+
+def _snapshot_order(order):
+    """Take a comparable snapshot of an Order for diffing before/after update."""
+    snap = {f: getattr(order, f) for f in _ORDER_SNAPSHOT_SCALARS}
+    # Strip "_id" suffix for cleaner field names in the diff
+    snap = {(k[:-3] if k.endswith("_id") else k): v for k, v in snap.items()}
+    for m2m in _ORDER_SNAPSHOT_M2M:
+        snap[m2m] = frozenset(getattr(order, m2m).values_list("pk", flat=True))
+    return snap
+
+
 class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     lookup_field = "order_number"
     lookup_value_regex = r"\d+"
@@ -232,14 +250,12 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
         """Trigger status_changed and/or updated events when order is modified."""
         instance = serializer.instance
         old_status = instance.status
-        changed_fields = [
-            f for f in serializer.validated_data if f != "status"
-        ]
-        order = serializer.save()
+        old_snapshot = _snapshot_order(instance)
 
-        status_changed = (
-            "status" in serializer.validated_data and old_status != order.status
-        )
+        order = serializer.save()
+        new_snapshot = _snapshot_order(order)
+
+        status_changed = old_status != order.status
         if status_changed:
             trigger_event(
                 "order.status_changed",
@@ -249,6 +265,10 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
                 new_status=order.status,
             )
 
+        changed_fields = [
+            k for k in old_snapshot
+            if k != "status" and old_snapshot[k] != new_snapshot[k]
+        ]
         if changed_fields:
             trigger_event(
                 "order.updated",
