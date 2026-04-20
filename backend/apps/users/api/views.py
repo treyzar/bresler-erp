@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import generics, parsers, permissions, status, viewsets
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
@@ -79,29 +80,49 @@ class AvatarUploadView(APIView):
 
 
 class MyOrdersView(APIView):
-    """GET /api/users/me/orders/ — orders where current user is a manager.
+    """GET /api/users/me/orders/ — orders connected to the current user.
 
     Query params:
+        scope: manager | creator | all (default: manager)
+            - manager: user is in Order.managers
+            - creator: user created the order (via simple_history + event)
+            - all:     manager OR creator
         group: current | shipped | all (default: all)
-        year: filter by ship_date year
+        year:  filter by ship_date year
         page, page_size: pagination
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+    def _scope_queryset(self, user, scope: str):
         from apps.orders.models import Order
+        manager_q = Q(managers=user)
+        if scope == "manager":
+            return Order.objects.filter(manager_q)
+        # Find orders this user created via simple_history
+        HistoricalOrder = Order.history.model  # type: ignore[attr-defined]
+        created_pks = HistoricalOrder.objects.filter(
+            history_user=user, history_type="+",
+        ).values_list("id", flat=True)
+        creator_q = Q(pk__in=list(created_pks))
+        if scope == "creator":
+            return Order.objects.filter(creator_q)
+        # "all" — union of both
+        return Order.objects.filter(manager_q | creator_q).distinct()
+
+    def get(self, request):
         from django.db.models import Count, Q
         from django.utils import timezone
 
+        scope = request.query_params.get("scope", "manager")
+        if scope not in ("manager", "creator", "all"):
+            scope = "manager"
         group = request.query_params.get("group", "all")
         year = request.query_params.get("year")
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 50))
 
-        qs = Order.objects.filter(
-            managers=request.user,
-        ).select_related(
+        qs = self._scope_queryset(request.user, scope).select_related(
             "customer_org_unit", "country", "contract",
         )
 
@@ -115,9 +136,9 @@ class MyOrdersView(APIView):
 
         qs = qs.order_by("-created_at")
 
-        # Quick stats
+        # Quick stats — always based on current scope
         today = timezone.now().date()
-        all_my = Order.objects.filter(managers=request.user)
+        all_my = self._scope_queryset(request.user, scope)
         stats = all_my.aggregate(
             total=Count("id"),
             in_progress=Count("id", filter=Q(status__in=["D", "P", "C"])),

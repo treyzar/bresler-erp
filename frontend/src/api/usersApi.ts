@@ -89,7 +89,7 @@ export const usersApi = {
 
   deleteAvatar: () => client.delete("/users/me/avatar/"),
 
-  myOrders: (params?: { group?: string; year?: string; page?: number; page_size?: number }): Promise<MyOrdersResponse> =>
+  myOrders: (params?: { scope?: string; group?: string; year?: string; page?: number; page_size?: number }): Promise<MyOrdersResponse> =>
     client.get("/users/me/orders/", { params }).then((r) => r.data),
 
   myCustomers: (): Promise<MyCustomer[]> =>

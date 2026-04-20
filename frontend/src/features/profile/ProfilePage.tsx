@@ -71,11 +71,12 @@ export function ProfilePage() {
   })
 
   const [ordersGroup, setOrdersGroup] = useState<string>("current")
+  const [ordersScope, setOrdersScope] = useState<string>("manager")
   const [ordersPage, setOrdersPage] = useState(1)
 
   const { data: myOrdersData } = useQuery({
-    queryKey: ["users", "me", "orders", ordersGroup, ordersPage],
-    queryFn: () => usersApi.myOrders({ group: ordersGroup, page: ordersPage }),
+    queryKey: ["users", "me", "orders", ordersScope, ordersGroup, ordersPage],
+    queryFn: () => usersApi.myOrders({ scope: ordersScope, group: ordersGroup, page: ordersPage }),
   })
 
   const { data: myOffers } = useQuery({
@@ -172,6 +173,24 @@ export function ProfilePage() {
 
         {/* ── Tab: My Orders ── */}
         <TabsContent value="orders" className="mt-4 space-y-4">
+          {/* Scope selector (role-based) */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-1">Моя роль:</span>
+            {([
+              ["manager", "Менеджер"],
+              ["creator", "Создатель"],
+              ["all", "Все"],
+            ] as const).map(([key, label]) => (
+              <Button
+                key={key}
+                variant={ordersScope === key ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setOrdersScope(key); setOrdersPage(1) }}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           {/* Sub-tabs for order groups */}
           <div className="flex items-center gap-2">
             {([

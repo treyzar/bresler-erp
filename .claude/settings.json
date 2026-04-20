@@ -35,7 +35,8 @@
       "Bash(python -m py_compile apps/orders/api/views.py apps/notifications/handlers.py)",
       "Bash(xargs -I {} ls {})",
       "Bash(python -m py_compile apps/core/mixins/metadata.py apps/directory/api/views.py apps/specs/api/serializers.py)",
-      "Bash(python -m py_compile apps/orders/api/serializers.py)"
+      "Bash(python -m py_compile apps/orders/api/serializers.py)",
+      "Bash(python -m py_compile apps/users/api/views.py)"
     ]
   }
 }
