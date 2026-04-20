@@ -8,12 +8,12 @@ from .orgunit import OrgUnit
 
 
 class Contact(BaseModel):
-    """Contact person linked to org units.
+    """Contact person linked to one primary (current) employer.
 
-    Following the Salesforce / SAP pattern we treat one org as the
-    "current" employer via the first entry in `org_units`; `employments`
-    is the historical / parallel-employment log. Form UI restricts input
-    to a single current organization; history is edited separately.
+    Follows the Salesforce / SAP Business Partner pattern:
+      - `org_unit` (FK): current employer.
+      - `employments` (ContactEmployment reverse relation): historical
+        and parallel jobs with validity periods.
     """
 
     full_name = models.CharField("ФИО", max_length=300)
@@ -30,11 +30,13 @@ class Contact(BaseModel):
         verbose_name="Город",
     )
     company = models.CharField("Компания", max_length=255, blank=True)
-    org_units = models.ManyToManyField(
+    org_unit = models.ForeignKey(
         OrgUnit,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name="contacts",
-        verbose_name="Организации",
+        verbose_name="Организация (текущая)",
     )
 
     history = HistoricalRecords()
@@ -51,9 +53,8 @@ class Contact(BaseModel):
 class ContactEmployment(BaseModel):
     """
     Historical / parallel employment record. A contact can have many of
-    these; the one with is_current=True represents their current job.
-    Independent from Contact.org_units for now (both are kept until a
-    future migration consolidates them).
+    these; the one with is_current=True represents their current job
+    and should match Contact.org_unit.
     """
 
     contact = models.ForeignKey(

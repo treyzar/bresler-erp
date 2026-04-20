@@ -117,7 +117,8 @@ export interface Contact extends BaseEntity {
   address: string
   city: number | null
   company: string
-  org_units: number[]
+  org_unit: number | null
+  org_unit_name: string
 }
 
 export interface Facility extends BaseEntity {

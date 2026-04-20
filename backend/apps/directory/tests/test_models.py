@@ -159,11 +159,10 @@ class TestContact:
         contact = ContactFactory(full_name="Иванов Иван")
         assert str(contact) == "Иванов Иван"
 
-    def test_m2m_org_units(self):
-        org1 = OrgUnitFactory(name="Org 1")
-        org2 = OrgUnitFactory(name="Org 2")
-        contact = ContactFactory(org_units=[org1, org2])
-        assert contact.org_units.count() == 2
+    def test_org_unit_fk(self):
+        org = OrgUnitFactory(name="Org 1")
+        contact = ContactFactory(org_unit=org)
+        assert contact.org_unit_id == org.id
 
 
 @pytest.mark.django_db

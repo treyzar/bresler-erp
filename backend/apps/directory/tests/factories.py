@@ -57,9 +57,11 @@ class ContactFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def org_units(self, create, extracted, **kwargs):
+        """Back-compat shim: old tests pass org_units=[...]; use the first as FK."""
         if not create or not extracted:
             return
-        self.org_units.add(*extracted)
+        self.org_unit = extracted[0]
+        self.save(update_fields=["org_unit"])
 
 
 class EquipmentFactory(factory.django.DjangoModelFactory):

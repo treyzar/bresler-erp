@@ -28,7 +28,7 @@ class OrgUnitFilter(filters.FilterSet):
 
 
 class ContactFilter(filters.FilterSet):
-    org_unit = filters.NumberFilter(field_name="org_units__id")
+    org_unit = filters.NumberFilter(field_name="org_unit_id")
     search = filters.CharFilter(method="search_filter")
 
     class Meta:

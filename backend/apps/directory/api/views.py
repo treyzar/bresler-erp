@@ -181,8 +181,20 @@ class ContactViewSet(ExportMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def orgunits(self, request, pk=None):
+        """Current employer + history (via ContactEmployment) of the contact."""
         contact = self.get_object()
-        org_units = contact.org_units.all()
+        # Current employer (if set) plus historical ones
+        ou_ids: list[int] = []
+        if contact.org_unit_id:
+            ou_ids.append(contact.org_unit_id)
+        ou_ids.extend(
+            contact.employments.exclude(org_unit_id__in=ou_ids).values_list("org_unit_id", flat=True)
+        )
+        preserved = {pk_: idx for idx, pk_ in enumerate(ou_ids)}
+        org_units = sorted(
+            OrgUnit.objects.filter(id__in=ou_ids),
+            key=lambda o: preserved.get(o.id, 0),
+        )
         serializer = OrgUnitSerializer(org_units, many=True)
         return Response(serializer.data)
 

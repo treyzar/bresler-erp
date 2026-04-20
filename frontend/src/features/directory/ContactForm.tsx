@@ -25,7 +25,7 @@ const formSchema = z.object({
   phone: z.string(),
   company: z.string(),
   address: z.string(),
-  org_units: z.array(z.number()),
+  org_unit: z.number().nullable(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -50,7 +50,7 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
           phone: editingItem.phone,
           company: editingItem.company,
           address: editingItem.address,
-          org_units: editingItem.org_units,
+          org_unit: editingItem.org_unit,
         }
       : {
           full_name: "",
@@ -59,7 +59,7 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
           phone: "",
           company: "",
           address: "",
-          org_units: [],
+          org_unit: null,
         },
   })
 
@@ -154,15 +154,15 @@ export function ContactForm({ open, onOpenChange, editingItem }: ContactFormProp
           />
           <FormField
             control={form.control}
-            name="org_units"
+            name="org_unit"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Организация</FormLabel>
                 <FormControl>
                   <OrgUnitCombobox
                     mode="single"
-                    value={field.value[0] ?? null}
-                    onChange={(id) => field.onChange(id ? [id] : [])}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
                 <p className="text-xs text-muted-foreground">

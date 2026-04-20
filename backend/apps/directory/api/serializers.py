@@ -76,6 +76,8 @@ class OrgUnitTreeSerializer(serializers.ModelSerializer):
 
 
 class ContactSerializer(serializers.ModelSerializer):
+    org_unit_name = serializers.CharField(source="org_unit.name", read_only=True, default="")
+
     class Meta:
         model = Contact
         fields = (
@@ -87,11 +89,12 @@ class ContactSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "company",
-            "org_units",
+            "org_unit",
+            "org_unit_name",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at")
+        read_only_fields = ("id", "org_unit_name", "created_at", "updated_at")
 
 
 class EquipmentSerializer(serializers.ModelSerializer):
