@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 import { useAuthStore } from "@/stores/useAuthStore"
 
-interface PresenceEvent {
+interface PresenceJoinLeave {
   type: "user_joined" | "user_left"
   username: string
 }
+
+interface PresenceRoster {
+  type: "roster"
+  usernames: string[]
+}
+
+type PresenceEvent = PresenceJoinLeave | PresenceRoster
 
 export function useOrderPresence(orderNumber: string | undefined) {
   const [activeUsers, setActiveUsers] = useState<Set<string>>(new Set())
@@ -30,6 +37,9 @@ export function useOrderPresence(orderNumber: string | undefined) {
       try {
         const data: PresenceEvent = JSON.parse(event.data)
         setActiveUsers((prev) => {
+          if (data.type === "roster") {
+            return new Set(data.usernames)
+          }
           const next = new Set(prev)
           if (data.type === "user_joined") {
             next.add(data.username)
