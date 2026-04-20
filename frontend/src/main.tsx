@@ -9,7 +9,11 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      refetchOnWindowFocus: false,
+      // Always refetch when the tab regains focus — keeps dropdowns /
+      // lookup data in sync with changes made in other tabs or by other
+      // users. `staleTime` controls in-session caching only; "always"
+      // overrides it on focus so newly created records appear promptly.
+      refetchOnWindowFocus: "always",
       staleTime: 5 * 60 * 1000,
     },
   },
