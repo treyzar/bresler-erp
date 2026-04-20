@@ -207,8 +207,12 @@ class ContactViewSet(ExportMixin, viewsets.ModelViewSet):
         return Response({"deleted": deleted})
 
 
-class ContactEmploymentViewSet(viewsets.ModelViewSet):
-    """CRUD for contact employment history (past / parallel employers)."""
+class ContactEmploymentViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only access to contact employment history.
+
+    Records are written automatically by signals when Contact fields
+    (position, address, org_unit) change — never edited by users directly.
+    """
 
     queryset = ContactEmployment.objects.select_related("org_unit").all()
     serializer_class = ContactEmploymentSerializer

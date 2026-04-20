@@ -70,6 +70,7 @@ class ContactEmployment(BaseModel):
         verbose_name="Организация",
     )
     position = models.CharField("Должность", max_length=255, blank=True)
+    address = models.TextField("Адрес", blank=True)
     start_date = models.DateField("Начало", null=True, blank=True)
     end_date = models.DateField("Окончание", null=True, blank=True)
     is_current = models.BooleanField("Текущая", default=False)

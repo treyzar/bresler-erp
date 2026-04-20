@@ -105,7 +105,7 @@ class ContactEmploymentSerializer(serializers.ModelSerializer):
         model = ContactEmployment
         fields = (
             "id", "contact", "org_unit", "org_unit_name",
-            "position", "start_date", "end_date", "is_current", "note",
+            "position", "address", "start_date", "end_date", "is_current", "note",
             "created_at", "updated_at",
         )
         read_only_fields = ("id", "org_unit_name", "created_at", "updated_at")
