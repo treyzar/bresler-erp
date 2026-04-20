@@ -1,12 +1,15 @@
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
+from apps.comments.handlers import MENTION_PATTERN
 from apps.comments.models import Comment
 
 
 class CommentSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source="author.get_full_name", read_only=True)
     author_username = serializers.CharField(source="author.username", read_only=True)
+    mentioned_users = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -16,12 +19,32 @@ class CommentSerializer(serializers.ModelSerializer):
             "author_name",
             "author_username",
             "text",
+            "mentioned_users",
             "content_type",
             "object_id",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "author", "author_name", "author_username", "created_at", "updated_at"]
+        read_only_fields = [
+            "id", "author", "author_name", "author_username",
+            "mentioned_users", "created_at", "updated_at",
+        ]
+
+    def get_mentioned_users(self, obj) -> dict[str, str]:
+        """Map of username → full_name for every @mention in comment text."""
+        usernames = set(MENTION_PATTERN.findall(obj.text or ""))
+        if not usernames:
+            return {}
+        User = get_user_model()
+        users = User.objects.filter(username__in=usernames).values(
+            "username", "first_name", "last_name", "patronymic",
+        )
+        result = {}
+        for u in users:
+            parts = [u["last_name"], u["first_name"], u["patronymic"]]
+            full = " ".join(p for p in parts if p).strip()
+            result[u["username"]] = full or u["username"]
+        return result
 
 
 class CommentCreateSerializer(serializers.Serializer):

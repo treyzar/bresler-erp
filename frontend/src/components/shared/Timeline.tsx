@@ -193,7 +193,7 @@ function CommentEntry({
             </Button>
           )}
         </div>
-        <p className="text-sm whitespace-pre-wrap">{renderCommentText(comment.text)}</p>
+        <p className="text-sm whitespace-pre-wrap">{renderCommentText(comment.text, comment.mentioned_users)}</p>
       </div>
     </div>
   )
@@ -272,17 +272,20 @@ function HistoryEntry({ record }: { record: HistoryRecord }) {
   )
 }
 
-function renderCommentText(text: string) {
-  return text.split(/(@[\w.-]+)/g).map((part, i) =>
-    /^@[\w.-]+$/.test(part) ? (
+function renderCommentText(text: string, mentionedUsers: Record<string, string> = {}) {
+  return text.split(/(@[\w.-]+)/g).map((part, i) => {
+    const match = /^@([\w.-]+)$/.exec(part)
+    if (!match) return <span key={i}>{part}</span>
+    const username = match[1]
+    const displayName = mentionedUsers[username] ?? username
+    return (
       <span
         key={i}
         className="font-medium text-primary bg-primary/10 rounded px-1"
+        title={`@${username}`}
       >
-        {part}
+        @{displayName}
       </span>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  )
+    )
+  })
 }

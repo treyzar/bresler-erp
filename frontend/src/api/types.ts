@@ -742,6 +742,7 @@ export interface Comment {
   author_name: string
   author_username: string
   text: string
+  mentioned_users: Record<string, string>
   content_type: number
   object_id: number
   created_at: string

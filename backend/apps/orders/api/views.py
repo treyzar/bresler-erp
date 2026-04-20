@@ -229,17 +229,32 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
         trigger_event("order.created", instance=order, user=self.request.user)
 
     def perform_update(self, serializer):
-        """Trigger status_changed event when order status is updated via API."""
+        """Trigger status_changed and/or updated events when order is modified."""
         instance = serializer.instance
         old_status = instance.status
+        changed_fields = [
+            f for f in serializer.validated_data if f != "status"
+        ]
         order = serializer.save()
-        if "status" in serializer.validated_data and old_status != order.status:
+
+        status_changed = (
+            "status" in serializer.validated_data and old_status != order.status
+        )
+        if status_changed:
             trigger_event(
                 "order.status_changed",
                 instance=order,
                 user=self.request.user,
                 old_status=old_status,
                 new_status=order.status,
+            )
+
+        if changed_fields:
+            trigger_event(
+                "order.updated",
+                instance=order,
+                user=self.request.user,
+                changed_fields=changed_fields,
             )
 
     @action(detail=True, methods=["get"])
