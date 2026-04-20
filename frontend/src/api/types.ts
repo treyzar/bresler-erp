@@ -167,8 +167,11 @@ export interface OrderListItem {
   status_display: string
   country_name: string
   customer_name: string
+  customer_path: string
   branch_name: string
+  branch_path: string
   division_name: string
+  division_path: string
   facility_names: string
   equipment_names: string
   work_names: string

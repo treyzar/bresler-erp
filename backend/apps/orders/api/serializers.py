@@ -84,15 +84,18 @@ class OrderListSerializer(serializers.ModelSerializer):
         read_only=True,
         default="",
     )
+    customer_path = serializers.SerializerMethodField()
     country_name = serializers.CharField(
         source="country.name",
         read_only=True,
         default="",
     )
     status_display = serializers.CharField(source="get_status_display", read_only=True)
-    
+
     branch_name = serializers.SerializerMethodField()
+    branch_path = serializers.SerializerMethodField()
     division_name = serializers.SerializerMethodField()
+    division_path = serializers.SerializerMethodField()
     facility_names = serializers.SerializerMethodField()
     equipment_names = serializers.SerializerMethodField()
     work_names = serializers.SerializerMethodField()
@@ -109,8 +112,11 @@ class OrderListSerializer(serializers.ModelSerializer):
             "status_display",
             "country_name",
             "customer_name",
+            "customer_path",
             "branch_name",
+            "branch_path",
             "division_name",
+            "division_path",
             "facility_names",
             "equipment_names",
             "work_names",
@@ -121,17 +127,37 @@ class OrderListSerializer(serializers.ModelSerializer):
             "created_at",
         )
 
+    def _orgunit_by_role(self, obj, role):
+        """Return the OrgUnit tagged with the given role in this order."""
+        link = obj.orderorgunit_set.select_related("org_unit").filter(role=role).first()
+        return link.org_unit if link else None
+
+    def _breadcrumb(self, org_unit):
+        """Return comma-separated ancestor names for tooltip display."""
+        if not org_unit:
+            return ""
+        try:
+            chain = [*org_unit.get_ancestors(), org_unit]
+        except Exception:
+            chain = [org_unit]
+        return " › ".join(ou.name for ou in chain)
+
+    def get_customer_path(self, obj):
+        return self._breadcrumb(obj.customer_org_unit)
+
     def get_branch_name(self, obj):
-        for ou in obj.org_units.all():
-            if ou.unit_type == "branch":
-                return ou.name
-        return ""
+        ou = self._orgunit_by_role(obj, "buyer_branch")
+        return ou.name if ou else ""
+
+    def get_branch_path(self, obj):
+        return self._breadcrumb(self._orgunit_by_role(obj, "buyer_branch"))
 
     def get_division_name(self, obj):
-        for ou in obj.org_units.all():
-            if ou.unit_type == "division":
-                return ou.name
-        return ""
+        ou = self._orgunit_by_role(obj, "shipment_site")
+        return ou.name if ou else ""
+
+    def get_division_path(self, obj):
+        return self._breadcrumb(self._orgunit_by_role(obj, "shipment_site"))
 
     def get_facility_names(self, obj):
         return ", ".join(ou.name for ou in obj.org_units.all() if ou.unit_type == "site")

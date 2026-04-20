@@ -147,16 +147,19 @@ export function OrdersPage() {
       accessorKey: "customer_name",
       header: "Заказчик",
       size: 180,
+      cell: ({ row }) => <OrgCell name={row.original.customer_name} path={row.original.customer_path} />,
     },
     {
       accessorKey: "branch_name",
       header: "Филиал",
       size: 180,
+      cell: ({ row }) => <OrgCell name={row.original.branch_name} path={row.original.branch_path} />,
     },
     {
       accessorKey: "division_name",
       header: "Пр. отделение",
       size: 180,
+      cell: ({ row }) => <OrgCell name={row.original.division_name} path={row.original.division_path} />,
     },
     {
       accessorKey: "facility_names",
@@ -500,6 +503,21 @@ export function OrdersPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function OrgCell({ name, path }: { name: string; path: string }) {
+  if (!name) return <span className="text-muted-foreground">—</span>
+  const hasAncestors = path && path !== name && path.includes(" › ")
+  return (
+    <div className="leading-tight" title={path || name}>
+      <div className="truncate">{name}</div>
+      {hasAncestors && (
+        <div className="text-[10px] text-muted-foreground truncate">
+          {path.replace(` › ${name}`, "")}
+        </div>
+      )}
     </div>
   )
 }
