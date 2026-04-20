@@ -1,27 +1,37 @@
 import { useEffect, useRef, useState } from "react"
 import { useAuthStore } from "@/stores/useAuthStore"
 
-interface PresenceJoinLeave {
-  type: "user_joined" | "user_left"
+export interface PresenceUser {
   username: string
+  full_name: string
+  avatar: string | null
 }
 
 interface PresenceRoster {
   type: "roster"
-  usernames: string[]
+  users: PresenceUser[]
 }
 
-type PresenceEvent = PresenceJoinLeave | PresenceRoster
+interface PresenceUserJoined {
+  type: "user_joined"
+  user: PresenceUser
+}
 
-export function useOrderPresence(orderNumber: string | undefined) {
-  const [activeUsers, setActiveUsers] = useState<Set<string>>(new Set())
+interface PresenceUserLeft {
+  type: "user_left"
+  username: string
+}
+
+type PresenceEvent = PresenceRoster | PresenceUserJoined | PresenceUserLeft
+
+export function useOrderPresence(orderNumber: string | undefined): PresenceUser[] {
+  const [byUsername, setByUsername] = useState<Record<string, PresenceUser>>({})
   const wsRef = useRef<WebSocket | null>(null)
   const token = useAuthStore((s) => s.accessToken)
 
   useEffect(() => {
     if (!orderNumber || !token) return
 
-    // Avoid duplicate connections
     if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) {
       return
     }
@@ -36,17 +46,19 @@ export function useOrderPresence(orderNumber: string | undefined) {
     ws.onmessage = (event) => {
       try {
         const data: PresenceEvent = JSON.parse(event.data)
-        setActiveUsers((prev) => {
+        setByUsername((prev) => {
           if (data.type === "roster") {
-            return new Set(data.usernames)
+            return Object.fromEntries(data.users.map((u) => [u.username, u]))
           }
-          const next = new Set(prev)
           if (data.type === "user_joined") {
-            next.add(data.username)
-          } else if (data.type === "user_left") {
-            next.delete(data.username)
+            return { ...prev, [data.user.username]: data.user }
           }
-          return next
+          if (data.type === "user_left") {
+            const next = { ...prev }
+            delete next[data.username]
+            return next
+          }
+          return prev
         })
       } catch {
         // ignore malformed messages
@@ -64,9 +76,9 @@ export function useOrderPresence(orderNumber: string | undefined) {
     return () => {
       ws.close()
       wsRef.current = null
-      setActiveUsers(new Set())
+      setByUsername({})
     }
   }, [orderNumber, token])
 
-  return activeUsers
+  return Object.values(byUsername)
 }

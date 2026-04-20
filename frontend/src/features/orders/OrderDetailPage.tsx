@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ORDER_STATUSES, ORDER_TYPES, ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
 import { useOrder, useOrderTransitions, useOrderTransition } from "@/api/hooks/useOrders"
 import { useOrderPresence } from "@/hooks/useOrderPresence"
@@ -34,6 +35,13 @@ const STATUS_STEPS = [
 function getStatusStep(status: string): number {
   const map: Record<string, number> = { N: 0, D: 1, P: 2, C: 3, S: 4, A: 4 }
   return map[status] ?? 0
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  if (parts.length === 1) return parts[0][0]!.toUpperCase()
+  return (parts[0][0]! + parts[1][0]!).toUpperCase()
 }
 
 function OrderStatusProgress({ status }: { status: string }) {
@@ -143,14 +151,27 @@ export function OrderDetailPage() {
           </Button>
           <h1 className="text-2xl font-bold">Заказ #{order.order_number}</h1>
           <Badge>{statusLabel}</Badge>
-          {activeUsers.size > 0 && (
-            <div className="flex items-center gap-1 ml-2">
+          {activeUsers.length > 0 && (
+            <div className="flex items-center gap-2 ml-2">
               <span className="text-xs text-muted-foreground">Сейчас смотрят:</span>
-              {[...activeUsers].map((username) => (
-                <Badge key={username} variant="outline" className="text-xs">
-                  {username}
-                </Badge>
-              ))}
+              <TooltipProvider>
+                <div className="flex -space-x-1.5">
+                  {activeUsers.map((u) => {
+                    const label = u.full_name || u.username
+                    return (
+                      <Tooltip key={u.username}>
+                        <TooltipTrigger asChild>
+                          <Avatar size="sm" className="ring-2 ring-background">
+                            {u.avatar ? <AvatarImage src={u.avatar} alt={label} /> : null}
+                            <AvatarFallback>{getInitials(label)}</AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent>{label}</TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              </TooltipProvider>
             </div>
           )}
         </div>
