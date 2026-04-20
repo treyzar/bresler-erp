@@ -25,6 +25,7 @@ import type { ActivityItem, MyOrderItem, MyOfferItem } from "@/api/usersApi"
 import { ORDER_STATUSES, OFFER_STATUSES } from "@/api/types"
 import { MyCustomersTab } from "./MyCustomersTab"
 import { MyStatsTab } from "./MyStatsTab"
+import { AvatarCropDialog } from "./AvatarCropDialog"
 
 // ── Schemas ──
 
@@ -444,10 +445,15 @@ function AvatarUploadCard({ avatarUrl, initials, onAvatarChange }: {
   avatarUrl: string | null; initials: string; onAvatarChange: () => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => usersApi.uploadAvatar(file),
-    onSuccess: () => { onAvatarChange(); toast.success("Аватар обновлён") },
+    onSuccess: () => {
+      onAvatarChange()
+      toast.success("Аватар обновлён")
+      setPendingFile(null)
+    },
     onError: () => toast.error("Ошибка загрузки аватара"),
   })
 
@@ -458,7 +464,13 @@ function AvatarUploadCard({ avatarUrl, initials, onAvatarChange }: {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) uploadMutation.mutate(file)
+    if (file) setPendingFile(file)
+    e.target.value = ""
+  }
+
+  const handleCropConfirm = (blob: Blob) => {
+    const cropped = new File([blob], "avatar.jpg", { type: "image/jpeg" })
+    uploadMutation.mutate(cropped)
   }
 
   return (
@@ -495,6 +507,13 @@ function AvatarUploadCard({ avatarUrl, initials, onAvatarChange }: {
           )}
         </div>
       </CardContent>
+      <AvatarCropDialog
+        open={pendingFile !== null}
+        file={pendingFile}
+        onCancel={() => setPendingFile(null)}
+        onConfirm={handleCropConfirm}
+        isUploading={uploadMutation.isPending}
+      />
     </Card>
   )
 }
