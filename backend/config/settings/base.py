@@ -56,6 +56,7 @@ LOCAL_APPS = [
     "apps.edo.parser_app",
     "apps.edo.templates_app",
     "apps.edo.registry",
+    "apps.edo.internal_docs",
     "apps.purchasing",
 ]
 
