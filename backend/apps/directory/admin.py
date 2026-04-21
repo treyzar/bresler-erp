@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from treebeard.admin import TreeAdmin
+from treebeard.forms import movenodeform_factory
 
 from .models import (
     City,
@@ -58,13 +59,12 @@ class OrgUnitAdmin(TreeAdmin):
         obj.depth = new_obj.depth
 
 
-class _DepartmentAdminForm(forms.ModelForm):
-    class Meta:
-        model = Department
-        fields = [
-            "name", "full_name", "unit_type", "company",
-            "description", "is_active",
-        ]
+# Department-дерево маленькое (десятки узлов), node_order_by=['name'] не
+# вызывает path-коллизий при движении — поэтому используем родную
+# movenodeform_factory. Она добавит в change/add форму поля «Position»
+# («first-child», «right», ...) и «Relative to» — для выбора родителя или
+# соседа по дереву.
+_DepartmentAdminForm = movenodeform_factory(Department)
 
 
 @admin.register(Department)
@@ -75,8 +75,7 @@ class DepartmentAdmin(TreeAdmin):
     search_fields = ("name", "full_name")
     # autocomplete_fields намеренно НЕ используем для company: он идёт через
     # OrgUnitAdmin.get_search_results, где нет способа ограничить выдачу по
-    # business_role без вмешательства в OrgUnitAdmin. Обычный select с
-    # queryset'ом из formfield_for_foreignkey фильтрует надёжно.
+    # business_role. Обычный select фильтруется через formfield_for_foreignkey.
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "company":
@@ -85,23 +84,6 @@ class DepartmentAdmin(TreeAdmin):
                 business_role="internal", is_active=True,
             ).order_by("name")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-    def save_model(self, request, obj, form, change):
-        if change:
-            obj.save()
-            return
-        # Новый узел: всегда создаётся как корень дерева. Вложенность
-        # (Служба → Отдел → Сектор) настраивается drag-drop'ом в списке
-        # или через shell: `parent.add_child(instance=child)`.
-        field_values = {
-            f.name: getattr(obj, f.name)
-            for f in obj._meta.concrete_fields
-            if f.name not in {"id", "path", "depth", "numchild"}
-        }
-        new_obj = Department.add_root(**field_values)
-        obj.pk = new_obj.pk
-        obj.path = new_obj.path
-        obj.depth = new_obj.depth
 
 
 @admin.register(Country)
