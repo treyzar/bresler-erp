@@ -1,4 +1,5 @@
 from .contacts import Contact, ContactEmployment
+from .department import Department
 from .facility import Facility
 from .geography import City, Country
 from .orgunit import OrgUnit
@@ -12,6 +13,7 @@ __all__ = [
     "Country",
     "City",
     "OrgUnit",
+    "Department",
     "Contact",
     "ContactEmployment",
     "Equipment",

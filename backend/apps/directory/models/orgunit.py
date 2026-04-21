@@ -12,9 +12,7 @@ class OrgUnit(MP_Node):
         COMPANY = "company", "Головная компания / Холдинг"
         BRANCH = "branch", "Филиал / Дочерняя компания"
         DIVISION = "division", "Производственное отделение"
-        SERVICE = "service", "Служба"
-        DEPARTMENT = "department", "Отдел"
-        SECTOR = "sector", "Сектор"
+        DEPARTMENT = "department", "Участок"
         SITE = "site", "Площадка"
         OTHER = "other", "Другое"
 

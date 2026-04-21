@@ -61,9 +61,7 @@ export const ORG_UNIT_TYPES: Record<string, string> = {
   company: "Головная компания / Холдинг",
   branch: "Филиал / Дочерняя компания",
   division: "Производственное отделение",
-  service: "Служба",
-  department: "Отдел",
-  sector: "Сектор",
+  department: "Участок",
   site: "Площадка",
   other: "Другое",
 }

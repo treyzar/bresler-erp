@@ -1,8 +1,6 @@
-"""Signals для поддержания legacy-текстовых User.department и User.company
-в синхроне с User.org_unit — чтобы старый код, опирающийся на эти строки,
-не ломался во время переходного периода.
-
-Финальное удаление полей — в Фазе 4 плана ЭДО.
+"""Signals для синхронизации legacy-текстовых User.department и User.company
+с новыми FK на Department / OrgUnit. Старый код, читающий строки, продолжает
+работать, пока не переедет на FK. Финальное удаление — в Фазе 4 плана ЭДО.
 """
 
 from django.db.models.signals import pre_save
@@ -13,24 +11,27 @@ from .models import User
 
 @receiver(pre_save, sender=User)
 def sync_legacy_department_company(sender, instance: User, **kwargs):
-    if not instance.org_unit_id:
-        return
-    try:
-        org_unit = instance.org_unit
-    except Exception:
-        return
+    # Приоритет: конкретное подразделение → строка. Если подразделения нет,
+    # смотрим на company_unit. Если ни того ни другого — не трогаем legacy-поля,
+    # пусть админ/migration-код правят их вручную.
+    if instance.department_unit_id:
+        try:
+            dept = instance.department_unit
+        except Exception:
+            dept = None
+        if dept is not None:
+            instance.department = dept.name or ""
+            if dept.company_id and not instance.company_unit_id:
+                instance.company_unit_id = dept.company_id
 
-    # department = имя собственно org_unit (сектор/отдел/служба).
-    # Если org_unit — это сама компания, department остаётся пустым.
-    from apps.directory.models.orgunit import OrgUnit
-
-    if org_unit.unit_type == OrgUnit.UnitType.COMPANY:
-        # Сотрудник сидит прямо на уровне компании — department не имеет смысла.
-        instance.department = ""
-    else:
-        instance.department = org_unit.name or ""
-
-    # company = имя ближайшего предка с unit_type='company'.
-    company_root = instance.company_root
-    if company_root is not None:
-        instance.company = company_root.name or ""
+    if instance.company_unit_id:
+        try:
+            comp = instance.company_unit
+        except Exception:
+            comp = None
+        if comp is not None:
+            instance.company = comp.name or ""
+            if not instance.department_unit_id:
+                # Сотрудник сидит прямо на уровне компании — department-строка
+                # не имеет смысла, обнуляем, чтобы не путать.
+                instance.department = ""

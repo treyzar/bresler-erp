@@ -7,6 +7,7 @@ from .models import (
     Contact,
     Country,
     DeliveryType,
+    Department,
     Equipment,
     Facility,
     OrgUnit,
@@ -20,6 +21,15 @@ class OrgUnitAdmin(TreeAdmin):
     list_display = ("name", "unit_type", "business_role", "inn", "is_active")
     list_filter = ("unit_type", "business_role", "is_active")
     search_fields = ("name", "full_name", "inn", "external_code")
+
+
+@admin.register(Department)
+class DepartmentAdmin(TreeAdmin):
+    form = movenodeform_factory(Department)
+    list_display = ("name", "unit_type", "company", "is_active")
+    list_filter = ("unit_type", "company", "is_active")
+    search_fields = ("name", "full_name")
+    autocomplete_fields = ("company",)
 
 
 @admin.register(Country)

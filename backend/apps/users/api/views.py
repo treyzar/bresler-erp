@@ -339,16 +339,17 @@ def _get_manager_stats(user):
 def _can_view_manager(request_user, target_user):
     """Check if request_user can view target_user's data.
 
-    Preferred path: сравнение по User.org_unit FK. Fallback на legacy-строку
-    User.department, пока не все пользователи перемигрированы на org_unit.
+    Preferred path: сравнение по User.department_unit FK (внутренняя структура).
+    Fallback на legacy-строку User.department, пока не все пользователи
+    перемигрированы на FK.
     """
     is_admin = request_user.groups.filter(name="admin").exists()
     if is_admin:
         return True
     if not request_user.is_department_head:
         return False
-    if request_user.org_unit_id and target_user.org_unit_id:
-        return request_user.org_unit_id == target_user.org_unit_id
+    if request_user.department_unit_id and target_user.department_unit_id:
+        return request_user.department_unit_id == target_user.department_unit_id
     if request_user.department and target_user.department:
         return request_user.department == target_user.department
     return False
@@ -446,18 +447,17 @@ class TeamPerformanceView(APIView):
         manager_ids = Order.objects.values_list("managers", flat=True).distinct()
         managers = User.objects.filter(pk__in=manager_ids, is_active=True)
 
-        # Department filtering — предпочитаем org_unit FK, fallback на legacy-строку.
+        # Фильтрация по подразделению: FK-first, fallback на legacy-строку.
         if is_admin:
-            org_unit_id = request.query_params.get("org_unit_id")
+            dept_unit_id = request.query_params.get("department_unit_id")
             dept_filter = request.query_params.get("department")
-            if org_unit_id:
-                managers = managers.filter(org_unit_id=org_unit_id)
+            if dept_unit_id:
+                managers = managers.filter(department_unit_id=dept_unit_id)
             elif dept_filter:
                 managers = managers.filter(department=dept_filter)
         else:
-            # Руководитель отдела видит только своё подразделение.
-            if user.org_unit_id:
-                managers = managers.filter(org_unit_id=user.org_unit_id)
+            if user.department_unit_id:
+                managers = managers.filter(department_unit_id=user.department_unit_id)
             elif user.department:
                 managers = managers.filter(department=user.department)
             else:
@@ -465,15 +465,15 @@ class TeamPerformanceView(APIView):
 
         managers = managers.order_by("last_name")
 
-        # Список отделов для admin-dropdown: сначала из org_unit, fallback в department-строку.
-        org_units = list(
-            User.objects.filter(pk__in=manager_ids, is_active=True, org_unit__isnull=False)
-            .values("org_unit_id", "org_unit__name")
+        # Список подразделений для admin-dropdown.
+        department_units = list(
+            User.objects.filter(pk__in=manager_ids, is_active=True, department_unit__isnull=False)
+            .values("department_unit_id", "department_unit__name")
             .distinct()
-            .order_by("org_unit__name")
+            .order_by("department_unit__name")
         )
         departments = list(
-            User.objects.filter(pk__in=manager_ids, is_active=True, department__gt="", org_unit__isnull=True)
+            User.objects.filter(pk__in=manager_ids, is_active=True, department__gt="", department_unit__isnull=True)
             .values_list("department", flat=True)
             .distinct()
             .order_by("department")
@@ -502,12 +502,13 @@ class TeamPerformanceView(APIView):
         return Response({
             "managers": rows,
             "departments": departments,
-            "org_units": [
-                {"id": ou["org_unit_id"], "name": ou["org_unit__name"]} for ou in org_units
+            "department_units": [
+                {"id": du["department_unit_id"], "name": du["department_unit__name"]}
+                for du in department_units
             ],
             "is_admin": is_admin,
             "my_department": user.department,
-            "my_org_unit_id": user.org_unit_id,
+            "my_department_unit_id": user.department_unit_id,
         })
 
 

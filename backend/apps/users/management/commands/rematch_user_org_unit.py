@@ -1,45 +1,48 @@
-"""Повторный матчинг User.department/company → User.org_unit.
+"""Повторный матчинг User.department/company (строки) → User.company_unit / department_unit.
 
-Вызывается админом после ручного создания дерева OrgUnit с business_role='internal'.
-Идемпотентна: уже проставленные org_unit не трогает (если не передан --force).
+Вызывается админом после ручного создания OrgUnit-internal + Department-дерева.
+Идемпотентна: уже проставленные FK не трогает, если не передан --force.
 """
 
 from django.core.management.base import BaseCommand
 
-from apps.directory.models.orgunit import OrgUnit
+from apps.directory.models import Department, OrgUnit
 from apps.users.models import User
 
 
-def _find_orgunit(company_text: str, department_text: str):
+def _find_company(company_text: str):
     company_text = (company_text or "").strip()
+    if not company_text:
+        return None
+    return OrgUnit.objects.filter(
+        business_role="internal", unit_type="company",
+        name__iexact=company_text, is_active=True,
+    ).first()
+
+
+def _find_department(department_text: str, company):
     department_text = (department_text or "").strip()
-
-    candidates = OrgUnit.objects.filter(business_role="internal", is_active=True)
-
-    company = None
-    if company_text:
-        company = candidates.filter(unit_type="company", name__iexact=company_text).first()
-
     if not department_text:
-        return company
-
+        return None
+    qs = Department.objects.filter(name__iexact=department_text, is_active=True)
     if company is not None:
-        subtree = OrgUnit.get_tree(company).exclude(pk=company.pk)
-        node = subtree.filter(name__iexact=department_text).first()
-        if node is not None:
-            return node
-
-    return candidates.filter(name__iexact=department_text).first()
+        scoped = qs.filter(company=company).first()
+        if scoped is not None:
+            return scoped
+    return qs.first()
 
 
 class Command(BaseCommand):
-    help = "Повторный матчинг User.department/company в User.org_unit по существующим OrgUnit."
+    help = (
+        "Матчинг User.department/company (строка) → User.company_unit и User.department_unit "
+        "по существующим OrgUnit (business_role=internal) и Department."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--force",
             action="store_true",
-            help="Перезаписать уже проставленные User.org_unit",
+            help="Перезаписать уже проставленные FK",
         )
         parser.add_argument(
             "--dry-run",
@@ -51,31 +54,54 @@ class Command(BaseCommand):
         force = options["force"]
         dry_run = options["dry_run"]
 
-        qs = User.objects.all() if force else User.objects.filter(org_unit__isnull=True)
+        if force:
+            qs = User.objects.all()
+        else:
+            qs = User.objects.filter(company_unit__isnull=True, department_unit__isnull=True)
 
         total = User.objects.count()
         candidates = qs.count()
-        matched = 0
+        matched_full = 0
+        matched_partial = 0
         missing: list[tuple[int, str, str]] = []
 
         for user in qs:
-            dept = (user.department or "").strip()
-            comp = (user.company or "").strip()
-            if not dept and not comp:
+            dept_text = (user.department or "").strip()
+            comp_text = (user.company or "").strip()
+            if not dept_text and not comp_text:
                 continue
-            node = _find_orgunit(comp, dept)
-            if node is None:
-                missing.append((user.pk, comp, dept))
+            company = _find_company(comp_text)
+            department = _find_department(dept_text, company)
+            if company is None and department is None:
+                missing.append((user.pk, comp_text, dept_text))
                 continue
-            matched += 1
-            if not dry_run:
-                user.org_unit = node
-                user.save(update_fields=["org_unit"])
 
-        self.stdout.write("=" * 70)
+            if department is not None and department.company_id:
+                if not dry_run:
+                    user.company_unit_id = department.company_id
+                    user.department_unit = department
+                    user.save(update_fields=["company_unit", "department_unit"])
+                matched_full += 1
+            elif company is not None:
+                if not dry_run:
+                    user.company_unit = company
+                    user.save(update_fields=["company_unit"])
+                matched_partial += 1
+            else:
+                if not dry_run:
+                    user.department_unit = department
+                    user.save(update_fields=["department_unit"])
+                matched_partial += 1
+
         prefix = "[DRY-RUN] " if dry_run else ""
+        self.stdout.write("=" * 70)
         self.stdout.write(f"{prefix}Обработано {candidates} из {total} пользователей")
-        self.stdout.write(self.style.SUCCESS(f"{prefix}Сматчено: {matched}"))
+        self.stdout.write(self.style.SUCCESS(
+            f"{prefix}Полный матч (company + department): {matched_full}"
+        ))
+        self.stdout.write(self.style.SUCCESS(
+            f"{prefix}Частичный матч (только одно поле): {matched_partial}"
+        ))
         if missing:
             self.stdout.write(self.style.WARNING(f"Не удалось сматчить: {len(missing)}"))
             for pk, comp, dept in missing:

@@ -44,36 +44,54 @@
 - **Опционально:** рисованная подпись (canvas-мышкой) и FIO подставляются в PDF-рендер для документов с флагом `DocumentType.requires_drawn_signature = True` — применяем к командировочным сметам и уведомлениям об отпуске.
 - Настоящая ЭЦП/КЭП — в roadmap Фазы 5+, здесь не планируется.
 
-### 3.3 Иерархия сотрудников: рефакторинг User
+### 3.3 Иерархия сотрудников: рефакторинг User + разделение моделей
 
 Сейчас `User.department` — текстовое поле, совпадение «руководитель–подчинённый» через строковое равенство. Для масштабируемого согласования это неприемлемо.
 
-**Переход:**
-1. Добавляем `User.org_unit` — FK на `OrgUnit` (типа `department`, `sector`, `service`, или `company` — любая глубина дерева).
-2. Заводим служебную бизнес-роль `OrgUnit.business_role = 'internal'` и расширяем `OrgUnit.UnitType` двумя значениями: `SERVICE` («Служба») и `SECTOR` («Сектор»).
-3. Добавляем `User.supervisor` — явный FK на `User` (NULL допустим, для топов).
-4. Флаг `is_department_head` оставляем, теперь он означает «руководитель своего `org_unit`» — на любом уровне дерева (сектора, отдела, службы, компании).
-5. Data-migration: парсит существующие `User.department` строки, создаёт OrgUnit'ы с `unit_type=department`, проставляет `org_unit`, для руководителей отделов — устанавливает `is_department_head=True`. Ручное дозаполнение в админке.
+**Принципиальное решение:** внутренняя организационная структура предприятия хранится в **отдельной** модели `Department`, не в `OrgUnit`. Мотивация: `OrgUnit` — справочник юрлиц и контрагентов (с ИНН/КПП/страной), туда не место отделам и секторам. Два разных бизнес-объекта — две модели.
 
-**Дерево произвольной глубины.** Резолверы и UI работают по parent/child, не привязываясь к конкретному `unit_type`. Реальный пример (Релесофт):
+**Модели:**
+
+- `OrgUnit` — без изменений (остаётся `UnitType = company/branch/division/department/site/other`). Для нашего предприятия создаём узел с `business_role='internal'`, `unit_type='company'`. Ветвление OrgUnit может пойти дальше только в исключительных случаях (дочерняя компания как `branch`), но для описания внутренней структуры используется `Department`.
+- `Department` (новая, `apps/directory/models/department.py`) — MP_Node-дерево подразделений внутри одной компании:
+  ```python
+  class Department(MP_Node):
+      name, full_name, unit_type (service/department/sector/other)
+      company: FK → OrgUnit (business_role='internal')
+      description, is_active
+      history (simple_history)
+  ```
+  Без ИНН, КПП, country, is_legal_entity — они не нужны.
+
+**Рефакторинг User:**
+
+1. `User.company_unit` — FK на `OrgUnit` (где юридически оформлен; internal-company).
+2. `User.department_unit` — FK на `Department` (где операционно работает). NULL, если сотрудник сидит прямо на уровне компании.
+3. `User.supervisor` — явный FK на `User` (NULL допустим, override для сложных случаев).
+4. `User.is_department_head` — теперь «руководитель своего `department_unit`» (или `company_unit`, если `department_unit=NULL`).
+5. Legacy-поля `User.department` и `User.company` (строки) остаются как readonly shadow. Pre_save-сигнал синхронизирует их из FK, чтобы старый код продолжал работать. Финальное удаление — в Фазе 4.
+6. Data-migration пытается сматчить `User.department` (строка) → `Department` по имени (в рамках найденной `company`). Несматченные пишет в stdout, админ доделывает в админке.
+
+**Дерево `Department` произвольной глубины.** Реальный пример (Релесофт):
 
 ```
-OrgUnit "Релесофт"                   unit_type=company, business_role=internal
-├── OrgUnit "Служба РЗА"             unit_type=service
-│   ├── OrgUnit "Отдел РЗА 1"        unit_type=department
-│   │   ├── OrgUnit "Сектор А"       unit_type=sector
-│   │   └── OrgUnit "Сектор Б"       unit_type=sector
-│   └── OrgUnit "Отдел РЗА 2"        unit_type=department
-└── OrgUnit "Отдел проектирования"   unit_type=department
+OrgUnit "Релесофт"                   unit_type=company, business_role=internal, is_legal_entity=true
+└── Department (tree, FK company → Релесофт)
+    ├── Department "Служба РЗА"        unit_type=service
+    │   ├── Department "Отдел РЗА 1"   unit_type=department
+    │   │   └── Department "Сектор А"  unit_type=sector
+    │   └── Department "Отдел РЗА 2"   unit_type=department
+    └── Department "Отдел проектирования" unit_type=department
 ```
 
-У одной компании может быть 2, 3 или 4 уровня — всё валидно. Если сотрудник сидит прямо в «Отделе проектирования» без сектора, его `org_unit` — этот отдел; если в «Секторе А», то `org_unit` — сектор.
+У компании может быть 2, 3 или 4 уровня — всё валидно. `unit_type` у `Department` — только для отображения и фильтрации, резолверы ходят по parent/child независимо от типа.
 
-**Как резолвится «непосредственный руководитель» сотрудника X:**
+**Резолв «непосредственного руководителя» сотрудника X:**
 1. Если `X.supervisor` задан явно — он.
-2. Иначе — head of `X.org_unit` (user с `is_department_head=True` и тем же `org_unit`, кроме самого X).
-3. Иначе — head of `X.org_unit.parent` (рекурсивно вверх по дереву).
-4. Если ничего не нашлось — ошибка валидации при отправке документа («укажите руководителя вручную»).
+2. Иначе, если `X.department_unit` задан — ищется head (`is_department_head=True` + `department_unit=node`) того же узла, кроме X.
+3. Рекурсивно вверх по дереву `Department` (parent → parent.parent → …).
+4. Если дошли до корня `Department` — ищется head на уровне компании (`company_unit=X.company_unit, department_unit=NULL, is_department_head=True`).
+5. Иначе — None (ошибка валидации при submit, «укажите руководителя вручную»).
 
 ### 3.4 Роли в цепочке согласования: две независимые оси
 
@@ -82,7 +100,7 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 | Ось | Что выражает | Как хранится |
 |---|---|---|
 | **Функциональная роль** (горизонталь) | Что человек делает в бизнесе: бухгалтер, снабженец, менеджер ОТМ | Django `Group`. Текущие: `accounting`, `admin`, `otm`, `procurement`, `projects`, `readonly`. Cross-company. |
-| **Организационная позиция** (вертикаль) | Где работает: Компания → Служба → Отдел → Сектор | `User.org_unit` → `OrgUnit` tree, произвольной глубины |
+| **Организационная позиция** (вертикаль) | Где работает: Компания → Служба → Отдел → Сектор | `User.company_unit` → `OrgUnit` (internal) + `User.department_unit` → `Department` tree (произвольной глубины) |
 | **Старшинство** (атрибут) | Руководитель ли он своего подразделения | `User.is_department_head: bool` |
 
 **Ключевой вывод для твоего вопроса 2:** под отделы и сектора **отдельные Django-группы создавать не надо**. Они описываются OrgUnit-деревом, а группы используются только для функциональных ролей. Добавлять ли ещё группы (например, `hr`) — по потребности, не автоматически по каждому подразделению.
@@ -92,11 +110,11 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 | Синтаксис | Что резолвит |
 |---|---|
 | `supervisor` | Непосредственный руководитель автора (алгоритм §3.3) |
-| `org_head:self` | Head of `author.org_unit` (если автор — сам head, скипается на следующий уровень) |
-| `org_head:parent` | Head of `author.org_unit.parent` |
-| `org_head:up(N)` | Head на N уровней выше по дереву |
-| `org_head:company` | Head ближайшего предка с `unit_type=company` (директор компании автора) |
-| `group:<name>` | Первый активный участник функциональной группы (MVP: первый онлайн за неделю, потом — round-robin) |
+| `dept_head:self` | Head of `author.department_unit` |
+| `dept_head:parent` | Head of родительского `Department` (на уровень выше в дереве) |
+| `dept_head:up(N)` | Head на N уровней выше по дереву `Department` |
+| `company_head` | Head `User.company_unit` (директор компании автора: `is_department_head=True, department_unit=NULL`) |
+| `group:<name>` | Первый активный участник функциональной Django-группы (MVP: первый онлайн за неделю, потом — round-robin) |
 | `group:<name>@company` | То же, но ограничено той же компанией-корнем, что и автор. Для multi-tenant режимов обязательно |
 | `group_head:<name>` | Участник группы с флагом `is_department_head=True` (например, главбух) |
 | `fixed_user:<id>` | Прибитый FK на конкретного `User` (топы, директора-владельцы) |
@@ -105,13 +123,13 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 **Пример цепочки** для «Служебка на переработку» для сотрудника Сектора А Отдела РЗА 1 Службы РЗА Релесофта:
 
 ```
-1. supervisor              → head of "Сектор А"        (approve, SLA 24h)
-2. org_head:parent         → head of "Отдел РЗА 1"     (approve, SLA 24h)
-3. org_head:company        → директор Релесофт         (approve, SLA 48h)
-4. group:accounting@company→ бухгалтер Релесофт         (inform, без SLA)
+1. supervisor              → head of "Сектор А" (Department)   (approve, SLA 24h)
+2. dept_head:parent        → head of "Отдел РЗА 1" (Department) (approve, SLA 24h)
+3. company_head            → директор Релесофт (OrgUnit-level)  (approve, SLA 48h)
+4. group:accounting@company→ бухгалтер Релесофт                 (inform, без SLA)
 ```
 
-Если у компании нет промежуточного уровня «Служба», шаг 2 всё равно резолвится корректно — он ищет head на один уровень выше сектора, которым оказывается отдел, и всё работает.
+Если у компании нет промежуточного уровня «Служба», шаг 2 всё равно резолвится корректно — он ищет head на один уровень выше сектора, которым оказывается отдел (или служба, или сразу компания — зависит от фактической структуры).
 
 ### 3.5 Multi-tenant: видимость между компаниями группы
 
@@ -126,11 +144,11 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 
 ```python
 if scope == 'company_only':
-    qs = qs.filter(author_company_root=user.company_root)
+    qs = qs.filter(author__company_unit=user.company_unit)
 # иначе без доп. фильтра
 ```
 
-где `user.company_root` — ближайший предок `user.org_unit` с `unit_type=company`.
+где `user.company_unit` — FK на `OrgUnit` с `business_role='internal', unit_type='company'`. Property `User.company_root` возвращает `company_unit` (либо `department_unit.company`, если company_unit не задан).
 
 Для отдельных типов возможен override: `DocumentType.tenancy_override='group_wide'` (например, «Приказ директора холдинга» — виден всем компаниям даже при company_only).
 
@@ -155,7 +173,7 @@ if scope == 'company_only':
 | `visibility` | choice | `personal_only` / `department_visible` / `public` — кто видит документ помимо автора и согласующих |
 | `tenancy_override` | choice (nullable) | `null` (использовать глобальный `InternalDocFlowConfig.cross_company_scope`) / `group_wide` / `company_only` — для типов с особой межкомпанийной политикой |
 | `initiator_resolver` | choice | `author` (обычный путь) / `hr` / `accounting` — кто может создавать документы этого типа (важно для «Уведомления об отпуске» — их создаёт бухгалтерия, не сотрудник) |
-| `addressee_mode` | choice | `none` / `single_user` / `orgunit_head` — куда «отправляется» документ (для уведомлений) |
+| `addressee_mode` | choice | `none` / `single_user` / `dept_head` — куда «отправляется» документ (для уведомлений) |
 | `is_active` | bool | soft-disable без удаления |
 | `created_at` / `updated_at` | | + simple_history |
 
@@ -214,7 +232,7 @@ if scope == 'company_only':
 ]
 ```
 
-Поддерживаемые типы: `text`, `textarea`, `number`, `money`, `date`, `date_range`, `time`, `boolean`, `choice`, `user`, `user_multi`, `orgunit`, `file`, `markdown`.
+Поддерживаемые типы: `text`, `textarea`, `number`, `money`, `date`, `date_range`, `time`, `boolean`, `choice`, `user`, `user_multi`, `orgunit` (внешние контрагенты), `department` (внутренние подразделения), `file`, `markdown`.
 
 ### 4.3 `ApprovalChainTemplate` — типовая цепочка согласования
 
@@ -230,7 +248,7 @@ if scope == 'company_only':
 [
   {"order": 1, "role_key": "supervisor", "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
   {"order": 2, "role_key": "group:accounting", "label": "Бухгалтерия", "action": "approve", "sla_hours": 72, "parallel_group": null},
-  {"order": 3, "role_key": "orgunit_head:company", "label": "Директор", "action": "approve", "sla_hours": 48}
+  {"order": 3, "role_key": "company_head", "label": "Директор", "action": "approve", "sla_hours": 48}
 ]
 ```
 
@@ -245,7 +263,8 @@ if scope == 'company_only':
 | `type` | FK → `DocumentType` | |
 | `number` | str unique | Получается из `NumberSequence` при переходе из draft → pending |
 | `author` | FK → User | |
-| `author_org_unit` | FK → OrgUnit | Снепшот на момент создания |
+| `author_company_unit` | FK → OrgUnit | Снепшот компании на момент создания |
+| `author_department_unit` | FK → Department (nullable) | Снепшот подразделения на момент создания |
 | `title` | str(255) | Из `title_template` + значений полей |
 | `field_values` | JSONField | По схеме `type.field_schema` |
 | `body_rendered` | TextField | Прогнанный `body_template` с подставленными значениями; фиксируется при submit, чтобы редактирование шаблона задним числом не меняло архив |
@@ -308,7 +327,7 @@ OrgUnitHead(
 |---|---|
 | **Автор** | Создавать свои документы, редактировать draft, отзывать из согласования до первого approve, вести комментарии |
 | **Согласующий** | Видеть входящие, одобрять/отклонять/запрашивать правки, делегировать, прикладывать файлы |
-| **Руководитель отдела** (`is_department_head`) | Видеть документы сотрудников своего `org_unit` (даже если не согласующий) — для оперативного контроля |
+| **Руководитель отдела** (`is_department_head`) | Видеть документы сотрудников своего `department_unit` (и всего поддерева вниз) даже если не согласующий — для оперативного контроля |
 | **Группа `accounting`** | Создавать «Уведомления об отпуске», видеть все финансовые документы (премии, сметы) |
 | **Группа `admin`** | Всё; настройка типов документов и цепочек; принудительная отмена/перезапуск цепочки |
 
@@ -319,14 +338,14 @@ OrgUnitHead(
 | # | Код | Название | initiator | Поля (field_schema) | Цепочка согласования |
 |---|---|---|---|---|---|
 | 1 | `memo_free` | Служебная записка (свободная форма) | author | `subject`, `body`(markdown), `addressee_orgunit` | supervisor → addressee_orgunit.head |
-| 2 | `memo_overtime` | Служебная записка на переработку | author | `overtime_date`, `time_from`, `time_to`, `is_weekend`, `responsible`(user), `employees`(user_multi), `reason`(text) | supervisor → orgunit_head:division → HR-inform |
-| 3 | `memo_bonus_monthly` | Служебная записка на ежемесячное премирование | author (руководитель отдела) | `month`, `employees_with_amounts`(массив: user+сумма+обоснование), `total`(money, readonly) | supervisor → group:accounting → orgunit_head:company |
-| 4 | `memo_bonus_quarterly` | Служебная записка на квартальное премирование | author (руководитель отдела) | `quarter`(Q1/Q2/…/год), `employees_with_amounts`, `total` | supervisor → group:accounting → orgunit_head:company |
+| 2 | `memo_overtime` | Служебная записка на переработку | author | `overtime_date`, `time_from`, `time_to`, `is_weekend`, `responsible`(user), `employees`(user_multi), `reason`(text) | supervisor → dept_head:parent → HR-inform |
+| 3 | `memo_bonus_monthly` | Служебная записка на ежемесячное премирование | author (руководитель отдела) | `month`, `employees_with_amounts`(массив: user+сумма+обоснование), `total`(money, readonly) | supervisor → group:accounting → company_head |
+| 4 | `memo_bonus_quarterly` | Служебная записка на квартальное премирование | author (руководитель отдела) | `quarter`(Q1/Q2/…/год), `employees_with_amounts`, `total` | supervisor → group:accounting → company_head |
 | 5 | `app_dayoff_workoff` | Заявление на отгул с отработкой | author | `dayoff_date`, `workoff_date`, `reason`(text) | supervisor → group:accounting (inform) |
 | 6 | `app_dayoff_unpaid` | Заявление на отгул за свой счёт | author | `date_range`, `reason`(text) | supervisor → group:accounting |
 | 7 | `app_free` | Заявление в свободной форме | author | `subject`, `body`(markdown), `addressee_person`(user) | supervisor → addressee_person |
 | 8 | `vacation_notification` | Уведомление об отпуске | `group:accounting` | `employee`(user), `start_date`, `duration_days`, `vacation_type`(choice: annual/additional) | accounting подписывает → author (employee) подписывает → inform supervisor |
-| 9 | `travel_estimate` | Смета на командировку | author | `destination_city`, `date_range`, `purpose`, `transport_cost`(money), `lodging_cost`(money), `per_diem`(money, autocalc), `total`(money, autocalc), `advance_requested`(bool) | supervisor → group:accounting → orgunit_head:company, `requires_drawn_signature=True` |
+| 9 | `travel_estimate` | Смета на командировку | author | `destination_city`, `date_range`, `purpose`, `transport_cost`(money), `lodging_cost`(money), `per_diem`(money, autocalc), `total`(money, autocalc), `advance_requested`(bool) | supervisor → group:accounting → company_head, `requires_drawn_signature=True` |
 
 Тип 8 (`vacation_notification`) — обратный поток: создаётся бухгалтером, подписывается получателем-сотрудником. Для этого:
 - `DocumentType.initiator_resolver = 'group:accounting'` — только бухгалтер может создавать.
@@ -360,7 +379,7 @@ OrgUnitHead(
 После выбора — трёхшаговый wizard:
 
 **Шаг 1 — Шапка**
-- Организация (автоподстановка по `user.org_unit` вверх до ближайшей `is_legal_entity=True`)
+- Организация (автоподстановка из `user.company_unit` — она уже `is_legal_entity=True`)
 - «От кого» — `user.full_name + user.position` (readonly из профиля)
 - «Кому» — зависит от типа:
   - Для свободной служебки — dropdown OrgUnit (отделы и подразделения внутри компании).
@@ -434,36 +453,51 @@ OrgUnitHead(
 
 Делается в начале Фазы 1, иначе согласование не резолвится.
 
-### 10.1 `OrgUnit`
+### 10.1 `OrgUnit` (без изменений модели)
 
-1. Расширить `OrgUnit.UnitType`:
-   - `SERVICE = "service", "Служба"` (новый)
-   - `SECTOR = "sector", "Сектор"` (новый)
-   - Существующие `COMPANY`, `BRANCH`, `DIVISION`, `DEPARTMENT`, `SITE`, `OTHER` остаются.
+`OrgUnit` остаётся справочником юрлиц и контрагентов. `UnitType` не трогаем — `company/branch/division/department/site/other` как было. Для нашего предприятия админ создаёт узлы с `business_role='internal', unit_type='company'` (и при необходимости `branch` для дочерних юрлиц).
 
-2. Заполнить внутреннюю структуру компаний: создать узлы с `business_role='internal'` по фактической организационной структуре (до 10 компаний). Это ручная работа в админке на 1-2 часа, делается до запуска модуля.
+### 10.2 `Department` (новая модель) — `apps/directory/models/department.py`
 
-3. Пример дерева (Релесофт):
+```python
+class Department(MP_Node):
+    class UnitType(TextChoices):
+        SERVICE = "service", "Служба"
+        DEPARTMENT = "department", "Отдел"
+        SECTOR = "sector", "Сектор"
+        OTHER = "other", "Другое"
+
+    name, full_name
+    unit_type: UnitType
+    company: FK → OrgUnit (business_role='internal', unit_type='company')
+    description, is_active
+    history (simple_history)
 ```
-OrgUnit "Релесофт"                   unit_type=company, business_role=internal, is_legal_entity=true
-├── OrgUnit "Служба РЗА"             unit_type=service
-│   ├── OrgUnit "Отдел РЗА 1"        unit_type=department
-│   │   ├── OrgUnit "Сектор А"       unit_type=sector
-│   │   └── OrgUnit "Сектор Б"       unit_type=sector
-│   └── OrgUnit "Отдел РЗА 2"        unit_type=department
-└── OrgUnit "Отдел проектирования"   unit_type=department
+
+**Пример заполнения (Релесофт):**
+
+```
+OrgUnit "Релесофт"                   unit_type=company, business_role=internal
+├── Department "Служба РЗА"          unit_type=service
+│   ├── Department "Отдел РЗА 1"     unit_type=department
+│   │   ├── Department "Сектор А"    unit_type=sector
+│   │   └── Department "Сектор Б"    unit_type=sector
+│   └── Department "Отдел РЗА 2"     unit_type=department
+└── Department "Отдел проектирования" unit_type=department
 ```
 
-4. Каждый `company`-узел — это отдельный tenant. Фильтр multi-tenant видимости определяет `user.company_root` как ближайший предок `user.org_unit` с `unit_type=company`.
+`Department` живёт отдельным MP_Node-деревом, привязанным к `OrgUnit.company` через FK. Каждый `company`-узел OrgUnit — это отдельный tenant.
 
-### 10.2 `User`
+### 10.3 `User`
 
-1. `User.org_unit = FK → OrgUnit` (null=True пока, required для новых EDO-операций).
-2. `User.supervisor = FK → User` (null=True) — непосредственный руководитель, опциональный явный override.
-3. `User.is_department_head` остаётся, смысл расширяется: «руководитель своего `org_unit`», на любом уровне дерева (сектор/отдел/служба/компания).
-4. Data-migration: парсит уникальные значения `User.department` (текст) и `User.company` (текст), fuzzy-матчит на существующие OrgUnit-узлы. Что не смэтчилось — создаёт узлы типа `department` и логирует для ручной ревизии.
-5. Починить `apps/users/api/views.py::TeamPerformanceView` — перейти с `user.department == target.department` на `user.org_unit_id == target.org_unit_id` (плюс for_admin — не фильтруется). Регрессия-риск, покрываем тестами.
-6. **Deprecate, не удалять:** `User.department` и `User.company` остаются как readonly-поля, заполняются автоматически через signal из `org_unit.name` и `company_root.name` — для обратной совместимости с legacy-кодом, который мог где-то опираться на текстовые значения. Финальное удаление — в Фазе 4.
+1. `User.company_unit = FK → OrgUnit` (null=True пока, required для EDO-операций) — юрлицо работодателя.
+2. `User.department_unit = FK → Department` (null=True) — конкретное подразделение. NULL если сотрудник сидит прямо на уровне компании.
+3. `User.supervisor = FK → User` (null=True) — явный override непосредственного руководителя.
+4. `User.is_department_head`: «руководитель своего `department_unit`» (или `company_unit`, если `department_unit=NULL`).
+5. Data-migration `0008_backfill_company_and_department_units`: сматчивает legacy-строки `User.department` и `User.company` на существующие `Department` (внутри `OrgUnit.company`). Что не нашло — пишет в stdout, админ доделывает.
+6. Management-команда `manage.py rematch_user_org_unit [--dry-run] [--force]` — повторный матчинг после заполнения структуры в админке.
+7. **`TeamPerformanceView`** — фильтрация по `department_unit_id` FK, fallback на legacy-строку.
+8. **Legacy shadow-поля:** `User.department` и `User.company` остаются как readonly-строки, синхронизируются pre_save-сигналом из `department_unit.name` и `company_unit.name`. Финальное удаление — Фаза 4.
 
 ### 10.3 `apps/core` — расширение workflow
 
@@ -482,7 +516,7 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 
 | Задача | Оценка |
 |---|---|
-| Рефакторинг User: `org_unit`, `supervisor`, data-migration, починка TeamPerformance | 3 дня |
+| Рефакторинг User: `company_unit`, `department_unit`, `supervisor`, Department model, data-migration, починка TeamPerformance | 3 дня |
 | Модели `DocumentType`, `Document`, `ApprovalStep`, `DocumentAttachment` + миграции | 2 дня |
 | Сидер с 4 типами документов на MVP: `memo_free`, `memo_overtime`, `app_dayoff_workoff`, `app_free` | 0.5 дня |
 | `ChainResolver` сервис + `supervisor`/`group`/`fixed_user` резолверы | 1.5 дня |
@@ -551,7 +585,7 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 
 | Риск | Митигация |
 |---|---|
-| Рефакторинг `User.department` → `org_unit` поломает `TeamPerformanceView` или другие места | Покрываем тестами ДО миграции, делаем smoke-тест на dev-базе |
+| Рефакторинг `User.department` → FK (`department_unit`) поломает `TeamPerformanceView` или другие места | Покрываем тестами ДО миграции, делаем smoke-тест на dev-базе, оставляем legacy-строку с pre_save-синком как shadow |
 | `field_schema` JSON без строгой схемы может разъезжаться | Валидатор на бэкенде через Pydantic/DataClass, схемы хранятся как Python-литералы в `initial_data.py` для MVP-типов, UI-редактор — потом |
 | Цепочки с несколькими параллельными ветками сложно UX'ить | В MVP — только линейные. Параллельные добавляем в Фазе 2 |
 | Пользователи захотят редактировать тело документа «поверх» шаблона | В MVP — нельзя. В Фазе 3, если спрос, добавить «режим свободного редактирования» с пометкой в истории |
@@ -578,7 +612,7 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 
 | Переменная | Тип | Примеры |
 |---|---|---|
-| `author` | `User` | `author.full_name` («Васильев Сергей Андреевич»), `author.full_name_short` («Васильев С. А.»), `author.position`, `author.org_unit.name`, `author.company_root.name` |
+| `author` | `User` | `author.full_name`, `author.full_name_short` («Васильев С. А.»), `author.position`, `author.department_unit.name`, `author.company_unit.name`, `author.company_root.name` |
 | `today` | `date` | `{{ today\|date:"d.m.Y" }}` → «21.04.2026» |
 | `document` | `Document` | `document.number` (после submit), `document.created_at` |
 | `fields` | `dict` | Плоский доступ к `field_values`: `{{ fields.overtime_date\|date:"d.m.Y" }}` |
@@ -598,7 +632,8 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 | `choice` | По умолчанию — code (`overtime`). Для отображения используем сопряжённое computed-поле `{field}_display` (бэкенд добавляет его в context автоматически): `{{ work_type_display }}` | «В сверхурочное время» |
 | `user` | FK, рендерится через свойства: `{{ responsible.full_name_short }} ({{ responsible.position }})` | «Петров И. И. (начальник отдела)» |
 | `user_multi` | Список — итерируется: `{% for emp in employees %}- {{ emp.full_name_short }}{% endfor %}` | |
-| `orgunit` | `{{ addressee_orgunit.name }}` | «Служба РЗА» |
+| `orgunit` | `{{ customer_org.name }}` | «ПАО Россети» |
+| `department` | `{{ addressee_department.name }}` | «Служба РЗА» |
 
 **PDF-layout.** Body — это только тело документа. Шапка («От кого» / «Кому» / организация) и подвал (дата, подпись-строка) рендерятся из фиксированного layout в PDF, не из `body_template`. Layout живёт в `apps/edo/internal_docs/templates/edo/pdf_base.html` (Django template) и переиспользуется всеми типами.
 
@@ -607,7 +642,7 @@ OrgUnit "Релесофт"                   unit_type=company, business_role=in
 | Синтаксис | Что резолвит |
 |---|---|
 | `field_user:<field_name>` | User, на которого указывает FK-поле `field_name` в field_values (например, `addressee_person` в `app_free`) |
-| `field_orgunit_head:<field_name>` | Head of the OrgUnit referenced by field `field_name` (например, `addressee_orgunit` в `memo_free`) |
+| `field_dept_head:<field_name>` | Head of the Department referenced by field `field_name` (например, `addressee_department` в `memo_free`) |
 
 **Валидация field_schema на бэке.** Через Pydantic-like dataclass:
 ```python
@@ -635,7 +670,7 @@ class FieldSpec:
 | `category` | `memo` |
 | `icon` | `file-text` |
 | `initiator_resolver` | `author` |
-| `addressee_mode` | `orgunit_head` |
+| `addressee_mode` | `dept_head` |
 | `visibility` | `department_visible` |
 | `requires_drawn_signature` | `False` |
 | `numbering` | `СЗ-СВОБ-{YYYY}-{####}` |
@@ -644,7 +679,7 @@ class FieldSpec:
 ```json
 [
   {"name": "subject", "label": "Тема", "type": "text", "required": true, "placeholder": "Кратко — о чём записка"},
-  {"name": "addressee_orgunit", "label": "Адресовано подразделению", "type": "orgunit", "required": true, "filter": {"business_role": "internal"}},
+  {"name": "addressee_department", "label": "Адресовано подразделению", "type": "department", "required": true, "filter": {"company_scope": "author"}},
   {"name": "body", "label": "Текст записки", "type": "markdown", "required": true, "placeholder": "Содержание служебной записки..."}
 ]
 ```
@@ -659,12 +694,12 @@ class FieldSpec:
 **`default_chain.steps`:**
 ```json
 [
-  {"order": 1, "role_key": "supervisor",                    "label": "Непосредственный руководитель",   "action": "approve", "sla_hours": 24},
-  {"order": 2, "role_key": "field_orgunit_head:addressee_orgunit", "label": "Руководитель адресата",          "action": "approve", "sla_hours": 48}
+  {"order": 1, "role_key": "supervisor",                            "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
+  {"order": 2, "role_key": "field_dept_head:addressee_department",  "label": "Руководитель адресата",          "action": "approve", "sla_hours": 48}
 ]
 ```
 
-Примечание: если адресат совпадает с `author.org_unit` или с отделом, head которого — непосредственный руководитель автора, второй шаг скипается при резолве (тот же User).
+Примечание: если адресат совпадает с `author.department_unit` или с отделом, head которого — непосредственный руководитель автора, второй шаг скипается при резолве (тот же User).
 
 ---
 
@@ -701,7 +736,7 @@ class FieldSpec:
 
 **`body_template`:**
 ```
-Прошу разрешить выход работников {{ author.org_unit.name }} {% if work_type == 'overtime' %}в сверхурочное время{% else %}в выходной день{% endif %}
+Прошу разрешить выход работников {{ author.department_unit.name|default:author.company_unit.name }} {% if work_type == 'overtime' %}в сверхурочное время{% else %}в выходной день{% endif %}
 {{ overtime_date|date:"«d» F Y" }} г. с {{ time_from|time:"H:i" }} до {{ time_to|time:"H:i" }} часов по списку:
 
 {% for emp in employees %}    {{ forloop.counter }}. {{ emp.full_name }} — {{ emp.position }}
@@ -719,7 +754,7 @@ class FieldSpec:
 ```json
 [
   {"order": 1, "role_key": "supervisor",                 "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-  {"order": 2, "role_key": "org_head:parent",            "label": "Руководитель подразделения",    "action": "approve", "sla_hours": 24},
+  {"order": 2, "role_key": "dept_head:parent",           "label": "Руководитель подразделения",    "action": "approve", "sla_hours": 24},
   {"order": 3, "role_key": "group:accounting@company",   "label": "Бухгалтерия",                    "action": "inform",  "sla_hours": null}
 ]
 ```
@@ -859,9 +894,9 @@ def forwards(apps, schema_editor):
 ---
 
 **Следующий шаг:** старт Фазы 1. Порядок работы:
-1. Расширить `OrgUnit.UnitType` (+ `SERVICE`, `SECTOR`), миграция + наполнение структуры Релесофта (и других компаний, если есть) в админке.
-2. Добавить `User.org_unit`, `User.supervisor`, data-migration для маппинга legacy `User.department`.
-3. Починить `TeamPerformanceView` под новый FK + тесты.
+1. Завести модель `Department` в `apps/directory/`, миграция + админка + тесты. OrgUnit не трогаем. ✅ **Сделано в коммите.**
+2. Добавить `User.company_unit` (FK OrgUnit), `User.department_unit` (FK Department), `User.supervisor` (self-FK), data-migration для маппинга legacy `User.department`/`User.company`. ✅ **Сделано.**
+3. Починить `TeamPerformanceView` под FK + тесты. ✅ **Сделано.**
 4. Завести модели `InternalDocFlowConfig`, `DocumentType`, `ApprovalChainTemplate`, `Document`, `ApprovalStep`, `DocumentAttachment` + миграции.
 5. Сервис `ChainResolver` с резолверами из §3.4 + §15.0.
 6. Сервис `body_renderer` (Django Template).
@@ -871,4 +906,9 @@ def forwards(apps, schema_editor):
 10. Интеграция с `apps/notifications`, `apps/comments`, Playwright PDF.
 11. Smoke-тесты.
 
-Готов начинать с шага 1 — дай отмашку, или хочешь сперва что-то доуточнить в §15.
+**Перед стартом шага 4 админу нужно:**
+- В Django admin создать OrgUnit-узлы типа `company` с `business_role='internal'` (наши компании).
+- Создать `Department`-дерево для каждой компании (Служба/Отдел/Сектор).
+- Прогнать `docker exec bresler-erp-backend-1 python manage.py rematch_user_org_unit --dry-run`, убедиться что большинство User'ов смэтчится.
+- Без `--dry-run` применить; несматченные дозаполнить руками.
+- Проставить `is_department_head=True` руководителям подразделений.
