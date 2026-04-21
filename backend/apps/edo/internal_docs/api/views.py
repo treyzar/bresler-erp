@@ -2,6 +2,7 @@
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import HttpResponse
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -225,6 +226,25 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         doc.refresh_from_db()
         return Response(DocumentDetailSerializer(doc).data)
+
+    @action(detail=True, methods=["get"])
+    def pdf(self, request, *args, **kwargs):
+        """PDF-экспорт документа. Автоматически кешируется; возвращает attachment."""
+        doc = self.get_object()
+        if not doc.body_rendered:
+            return Response(
+                {"detail": "PDF доступен только для отправленных документов"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        from ..services.pdf_export import export_pdf
+        try:
+            pdf_bytes = export_pdf(doc)
+        except Exception as e:
+            return Response({"detail": f"PDF generation failed: {e}"}, status=500)
+        filename = f"{doc.number or 'document'}.pdf"
+        resp = HttpResponse(pdf_bytes, content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return resp
 
     @action(detail=False, methods=["get"], url_path="inbox-count")
     def inbox_count(self, request, *args, **kwargs):

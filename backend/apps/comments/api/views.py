@@ -30,6 +30,7 @@ class CommentViewSet(ModelViewSet):
         "orgunit": ("directory", "orgunit"),
         "contact": ("directory", "contact"),
         "letter": ("registry", "letter"),
+        "document": ("internal_docs", "document"),
     }
 
     def get_queryset(self):

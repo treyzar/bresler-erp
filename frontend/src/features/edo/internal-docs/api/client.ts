@@ -80,6 +80,13 @@ export const internalDocsApi = {
     return r.data
   },
 
+  downloadPdf: async (id: number): Promise<Blob> => {
+    const r = await api.get<Blob>(`${BASE}/documents/${id}/pdf/`, {
+      responseType: "blob",
+    })
+    return r.data
+  },
+
   inboxCount: async (): Promise<{ count: number }> => {
     const r = await api.get<{ count: number }>(`${BASE}/documents/inbox-count/`)
     return r.data

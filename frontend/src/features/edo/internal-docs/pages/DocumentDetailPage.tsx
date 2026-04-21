@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ChevronLeft, CheckCircle, XCircle, RotateCcw, FileText,
-  Clock, CheckCheck, AlertCircle, Loader2, Trash2, Send,
+  Clock, CheckCheck, AlertCircle, Loader2, Trash2, Send, Download,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Timeline } from "@/components/shared/Timeline"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { internalDocsApi } from "../api/client"
 import type { ApprovalStep, DocumentDetail, DocumentStatus } from "../api/types"
@@ -128,6 +129,28 @@ export function DocumentDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {doc.body_rendered && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const blob = await internalDocsApi.downloadPdf(docId)
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = `${doc.number || "document"}.pdf`
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                } catch (e: any) {
+                  toast.error(e?.response?.data?.detail ?? "Ошибка генерации PDF")
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />PDF
+            </Button>
+          )}
           {canSubmit && (
             <Button onClick={() => submit.mutate()} disabled={submit.isPending}>
               {submit.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
@@ -165,6 +188,15 @@ export function DocumentDetailPage() {
           </Card>
 
           <FieldsSummary doc={doc} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Комментарии и история</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Timeline targetModel="document" targetId={doc.id} />
+            </CardContent>
+          </Card>
         </div>
 
         <aside className="space-y-4">
