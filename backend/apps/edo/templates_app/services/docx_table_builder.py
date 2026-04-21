@@ -65,16 +65,11 @@ class DocxTableBuilder:
 
     @classmethod
     def render_table(cls, doc, table_data: Dict[str, Any], values: Dict[str, Any]):
-        """
-        table_data ожидает формат из нового интерфейса Frontend'а:
-        {
-           "columns": [{"width": 100}, {"width": 200}],
-           "cells": [
-               [{"content": "A1", "colSpan": 2, "rowSpan": 1}, None],
-               [{"content": "A2", "colSpan": 1, "rowSpan": 1}, {"content": "B2" ...}]
-           ]
-        }
-        """
+        """Рендерит таблицу. Принимает либо элемент целиком (с `properties`), либо
+        уже «распакованный» dict со свойствами таблицы."""
+        # Поддерживаем оба формата: {"properties": {...}} и плоский.
+        if isinstance(table_data.get("properties"), dict):
+            table_data = table_data["properties"]
         cells_data = table_data.get('cells', [])
         if not cells_data:
             logger.warning("DocxTableBuilder: No cells data provided.")

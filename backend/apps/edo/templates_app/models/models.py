@@ -34,12 +34,51 @@ class Template(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        # html_content — производный кеш от editor_content.
+        # Регенерируем, если editor_content непустой. Для DOCX-импорта, где есть
+        # готовый html_content, но нет editor_content, оставляем как пришло.
+        if self.editor_content:
+            from ..services.html_renderer import render_editor_content_html
+            self.html_content = render_editor_content_html(self.editor_content)
+        super().save(*args, **kwargs)
+
     def get_placeholders(self):
         # Логика для HTML/PDF шаблонов, которые рендерятся через HTML
         if self.template_type in ['HTML', 'PDF']:
             pattern = r'\{\{\s*(\w+)\s*\}\}'
-            return list(set(re.findall(pattern, self.html_content)))
-            
+            sources = [self.html_content or '']
+            # Заодно вычитываем плейсхолдеры из editor_content, чтобы не зависеть
+            # от того, как именно отрендерен HTML (escape, CSS, и т.п.).
+            for el in (self.editor_content or []):
+                if not isinstance(el, dict):
+                    continue
+                props = el.get('properties') or {}
+                for key in ('content', 'text'):
+                    val = props.get(key)
+                    if isinstance(val, str):
+                        sources.append(val)
+                cells = props.get('cells')
+                if isinstance(cells, list):
+                    for row in cells:
+                        if isinstance(row, list):
+                            for cell in row:
+                                if isinstance(cell, dict):
+                                    val = cell.get('content')
+                                    if isinstance(val, str):
+                                        sources.append(val)
+                data = props.get('data')
+                if isinstance(data, list):
+                    for row in data:
+                        if isinstance(row, list):
+                            for cell in row:
+                                if isinstance(cell, str):
+                                    sources.append(cell)
+            found: set[str] = set()
+            for src in sources:
+                found.update(re.findall(pattern, src))
+            return sorted(found)
+
         elif self.template_type == 'DOCX' and self.docx_file:
             from docx import Document
             try:

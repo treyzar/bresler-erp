@@ -22,6 +22,7 @@ from docxtpl import DocxTemplate
 from ..models.models import Template, TemplateVersion, ShareLink
 from ..services.pdf_export import PDFExportService
 from ..services.docx_builder import DocxBuilderService
+from ..services.html_renderer import render_editor_content_html
 from .serializers import (
     TemplateSerializer, TemplateListSerializer,
     TemplateVersionSerializer, ShareLinkSerializer, RenderSerializer
@@ -49,7 +50,7 @@ def _safe_filename(name: str, default: str = "document") -> str:
 
 
 def _apply_placeholders_html(html_content: str, values: Dict[str, Any]) -> str:
-    """Подставляет значения {{ variable }} в HTML"""
+    """Fallback: подстановка в готовый HTML (для legacy-шаблонов без editor_content)."""
     result = html_content or ""
     for key, value in (values or {}).items():
         k = str(key)
@@ -104,25 +105,8 @@ class TemplateViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner_id=CURRENT_USER_ID)
 
-    def perform_update(self, serializer):
-        """Нормализация координат и размеров в editor_content перед сохранением"""
-        editor_content = serializer.validated_data.get('editor_content', [])
-        if isinstance(editor_content, list):
-            for el in editor_content:
-                if isinstance(el, dict):
-                    if 'x' in el:
-                        try: el['x'] = int(round(float(el['x'])))
-                        except (ValueError, TypeError): pass
-                    if 'y' in el:
-                        try: el['y'] = int(round(float(el['y'])))
-                        except (ValueError, TypeError): pass
-                    if 'width' in el:
-                        try: el['width'] = int(round(float(el['width'])))
-                        except (ValueError, TypeError): pass
-                    if 'height' in el:
-                        try: el['height'] = int(round(float(el['height'])))
-                        except (ValueError, TypeError): pass
-        serializer.save()
+    # perform_update/perform_create — дефолтные: сериализатор уже нормализует editor_content,
+    # а Template.save() регенерирует html_content.
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -177,7 +161,9 @@ class TemplateViewSet(viewsets.ModelViewSet):
         if not template.is_accessible_by(CURRENT_USER_ID):
             return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
 
-        req_format = request.query_params.get('format', '').lower()
+        # Параметр называется `fmt`, а не `format`, потому что `format` —
+        # зарезервированное имя в DRF content-negotiation и ломает роутинг в 404.
+        req_format = request.query_params.get('fmt', '').lower()
         if not req_format:
             req_format = template.template_type.lower()
 
@@ -343,11 +329,15 @@ def render_template(request, template: Template, values: Dict[str, Any]):
 
     # 2. Генерируем PDF через PDFExportService (Playwright)
     logger.info("Rendering PDF via PDFExportService...")
-    html_content = template.html_content or ""
-    
-    # Подстановка плейсхолдеров
-    html_content = _apply_placeholders_html(html_content, values)
-    
+
+    # Предпочитаем рендер из editor_content с подстановкой на уровне элементов —
+    # плейсхолдеры не портятся об HTML-экранирование. Legacy-шаблоны без
+    # editor_content падают в fallback-подстановку по готовому html_content.
+    if template.editor_content:
+        html_content = render_editor_content_html(template.editor_content, values)
+    else:
+        html_content = _apply_placeholders_html(template.html_content or "", values)
+
     try:
         pdf_bytes = PDFExportService.generate(html_content)
         filename = _safe_filename(template.title) + ".pdf"
@@ -361,12 +351,6 @@ def render_template(request, template: Template, values: Dict[str, Any]):
             {"error": "Render failed.", "detail": str(e)},
             status=500,
         )
-
-    filename = _safe_filename(template.title) + ".pdf"
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    logger.info(f"PDF render complete: {filename}")
-    return response
 
 
 @api_view(["GET"])

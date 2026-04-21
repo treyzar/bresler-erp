@@ -96,8 +96,9 @@ export const templatesApi = {
     id: number,
     format: "pdf" | "html" | "docx" | "json"
   ) => {
+    // ?fmt=..., не ?format=... — иначе DRF content-negotiation перехватит и вернёт 404.
     const response = await api.get(
-      `/edo/templates/templates/${id}/download-source/?format=${format}`,
+      `/edo/templates/templates/${id}/download-source/?fmt=${format}`,
       {
         responseType: "blob",
       }

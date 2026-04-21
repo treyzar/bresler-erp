@@ -50,16 +50,18 @@ class PDFExportService:
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(args=['--no-sandbox', '--disable-setuid-sandbox'])
+                # JS отключаем — наши шаблоны статичные, это ускоряет рендер и исключает зависания.
                 page = browser.new_page(java_script_enabled=False)
-                
-                # Устанавливаем контент и ждем загрузки (сетевой активности)
-                page.set_content(clean_html, wait_until="networkidle")
-                
-                # Генерируем PDF. Важно: масштаб и поля должны совпадать с фронтендом
+                # Явный таймаут: без него networkidle мог висеть по 30с на битых image src.
+                page.set_default_timeout(15000)
+
+                # "load" достаточно для статичного HTML; "networkidle" провоцировал таймауты.
+                page.set_content(clean_html, wait_until="load")
+
                 pdf_bytes = page.pdf(
                     format="A4",
                     print_background=True,
-                    margin={"top": "0", "bottom": "0", "left": "0", "right": "0"}
+                    margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
                 )
                 browser.close()
                 return pdf_bytes

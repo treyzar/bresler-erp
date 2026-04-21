@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from ..models.models import Template, TemplateVersion, ShareLink
+from ..services.normalization import normalize_editor_content
+
+VALID_ELEMENT_TYPES = {"text", "image", "table", "date", "signature", "divider"}
 
 class TemplateVersionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,13 +36,18 @@ class TemplateSerializer(serializers.ModelSerializer):
         model = Template
         fields = [
             'id', 'title', 'description', 'template_type', 'visibility',
-            'owner_id', 'allowed_users', 
-            'html_content', 'editor_content', # Добавлено editor_content
+            'owner_id', 'allowed_users',
+            'html_content', 'editor_content',
             'docx_file',
             'placeholders', 'share_links', 'latest_version',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'placeholders', 'share_links', 'latest_version', 'created_at', 'updated_at']
+        # html_content теперь производный (регенерируется в Template.save из editor_content) —
+        # не даём фронту его затирать.
+        read_only_fields = [
+            'id', 'html_content', 'placeholders', 'share_links',
+            'latest_version', 'created_at', 'updated_at',
+        ]
 
     def get_placeholders(self, obj):
         return obj.get_placeholders()
@@ -53,23 +61,27 @@ class TemplateSerializer(serializers.ModelSerializer):
     def validate_editor_content(self, value):
         if not isinstance(value, list):
             raise serializers.ValidationError("editor_content must be a list of elements.")
-        
-        new_value = []
+
         for idx, el in enumerate(value):
             if not isinstance(el, dict):
                 raise serializers.ValidationError(f"Element at index {idx} must be an object.")
-            
-            new_el = el.copy()
-            # Принудительно приводим координаты и размеры к целым числам (int)
-            for field in ['x', 'y', 'width', 'height']:
+            el_type = el.get("type")
+            if el_type not in VALID_ELEMENT_TYPES:
+                raise serializers.ValidationError(
+                    f"Element at index {idx} has invalid type '{el_type}'. "
+                    f"Expected one of: {sorted(VALID_ELEMENT_TYPES)}."
+                )
+            for field in ("x", "y", "width", "height"):
                 if field in el:
                     try:
-                        new_el[field] = int(round(float(el[field])))
+                        float(el[field])
                     except (ValueError, TypeError):
-                        raise serializers.ValidationError(f"Field '{field}' in element {idx} must be a number.")
-            new_value.append(new_el)
-        
-        return new_value
+                        raise serializers.ValidationError(
+                            f"Field '{field}' in element {idx} must be numeric."
+                        )
+
+        # Нормализуем в каноничный формат (properties внутри).
+        return normalize_editor_content(value)
 
 class TemplateListSerializer(serializers.ModelSerializer):
     placeholders = serializers.SerializerMethodField()

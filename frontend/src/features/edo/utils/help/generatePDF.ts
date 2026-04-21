@@ -201,7 +201,10 @@ export const generatePdf = async (elements: IEditorElement[], title: string): Pr
           if (src.startsWith("data:image/")) {
             tryAddImage(doc, src, x, y, w, h);
           } else if (el.type === "signature" && p.text) {
-            safeSetFont(doc, activeFont, "italic");
+            // Style "italic" не зарегистрирован для кастомного Unicode-шрифта —
+            // jsPDF молча откатывается на Helvetica, которая превращает кириллицу в мусор.
+            // Используем "normal" явно, чтобы остаться на Unicode-шрифте.
+            safeSetFont(doc, activeFont, "normal");
             doc.setFontSize(Math.max(10, Number(p.fontSize || 14) * scale));
             doc.setTextColor(normalizeHex(String(p.color || "#000000")));
             doc.text(String(p.text), x + w / 2, y + h / 2, { align: "center", baseline: "middle" });

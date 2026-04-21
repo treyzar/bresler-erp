@@ -52,6 +52,10 @@ import {
   replacePlaceholdersInElements,
   replacePlaceholdersInString,
 } from "../utils/help/replacePlaceholders";
+import {
+  normalizeEditorContent,
+  sanitizeForSave,
+} from "../utils/help/normalizeEditorContent";
 
 export default function Editor() {
   const navigate = useNavigate();
@@ -296,85 +300,13 @@ export default function Editor() {
 
     setLoading(true);
     try {
-      // 1. Стандартизация JSON (editor_content) для бэкенда
-      const cleanEditorContent = elements.map((el) => {
-        const p = el.properties as any;
-        return {
-          id: el.id,
-          type: el.type,
-          x: Math.round(Number(el.x)) || 0,
-          y: Math.round(Number(el.y)) || 0,
-          width: Math.round(Number(el.width)) || 100,
-          height: Math.round(Number(el.height)) || 40,
-          content: p.content || p.text || "",
-          isBold: !!p.bold,
-          isItalic: !!p.italic,
-          fontSize: p.fontSize || 14,
-          align: p.align || "left",
-        };
-      });
-
-      // 2. Генерируем ЧИСТЫЙ HTML (без артефактов редактора)
-      const cleanHtmlContent = `
-        <div class="canvas-print" style="position:relative; width:794px; min-height:1123px; background:white; margin:0 auto;">
-          ${elements
-            .map((el) => {
-              const commonStyle = `position:absolute; left:${el.x}px; top:${el.y}px; width:${el.width}px; height:${el.height}px;`;
-              
-              if (el.type === "text") {
-                const {
-                  content,
-                  fontFamily,
-                  fontSize,
-                  color,
-                  bold,
-                  italic,
-                  underline,
-                  align,
-                } = el.properties as any;
-                return `
-                  <div style="${commonStyle}">
-                    <p style="margin:0; font-family:${fontFamily || "Arial"}; font-size:${fontSize}px; color:${color || "#000"}; 
-                       font-weight:${bold ? "bold" : "normal"}; font-style:${italic ? "italic" : "normal"}; 
-                       text-decoration:${underline ? "underline" : "none"}; text-align:${align || "left"};">
-                      ${content || ""}
-                    </p>
-                  </div>`;
-              }
-              
-              if (el.type === "signature") {
-                const p = el.properties as any;
-                if (p.image) {
-                  return `<div style="${commonStyle}"><img src="${p.image}" alt="signature" style="width:100%; height:100%; object-fit:contain;" /></div>`;
-                }
-                return `<div style="${commonStyle} display:flex; align-items:center; justify-content:center; border-bottom:1px solid #000;">
-                          <span style="font-size:12px;">${p.text || "Подпись"}</span>
-                        </div>`;
-              }
-
-              if (el.type === "image") {
-                const { src, alt } = el.properties as any;
-                return `<div style="${commonStyle}"><img src="${src}" alt="${alt || ""}" style="width:100%; height:100%; object-fit:cover;" /></div>`;
-              }
-
-              if (el.type === "divider") {
-                const p = el.properties as any;
-                return `<div style="${commonStyle}"><hr style="border:none; border-top:${p.thickness || 1}px ${p.style || "solid"} ${p.color || "#000"}; margin:0;" /></div>`;
-              }
-
-              return "";
-            })
-            .join("")}
-        </div>`.trim();
-
-      // 3. Формируем тело запроса
+      // html_content генерируется на бэкенде из editor_content — единый источник правды.
       const payload = {
         title,
         description,
         visibility,
         template_type: templateType,
-        editor_content: cleanEditorContent,
-        html_content: cleanHtmlContent,
+        editor_content: sanitizeForSave(elements),
         allowed_users: [],
       };
 
@@ -480,7 +412,7 @@ export default function Editor() {
             Array.isArray(tpl.editor_content) &&
             tpl.editor_content.length > 0
           ) {
-            let nextElements = tpl.editor_content as any[];
+            let nextElements = normalizeEditorContent(tpl.editor_content);
             if (letterData) {
               nextElements = replacePlaceholdersInElements(
                 nextElements,
