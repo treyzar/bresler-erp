@@ -73,7 +73,18 @@ class DepartmentAdmin(TreeAdmin):
     list_display = ("name", "unit_type", "company", "is_active")
     list_filter = ("unit_type", "company", "is_active")
     search_fields = ("name", "full_name")
-    autocomplete_fields = ("company",)
+    # autocomplete_fields намеренно НЕ используем для company: он идёт через
+    # OrgUnitAdmin.get_search_results, где нет способа ограничить выдачу по
+    # business_role без вмешательства в OrgUnitAdmin. Обычный select с
+    # queryset'ом из formfield_for_foreignkey фильтрует надёжно.
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "company":
+            # В выпадающем списке — только наши юрлица (business_role='internal').
+            kwargs["queryset"] = OrgUnit.objects.filter(
+                business_role="internal", is_active=True,
+            ).order_by("name")
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def save_model(self, request, obj, form, change):
         if change:
