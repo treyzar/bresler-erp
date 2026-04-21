@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from simple_history.models import HistoricalRecords
 
+from .managers import DocumentManager
+
 
 class Document(models.Model):
     """Заполненный документ: значения полей, статус, цепочка согласования.
@@ -109,6 +111,8 @@ class Document(models.Model):
     history = HistoricalRecords(
         excluded_fields=["body_rendered", "header_snapshot", "chain_snapshot"],
     )
+
+    objects = DocumentManager()
 
     class Meta:
         verbose_name = "Документ"
