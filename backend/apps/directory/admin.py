@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 from treebeard.admin import TreeAdmin
-from treebeard.forms import movenodeform_factory
+from treebeard.forms import MoveNodeForm, movenodeform_factory
 
 from .models import (
     City,
@@ -16,23 +16,48 @@ from .models import (
 )
 
 
-# Примечание по формам ниже: не используем `movenodeform_factory` для change-view.
-# Эта форма добавляет скрытые поля _position/_ref_node_id и на save() вызывает
-# .move(), пытаясь переставить узел по алфавиту — при больших деревьях
-# и node_order_by=['name'] это конфликтует с уже занятыми path (IntegrityError).
-# Для перестановки по дереву используйте drag-drop в списке (TreeAdmin сам его
-# рисует) или add_child()/move() через shell.
+class SafeMoveNodeForm(MoveNodeForm):
+    """Подкласс MoveNodeForm, который вызывает .move() только если пользователь
+    действительно изменил _position или _ref_node_id.
+
+    Оригинал всегда дёргает move() на существующих узлах — при
+    node_order_by=['name'] и большом дереве (5000+ узлов) move() пересчитывает
+    path по алфавиту и может приземлиться на уже занятый путь (IntegrityError).
+    Проверка по changed_data позволяет безопасно сохранять простые правки
+    полей без затрагивания дерева.
+    """
+
+    def save(self, commit=True):
+        touched_tree = {"_position", "_ref_node_id"} & set(self.changed_data)
+        position_type, reference_node_id = self._clean_cleaned_data()
+
+        if self.instance._state.adding:
+            # Новый узел — логика как в оригинале.
+            if reference_node_id:
+                ref = self._meta.model.objects.get(pk=reference_node_id)
+                self.instance = ref.add_child(instance=self.instance)
+                if not self.is_sorted:
+                    self.instance.move(ref, pos=position_type)
+            else:
+                self.instance = self._meta.model.add_root(instance=self.instance)
+            self.instance.refresh_from_db()
+        else:
+            # Существующий узел: только если пользователь реально изменил дерево.
+            if touched_tree:
+                if reference_node_id:
+                    ref = self._meta.model.objects.get(pk=reference_node_id)
+                    self.instance.move(ref, pos=position_type)
+                else:
+                    pos = "sorted-sibling" if self.is_sorted else "first-sibling"
+                    self.instance.move(self._meta.model.get_first_root_node(), pos)
+                self.instance.refresh_from_db()
+
+        # ModelForm.save нужен в любой ветке — он регистрирует save_m2m.
+        forms.ModelForm.save(self, commit=commit)
+        return self.instance
 
 
-class _OrgUnitAdminForm(forms.ModelForm):
-    class Meta:
-        model = OrgUnit
-        # Все поля, кроме служебных MP_Node (path/depth/numchild).
-        fields = [
-            "name", "full_name", "unit_type", "business_role",
-            "is_legal_entity", "country", "inn", "kpp", "ogrn",
-            "external_code", "address", "is_active",
-        ]
+_OrgUnitAdminForm = movenodeform_factory(OrgUnit, form=SafeMoveNodeForm)
 
 
 @admin.register(OrgUnit)
@@ -42,29 +67,8 @@ class OrgUnitAdmin(TreeAdmin):
     list_filter = ("unit_type", "business_role", "is_active")
     search_fields = ("name", "full_name", "inn", "external_code")
 
-    def save_model(self, request, obj, form, change):
-        if change:
-            obj.save()
-            return
-        # Новый узел: используем add_root (MP_Node требует path/depth).
-        # Иерархию можно править потом drag-drop'ом в списке.
-        field_values = {
-            f.name: getattr(obj, f.name)
-            for f in obj._meta.concrete_fields
-            if f.name not in {"id", "path", "depth", "numchild"}
-        }
-        new_obj = OrgUnit.add_root(**field_values)
-        obj.pk = new_obj.pk
-        obj.path = new_obj.path
-        obj.depth = new_obj.depth
 
-
-# Department-дерево маленькое (десятки узлов), node_order_by=['name'] не
-# вызывает path-коллизий при движении — поэтому используем родную
-# movenodeform_factory. Она добавит в change/add форму поля «Position»
-# («first-child», «right», ...) и «Relative to» — для выбора родителя или
-# соседа по дереву.
-_DepartmentAdminForm = movenodeform_factory(Department)
+_DepartmentAdminForm = movenodeform_factory(Department, form=SafeMoveNodeForm)
 
 
 @admin.register(Department)
