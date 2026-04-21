@@ -69,7 +69,25 @@ class User(AbstractUser):
     is_department_head = models.BooleanField(
         "Руководитель отдела",
         default=False,
-        help_text="Даёт доступ к панели руководителя для своего отдела",
+        help_text="Руководитель своего org_unit: сектора, отдела, службы или компании",
+    )
+    org_unit = models.ForeignKey(
+        "directory.OrgUnit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="employees",
+        verbose_name="Подразделение",
+        help_text="Узел OrgUnit (сектор/отдел/служба/компания), в котором сотрудник работает",
+    )
+    supervisor = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="subordinates",
+        verbose_name="Непосредственный руководитель",
+        help_text="Если не задан — определяется автоматически по дереву org_unit",
     )
     my_customers = models.ManyToManyField(
         "directory.OrgUnit",
@@ -89,3 +107,49 @@ class User(AbstractUser):
     def get_full_name(self):
         parts = [self.last_name, self.first_name, self.patronymic]
         return " ".join(part for part in parts if part)
+
+    @property
+    def full_name_short(self) -> str:
+        """«Васильев С. А.» — фамилия + инициалы через пробел."""
+        initials = " ".join(
+            f"{p[0]}." for p in (self.first_name, self.patronymic) if p
+        )
+        last = self.last_name or ""
+        if last and initials:
+            return f"{last} {initials}"
+        return last or initials or (self.username or "")
+
+    @property
+    def company_root(self):
+        """Ближайший предок org_unit с unit_type='company'. None если org_unit не задан."""
+        if not self.org_unit_id:
+            return None
+        from apps.directory.models.orgunit import OrgUnit
+        node = self.org_unit
+        while node is not None:
+            if node.unit_type == OrgUnit.UnitType.COMPANY:
+                return node
+            node = node.get_parent()
+        return None
+
+    def resolve_supervisor(self):
+        """Резолв непосредственного руководителя по §3.3 ТЗ.
+
+        1. supervisor FK (если задан).
+        2. is_department_head своего org_unit (кроме себя).
+        3. Рекурсивно вверх по дереву.
+        """
+        if self.supervisor_id:
+            return self.supervisor
+        if not self.org_unit_id:
+            return None
+        User = type(self)
+        node = self.org_unit
+        while node is not None:
+            head = User.objects.filter(
+                org_unit=node, is_department_head=True, is_active=True
+            ).exclude(pk=self.pk).first()
+            if head is not None:
+                return head
+            node = node.get_parent()
+        return None

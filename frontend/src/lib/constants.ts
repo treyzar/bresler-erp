@@ -10,7 +10,9 @@ export const UNIT_TYPES: Record<string, string> = {
   company: "Головная компания / Холдинг",
   branch: "Филиал / Дочерняя компания",
   division: "Производственное отделение",
-  department: "Участок",
+  service: "Служба",
+  department: "Отдел",
+  sector: "Сектор",
   site: "Площадка",
   other: "Другое",
 }
