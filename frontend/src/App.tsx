@@ -26,6 +26,10 @@ import Parser from "@/features/edo/pages/Parser"
 import RenderTemplate from "@/features/edo/pages/RenderTemplate"
 import { LetterRegistryPage } from "@/features/edo/pages/LetterRegistryPage"
 import { LetterDetailPage } from "@/features/edo/pages/LetterDetailPage"
+import { MyDocumentsPage } from "@/features/edo/internal-docs/pages/MyDocumentsPage"
+import { CatalogPage as InternalDocsCatalog } from "@/features/edo/internal-docs/pages/CatalogPage"
+import { CreateDocumentPage } from "@/features/edo/internal-docs/pages/CreateDocumentPage"
+import { DocumentDetailPage as InternalDocDetail } from "@/features/edo/internal-docs/pages/DocumentDetailPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
 import { NotificationsPage } from "@/features/notifications/NotificationsPage"
 import { ImportPage } from "@/features/import/ImportPage"
@@ -104,6 +108,10 @@ function App() {
             <Route element={<ModuleGuard module="edo" />}>
               <Route path="/edo">
                 <Route index element={<EdoHomePage />} />
+                <Route path="my" element={<MyDocumentsPage />} />
+                <Route path="new" element={<InternalDocsCatalog />} />
+                <Route path="new/:code" element={<CreateDocumentPage />} />
+                <Route path="documents/:id" element={<InternalDocDetail />} />
                 <Route path="registry" element={<LetterRegistryPage />} />
                 <Route path="registry/:id" element={<LetterDetailPage />} />
                 <Route path="builder" element={<MainEditor />} />

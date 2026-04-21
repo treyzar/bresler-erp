@@ -19,6 +19,14 @@ interface EdoSection {
 
 const sections: EdoSection[] = [
   {
+    title: "Мои документы",
+    description: "Служебки, заявления, уведомления: создание, согласование, архив. Инбокс входящих на согласование.",
+    href: "/edo/my",
+    icon: <ClipboardList className="h-8 w-8" />,
+    available: true,
+    badge: "Новое",
+  },
+  {
     title: "Реестр писем",
     description: "Входящие и исходящие письма. Регистрация, поиск, история изменений, вложения.",
     href: "/edo/registry",
@@ -26,20 +34,12 @@ const sections: EdoSection[] = [
     available: true,
   },
   {
-    title: "Заявления",
-    description: "Заявления сотрудников и контрагентов. Создание, согласование, архив.",
-    href: "/edo/statements",
-    icon: <ClipboardList className="h-8 w-8" />,
-    available: false,
-    badge: "Скоро",
-  },
-  {
-    title: "Служебные записки",
-    description: "Внутренняя переписка между подразделениями. Задачи, поручения, уведомления.",
-    href: "/edo/memos",
+    title: "Служебные записки (legacy)",
+    description: "Старый путь; переехал в «Мои документы».",
+    href: "/edo/my",
     icon: <StickyNote className="h-8 w-8" />,
-    available: false,
-    badge: "Скоро",
+    available: true,
+    badge: "→ Мои документы",
   },
   {
     title: "Шаблоны документов",

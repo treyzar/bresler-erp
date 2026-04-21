@@ -11,6 +11,7 @@ from apps.directory.models import (
     ContactEmployment,
     Country,
     DeliveryType,
+    Department,
     Equipment,
     Facility,
     OrgUnit,
@@ -223,6 +224,30 @@ class ContactEmploymentViewSet(viewsets.ReadOnlyModelViewSet):
         if contact_id:
             qs = qs.filter(contact_id=contact_id)
         return qs
+
+
+class DepartmentViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only справочник подразделений компании (Служба/Отдел/Сектор)."""
+
+    queryset = Department.objects.filter(is_active=True).select_related("company").all()
+    search_fields = ["name", "full_name"]
+
+    def get_serializer_class(self):
+        from rest_framework import serializers as drf
+
+        class _Serializer(drf.ModelSerializer):
+            class Meta:
+                model = Department
+                fields = ["id", "name", "full_name", "unit_type", "company", "is_active"]
+
+        return _Serializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company_id = self.request.query_params.get("company")
+        if company_id:
+            qs = qs.filter(company_id=company_id)
+        return qs.order_by("company__name", "name")
 
 
 class EquipmentViewSet(viewsets.ModelViewSet):
