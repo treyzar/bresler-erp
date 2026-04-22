@@ -1,7 +1,11 @@
 from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 
-ALL_MODULES = ["orders", "directory", "devices", "edo", "reports", "purchasing"]
+from .modules import all_module_slugs
+
+# Для обратной совместимости с data-миграциями, использующими ALL_MODULES.
+# НЕ использовать в новом коде — списком модулей теперь управляет apps/users/modules.py.
+ALL_MODULES = all_module_slugs()
 
 PREDEFINED_GROUPS = [
     {
