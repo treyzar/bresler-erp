@@ -72,14 +72,16 @@ TYPES_SPEC = [
             '{{ overtime_date|date:"d.m.Y" }} г. '
             'с {{ time_from|time:"H:i" }} до {{ time_to|time:"H:i" }} часов по списку:\n\n'
             "{% for emp in employees %}    {{ forloop.counter }}. "
-            "{{ emp.last_name }} {{ emp.first_name|slice:':1' }}. — "
-            "{{ emp.position }}\n{% endfor %}\n"
+            "{{ emp.last_name }} {{ emp.first_name|slice:':1' }}."
+            "{% if emp.patronymic %} {{ emp.patronymic|slice:':1' }}.{% endif %}"
+            "{% if emp.position %} — {{ emp.position }}{% endif %}\n"
+            "{% endfor %}\n"
             "Ответственным за организацию труда, контроль за осуществлением работ, "
             "дисциплиной труда и соблюдением ОТ в это время назначается:\n\n"
             "    {{ responsible.last_name }} "
-            "{{ responsible.first_name|slice:':1' }}. "
-            "{{ responsible.patronymic|slice:':1' }}., "
-            "{{ responsible.position }}.\n"
+            "{{ responsible.first_name|slice:':1' }}."
+            "{% if responsible.patronymic %} {{ responsible.patronymic|slice:':1' }}.{% endif %}"
+            "{% if responsible.position %}, {{ responsible.position }}{% endif %}.\n"
             "{% if reason %}\nОбоснование: {{ reason }}\n{% endif %}"
         ),
         "visibility": "department_visible",

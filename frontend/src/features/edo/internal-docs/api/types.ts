@@ -122,6 +122,7 @@ export interface DocumentDetail {
   author: UserLite
   addressee: UserLite | null
   field_values: Record<string, unknown>
+  field_values_display: Record<string, string>
   body_rendered: string
   header_snapshot: Record<string, string>
   chain_snapshot: ApprovalChainStep[]

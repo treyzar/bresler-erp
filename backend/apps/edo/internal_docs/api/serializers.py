@@ -119,13 +119,14 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
     steps = ApprovalStepSerializer(many=True, read_only=True)
     attachments = DocumentAttachmentSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    field_values_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
         fields = [
             "id", "number", "title",
             "type", "author", "addressee",
-            "field_values", "body_rendered",
+            "field_values", "field_values_display", "body_rendered",
             "header_snapshot", "chain_snapshot",
             "status", "status_display", "current_step",
             "steps", "attachments",
@@ -134,9 +135,121 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "number", "body_rendered", "header_snapshot",
             "chain_snapshot", "status", "current_step",
-            "steps", "attachments",
+            "steps", "attachments", "field_values_display",
             "created_at", "submitted_at", "closed_at",
         ]
+
+    def get_field_values_display(self, obj):
+        """Человекочитаемые значения полей для UI: коды → label, id → имена."""
+        return _format_field_values(obj.type.field_schema or [], obj.field_values or {})
+
+
+def _format_field_values(schema: list, values: dict) -> dict:
+    from datetime import date, datetime
+    from django.contrib.auth import get_user_model
+    from apps.directory.models import Department, OrgUnit
+    User = get_user_model()
+    out: dict[str, str] = {}
+
+    # Соберём id-шники для batch-запросов.
+    user_ids: set[int] = set()
+    user_multi_ids: set[int] = set()
+    dept_ids: set[int] = set()
+    orgunit_ids: set[int] = set()
+    for spec in schema:
+        if not isinstance(spec, dict):
+            continue
+        name = spec.get("name")
+        ftype = spec.get("type")
+        v = values.get(name)
+        if v in (None, "", []):
+            continue
+        if ftype == "user" and isinstance(v, int):
+            user_ids.add(v)
+        elif ftype == "user_multi" and isinstance(v, list):
+            user_multi_ids.update(int(x) for x in v if isinstance(x, (int, str)) and str(x).isdigit())
+        elif ftype == "department" and isinstance(v, int):
+            dept_ids.add(v)
+        elif ftype == "orgunit" and isinstance(v, int):
+            orgunit_ids.add(v)
+
+    users_by_pk = {
+        u.pk: u for u in User.objects.filter(pk__in=user_ids | user_multi_ids)
+    }
+    depts_by_pk = {d.pk: d for d in Department.objects.filter(pk__in=dept_ids)}
+    orgs_by_pk = {o.pk: o for o in OrgUnit.objects.filter(pk__in=orgunit_ids)}
+
+    def _user_label(u) -> str:
+        full = (u.get_full_name() or u.username).strip()
+        return f"{full} — {u.position}" if u.position else full
+
+    for spec in schema:
+        if not isinstance(spec, dict):
+            continue
+        name = spec.get("name")
+        ftype = spec.get("type")
+        v = values.get(name)
+
+        if v is None or v == "":
+            out[name] = ""
+            continue
+
+        if ftype == "choice":
+            label = v
+            for code, display in (spec.get("choices") or []):
+                if code == v:
+                    label = display
+                    break
+            out[name] = str(label)
+        elif ftype == "boolean":
+            out[name] = "Да" if v else "Нет"
+        elif ftype == "date":
+            try:
+                d = date.fromisoformat(str(v)[:10])
+                out[name] = d.strftime("%d.%m.%Y")
+            except ValueError:
+                out[name] = str(v)
+        elif ftype == "date_range" and isinstance(v, dict):
+            try:
+                f = date.fromisoformat(str(v.get("from", ""))[:10]) if v.get("from") else None
+                t = date.fromisoformat(str(v.get("to", ""))[:10]) if v.get("to") else None
+                out[name] = " – ".join([
+                    d.strftime("%d.%m.%Y") for d in (f, t) if d
+                ])
+            except ValueError:
+                out[name] = ""
+        elif ftype == "user":
+            try:
+                u = users_by_pk.get(int(v))
+                out[name] = _user_label(u) if u else ""
+            except (TypeError, ValueError):
+                out[name] = ""
+        elif ftype == "user_multi" and isinstance(v, list):
+            names = []
+            for x in v:
+                try:
+                    u = users_by_pk.get(int(x))
+                    if u:
+                        names.append((u.get_full_name() or u.username).strip())
+                except (TypeError, ValueError):
+                    continue
+            out[name] = ", ".join(names) if names else ""
+        elif ftype == "department":
+            try:
+                d = depts_by_pk.get(int(v))
+                out[name] = d.name if d else ""
+            except (TypeError, ValueError):
+                out[name] = ""
+        elif ftype == "orgunit":
+            try:
+                o = orgs_by_pk.get(int(v))
+                out[name] = o.name if o else ""
+            except (TypeError, ValueError):
+                out[name] = ""
+        else:
+            out[name] = str(v)
+
+    return out
 
 
 class DocumentCreateSerializer(serializers.ModelSerializer):

@@ -52,6 +52,8 @@ export function DocumentDetailPage() {
     queryKey: ["internal-doc", docId],
     queryFn: () => internalDocsApi.getDocument(docId),
     enabled: !!docId,
+    refetchInterval: 20_000,           // pull статус документа каждые 20с
+    refetchOnWindowFocus: true,         // и при возврате во вкладку
   })
 
   const invalidate = () => {
@@ -318,7 +320,7 @@ function StepRow({ step }: { step: ApprovalStep }) {
 
 function FieldsSummary({ doc }: { doc: DocumentDetail }) {
   const schema = doc.type.field_schema
-  const values = doc.field_values
+  const display = doc.field_values_display ?? {}
   if (!schema.length) return null
   return (
     <Card>
@@ -327,28 +329,18 @@ function FieldsSummary({ doc }: { doc: DocumentDetail }) {
       </CardHeader>
       <CardContent className="space-y-2">
         {schema.map((spec) => {
-          const raw = values[spec.name]
-          const display = formatFieldValue(spec.type, raw)
-          if (!display) return null
+          const value = display[spec.name]
+          if (!value) return null
           return (
             <div key={spec.name} className="grid grid-cols-[1fr_2fr] gap-3 text-sm">
               <span className="text-muted-foreground">{spec.label}</span>
-              <span className="break-words">{display}</span>
+              <span className="break-words whitespace-pre-line">{value}</span>
             </div>
           )
         })}
       </CardContent>
     </Card>
   )
-}
-
-function formatFieldValue(type: string, value: unknown): string {
-  if (value === null || value === undefined || value === "") return ""
-  if (Array.isArray(value)) return value.length ? `${value.length} эл.` : ""
-  if (typeof value === "boolean") return value ? "Да" : "Нет"
-  if (type === "date" && typeof value === "string")
-    return new Date(value).toLocaleDateString("ru-RU")
-  return String(value)
 }
 
 

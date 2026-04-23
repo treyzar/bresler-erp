@@ -55,14 +55,9 @@ class CommentCreateSerializer(serializers.Serializer):
     target_id = serializers.IntegerField()
 
     def validate_target_model(self, value):
-        """Resolve model name to ContentType."""
-        model_map = {
-            "order": ("orders", "order"),
-            "contract": ("orders", "contract"),
-            "orgunit": ("directory", "orgunit"),
-            "contact": ("directory", "contact"),
-            "letter": ("registry", "letter"),
-        }
+        """Resolve model name to ContentType (uses single MODEL_MAP from views)."""
+        from .views import CommentViewSet
+        model_map = CommentViewSet.MODEL_MAP
         key = value.lower()
         if key not in model_map:
             raise serializers.ValidationError(

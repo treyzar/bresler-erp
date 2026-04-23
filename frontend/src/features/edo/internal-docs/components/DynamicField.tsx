@@ -142,21 +142,24 @@ function FieldControl({ spec, value, onChange }: Omit<DynamicFieldProps, "error"
   }
 }
 
+async function fetchUsers(params: Record<string, unknown>): Promise<UserOption[]> {
+  const r = await api.get("/users/", { params: { page_size: 500, ...params } })
+  const raw = r.data?.results ?? r.data ?? []
+  return raw.map((u: any) => ({
+    id: u.id,
+    full_name: [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(" ") || u.username,
+    position: u.position ?? "",
+  }))
+}
+
 function UserField({
   value, onChange, filter,
 }: { value: number | null; onChange: (v: number | null) => void; filter?: Record<string, unknown> }) {
   const [options, setOptions] = useState<UserOption[]>([])
   useEffect(() => {
-    const params: Record<string, unknown> = { page_size: 200 }
+    const params: Record<string, unknown> = {}
     if (filter && filter.is_department_head) params.is_department_head = true
-    api.get("/users/", { params }).then((r) => {
-      const raw = r.data?.results ?? r.data ?? []
-      setOptions(raw.map((u: any) => ({
-        id: u.id,
-        full_name: [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(" ") || u.username,
-        position: u.position ?? "",
-      })))
-    })
+    fetchUsers(params).then(setOptions)
   }, [filter])
 
   return (
@@ -178,14 +181,7 @@ function UserMultiField({
 }: { value: number[]; onChange: (v: number[]) => void; filter?: Record<string, unknown> }) {
   const [options, setOptions] = useState<UserOption[]>([])
   useEffect(() => {
-    api.get("/users/", { params: { page_size: 200 } }).then((r) => {
-      const raw = r.data?.results ?? r.data ?? []
-      setOptions(raw.map((u: any) => ({
-        id: u.id,
-        full_name: [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(" ") || u.username,
-        position: u.position ?? "",
-      })))
-    })
+    fetchUsers({}).then(setOptions)
   }, [])
 
   return (
