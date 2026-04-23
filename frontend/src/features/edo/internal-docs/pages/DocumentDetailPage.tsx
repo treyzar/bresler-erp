@@ -1,22 +1,27 @@
-import { useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { Link, useParams, useNavigate } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ChevronLeft, CheckCircle, XCircle, RotateCcw, FileText,
   Clock, CheckCheck, AlertCircle, Loader2, Trash2, Send, Download,
+  Paperclip, Upload, UserPlus,
 } from "lucide-react"
 import { toast } from "sonner"
+import api from "@/api/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Timeline } from "@/components/shared/Timeline"
+import { SearchableSelect } from "@/components/shared/SearchableSelect"
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { internalDocsApi } from "../api/client"
-import type { ApprovalStep, DocumentDetail, DocumentStatus } from "../api/types"
+import type { ApprovalStep, DocumentAttachment, DocumentDetail, DocumentStatus } from "../api/types"
 
 const STATUS_VARIANT: Record<DocumentStatus, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "outline",
@@ -189,6 +194,8 @@ export function DocumentDetailPage() {
 
           <FieldsSummary doc={doc} />
 
+          <AttachmentsCard doc={doc} canUpload={isAuthor || canAct} onChanged={invalidate} />
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Комментарии и история</CardTitle>
@@ -253,6 +260,7 @@ export function DocumentDetailPage() {
                   >
                     <XCircle className="mr-2 h-4 w-4" />Отклонить
                   </Button>
+                  <DelegateButton docId={docId} onDelegated={invalidate} />
                 </div>
               </CardContent>
             </Card>
@@ -341,4 +349,176 @@ function formatFieldValue(type: string, value: unknown): string {
   if (type === "date" && typeof value === "string")
     return new Date(value).toLocaleDateString("ru-RU")
   return String(value)
+}
+
+
+function AttachmentsCard({
+  doc, canUpload, onChanged,
+}: { doc: DocumentDetail; canUpload: boolean; onChanged: () => void }) {
+  const fileInput = useRef<HTMLInputElement | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setUploading(true)
+    try {
+      await internalDocsApi.uploadAttachment(doc.id, f)
+      toast.success("Файл загружен")
+      onChanged()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail ?? "Ошибка загрузки")
+    } finally {
+      setUploading(false)
+      if (fileInput.current) fileInput.current.value = ""
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Paperclip className="h-4 w-4" />
+          Вложения ({doc.attachments.length})
+        </CardTitle>
+        {canUpload && (
+          <>
+            <input
+              ref={fileInput}
+              type="file"
+              className="hidden"
+              onChange={onFileChosen}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInput.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              Загрузить
+            </Button>
+          </>
+        )}
+      </CardHeader>
+      <CardContent>
+        {doc.attachments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Пока нет прикреплённых файлов.</p>
+        ) : (
+          <ul className="space-y-2">
+            {doc.attachments.map((a) => (
+              <AttachmentRow key={a.id} att={a} />
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+
+function AttachmentRow({ att }: { att: DocumentAttachment }) {
+  const sizeKb = Math.max(1, Math.round(att.file_size / 1024))
+  return (
+    <li className="flex items-center justify-between gap-3 text-sm border-b last:border-0 pb-2 last:pb-0">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="min-w-0 flex-1">
+          <a
+            href={att.file_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium hover:underline truncate block"
+          >
+            {att.file_name}
+          </a>
+          <div className="text-xs text-muted-foreground">
+            {sizeKb} Кб · {att.uploaded_by.full_name_short} · {new Date(att.uploaded_at).toLocaleDateString("ru-RU")}
+          </div>
+        </div>
+      </div>
+      <Button variant="ghost" size="icon" asChild>
+        <a href={att.file_url} download>
+          <Download className="h-4 w-4" />
+        </a>
+      </Button>
+    </li>
+  )
+}
+
+
+interface UserOption { id: number; name: string; position: string }
+
+function DelegateButton({
+  docId, onDelegated,
+}: { docId: number; onDelegated: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [toUserId, setToUserId] = useState<number | null>(null)
+  const [options, setOptions] = useState<UserOption[]>([])
+
+  useEffect(() => {
+    if (!open) return
+    api.get("/users/", { params: { page_size: 200 } }).then((r) => {
+      const raw = r.data?.results ?? r.data ?? []
+      setOptions(raw.map((u: any) => ({
+        id: u.id,
+        name: [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(" ") || u.username,
+        position: u.position ?? "",
+      })))
+    })
+  }, [open])
+
+  const delegate = useMutation({
+    mutationFn: (to: number) => internalDocsApi.delegateDocument(docId, to),
+    onSuccess: () => {
+      toast.success("Шаг делегирован")
+      setOpen(false)
+      setToUserId(null)
+      onDelegated()
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+  })
+
+  return (
+    <>
+      <Button variant="ghost" onClick={() => setOpen(true)}>
+        <UserPlus className="mr-2 h-4 w-4" />Делегировать
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Делегировать шаг согласования</DialogTitle>
+            <DialogDescription>
+              Выберите сотрудника, которому передаёте текущий шаг. После делегирования
+              решение по шагу сможет принять только выбранный сотрудник.
+            </DialogDescription>
+          </DialogHeader>
+          <SearchableSelect
+            options={options.map((u) => ({
+              value: String(u.id),
+              label: u.position ? `${u.name} — ${u.position}` : u.name,
+            }))}
+            value={toUserId ? String(toUserId) : ""}
+            onChange={(v) => setToUserId(v ? Number(v) : null)}
+            placeholder="Выберите сотрудника..."
+            searchPlaceholder="Поиск..."
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
+            <Button
+              onClick={() => toUserId && delegate.mutate(toUserId)}
+              disabled={!toUserId || delegate.isPending}
+            >
+              {delegate.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Делегировать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
 }
