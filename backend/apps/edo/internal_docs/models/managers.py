@@ -32,6 +32,16 @@ class DocumentQuerySet(models.QuerySet):
         # Базовые условия: автор или участник цепочки.
         conditions = Q(author=user) | Q(steps__approver=user) | Q(steps__original_approver=user)
 
+        # Если в шаге role_key=group:<NAME>[@company] и user в этой группе —
+        # видит документ как участник коллективного шага. Архив + текущий.
+        for g_name in user.groups.values_list("name", flat=True):
+            conditions |= Q(steps__role_key=f"group:{g_name}")
+            if user.company_unit_id:
+                conditions |= Q(
+                    steps__role_key=f"group:{g_name}@company",
+                    author_company_unit=user.company_unit_id,
+                )
+
         # Руководитель видит документы своего department_unit и потомков.
         if user.is_department_head and user.department_unit_id:
             dept_ids = _descendant_department_ids(user.department_unit)
@@ -72,10 +82,48 @@ class DocumentQuerySet(models.QuerySet):
         return qs
 
     def inbox_for(self, user) -> "DocumentQuerySet":
-        """Документы, ожидающие решения от `user` (active step, approve/sign)."""
+        """Документы, ожидающие решения от `user`.
+
+        Включает:
+        - где user — current_step.approver (стандартный персональный inbox);
+        - где current_step.role_key вида `group:NAME[@company]` и user в этой
+          группе (опционально с проверкой company_unit). Это даёт «общий
+          inbox для функциональной группы»: бухгалтер видит все документы,
+          адресованные бухгалтерии, а не только тот, что попал к коллеге.
+        """
+        from django.db.models import Q
+
+        user_groups = set(user.groups.values_list("name", flat=True))
+        # Все role_key, для которых user в нужной группе.
+        # Поскольку role_key хранится строкой, фильтруем на стороне Python:
+        # группы — небольшое множество, current step один.
+        group_role_patterns: list[str] = []
+        for g in user_groups:
+            group_role_patterns.append(f"group:{g}")
+            group_role_patterns.append(f"group:{g}@company")
+
+        if not group_role_patterns:
+            # Нет групп → только персональный inbox.
+            return self.filter(
+                current_step__approver=user, status="pending",
+            ).distinct()
+
+        # group:NAME без @company — без скоупа компании.
+        # group:NAME@company — фильтруем по author_company_unit = user.company_unit.
+        group_q = Q()
+        for p in group_role_patterns:
+            if p.endswith("@company"):
+                if not user.company_unit_id:
+                    continue
+                group_q |= Q(
+                    current_step__role_key=p,
+                    author_company_unit=user.company_unit_id,
+                )
+            else:
+                group_q |= Q(current_step__role_key=p)
+
         return self.filter(
-            current_step__approver=user,
-            status="pending",
+            Q(status="pending") & (Q(current_step__approver=user) | group_q)
         ).distinct()
 
     def drafts_of(self, user) -> "DocumentQuerySet":

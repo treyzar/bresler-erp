@@ -69,6 +69,7 @@ class DocumentType(models.Model):
 
     class InitiatorResolver(models.TextChoices):
         AUTHOR = "author", "Любой сотрудник"
+        DEPARTMENT_HEAD = "department_head", "Только руководитель подразделения"
         GROUP_ACCOUNTING = "group:accounting", "Бухгалтерия"
         GROUP_HR = "group:hr", "HR / Отдел кадров"
         GROUP_ADMIN = "group:admin", "Администраторы"

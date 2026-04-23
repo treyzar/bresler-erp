@@ -46,9 +46,25 @@ def create_draft(
     title: str | None = None,
     addressee=None,
 ) -> Document:
-    """Создаёт Document в статусе draft. Права инициатора уже должны быть проверены."""
+    """Создаёт Document в статусе draft. Проверяет инициатора по DocumentType.initiator_resolver."""
     if not doc_type.is_active:
         raise DocumentServiceError(f"Type {doc_type.code!r} is not active")
+
+    # Проверка прав на инициирование данного типа.
+    is_admin = author.groups.filter(name="admin").exists()
+    if not is_admin:
+        ir = doc_type.initiator_resolver
+        if ir == DocumentType.InitiatorResolver.DEPARTMENT_HEAD:
+            if not author.is_department_head:
+                raise PermissionDenied(
+                    f"Тип {doc_type.code!r} может создавать только руководитель подразделения"
+                )
+        elif ir.startswith("group:"):
+            group_name = ir.split(":", 1)[1]
+            if not author.groups.filter(name=group_name).exists():
+                raise PermissionDenied(
+                    f"Тип {doc_type.code!r} может создавать только член группы {group_name!r}"
+                )
 
     doc = Document.objects.create(
         type=doc_type,
@@ -221,18 +237,44 @@ def submit(document: Document, user) -> Document:
 
 
 def _get_current_active_step(document: Document, user) -> ApprovalStep:
-    """Возвращает шаг, которого ждёт user'а. Бросает, если юзер не согласующий."""
-    step = (
-        document.steps
-        .filter(approver=user, status=ApprovalStep.Status.PENDING)
-        .order_by("order")
-        .first()
+    """Возвращает шаг, которого ждёт user'а или группа, в которой состоит user.
+
+    Поддерживает два режима:
+    - персональный: step.approver == user
+    - групповой: step.role_key == 'group:NAME[@company]' и user в группе NAME
+
+    При групповом resolution-е переназначаем step.approver = user (silent
+    pickup), чтобы в истории зафиксировалось, кто конкретно принял решение.
+    """
+    pending = document.steps.filter(status=ApprovalStep.Status.PENDING).order_by("order")
+
+    # Персональный inbox.
+    step = pending.filter(approver=user).first()
+    if step is not None:
+        return step
+
+    # Групповой inbox: проверяем все pending шаги.
+    user_groups = set(user.groups.values_list("name", flat=True))
+    for s in pending:
+        rk = s.role_key or ""
+        if not rk.startswith("group:"):
+            continue
+        group_name, _, scope = rk[len("group:"):].partition("@")
+        if group_name not in user_groups:
+            continue
+        if scope == "company":
+            if not user.company_unit_id or document.author_company_unit_id != user.company_unit_id:
+                continue
+        # Silent pickup: фиксируем фактического исполнителя.
+        if s.approver_id != user.pk:
+            s.original_approver = s.original_approver or s.approver
+            s.approver = user
+            s.save(update_fields=["approver", "original_approver", "updated_at"])
+        return s
+
+    raise PermissionDenied(
+        f"У пользователя {user.pk} нет активных шагов согласования этого документа"
     )
-    if step is None:
-        raise PermissionDenied(
-            f"У пользователя {user.pk} нет активных шагов согласования этого документа"
-        )
-    return step
 
 
 def _advance_to_next_step(document: Document) -> None:

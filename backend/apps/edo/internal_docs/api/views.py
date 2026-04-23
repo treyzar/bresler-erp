@@ -36,15 +36,21 @@ class DocumentTypeViewSet(viewsets.ReadOnlyModelViewSet):
         ).order_by("category", "name")
 
         user = self.request.user
-        # initiator_resolver: author доступны всем, group:* — только членам группы.
+        is_admin = user.groups.filter(name="admin").exists()
         allowed_codes = []
         for dt in qs:
-            if dt.initiator_resolver == DocumentType.InitiatorResolver.AUTHOR:
+            ir = dt.initiator_resolver
+            if is_admin:
                 allowed_codes.append(dt.code)
                 continue
-            if dt.initiator_resolver.startswith("group:"):
-                group_name = dt.initiator_resolver.split(":", 1)[1]
-                if user.groups.filter(name=group_name).exists() or user.groups.filter(name="admin").exists():
+            if ir == DocumentType.InitiatorResolver.AUTHOR:
+                allowed_codes.append(dt.code)
+            elif ir == DocumentType.InitiatorResolver.DEPARTMENT_HEAD:
+                if user.is_department_head:
+                    allowed_codes.append(dt.code)
+            elif ir.startswith("group:"):
+                group_name = ir.split(":", 1)[1]
+                if user.groups.filter(name=group_name).exists():
                     allowed_codes.append(dt.code)
         return qs.filter(code__in=allowed_codes)
 

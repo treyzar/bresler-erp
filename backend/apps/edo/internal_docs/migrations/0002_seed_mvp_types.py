@@ -86,7 +86,7 @@ TYPES_SPEC = [
         ),
         "visibility": "department_visible",
         "addressee_mode": "none",
-        "initiator_resolver": "author",
+        "initiator_resolver": "department_head",
         "requires_drawn_signature": False,
         "prefix": "СЗ-ПЕР",
         "chain_name": "Служебка на переработку: руководитель → рук. подразделения → бухгалтерия",
@@ -96,7 +96,7 @@ TYPES_SPEC = [
             {"order": 2, "role_key": "dept_head:parent",
              "label": "Руководитель подразделения", "action": "approve", "sla_hours": 24},
             {"order": 3, "role_key": "group:accounting@company",
-             "label": "Бухгалтерия", "action": "inform", "sla_hours": None},
+             "label": "Бухгалтерия", "action": "approve", "sla_hours": 72},
         ],
     },
     {

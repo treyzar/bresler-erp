@@ -27,6 +27,7 @@ import RenderTemplate from "@/features/edo/pages/RenderTemplate"
 import { LetterRegistryPage } from "@/features/edo/pages/LetterRegistryPage"
 import { LetterDetailPage } from "@/features/edo/pages/LetterDetailPage"
 import { MyDocumentsPage } from "@/features/edo/internal-docs/pages/MyDocumentsPage"
+import { DocumentListPage } from "@/features/edo/internal-docs/pages/DocumentListPage"
 import { CatalogPage as InternalDocsCatalog } from "@/features/edo/internal-docs/pages/CatalogPage"
 import { CreateDocumentPage } from "@/features/edo/internal-docs/pages/CreateDocumentPage"
 import { DocumentDetailPage as InternalDocDetail } from "@/features/edo/internal-docs/pages/DocumentDetailPage"
@@ -109,6 +110,10 @@ function App() {
               <Route path="/edo">
                 <Route index element={<EdoHomePage />} />
                 <Route path="my" element={<MyDocumentsPage />} />
+                <Route path="inbox" element={<DocumentListPage tab="inbox" />} />
+                <Route path="outbox" element={<DocumentListPage tab="outbox" />} />
+                <Route path="drafts" element={<DocumentListPage tab="drafts" />} />
+                <Route path="archive" element={<DocumentListPage tab="archive" />} />
                 <Route path="new" element={<InternalDocsCatalog />} />
                 <Route path="new/:code" element={<CreateDocumentPage />} />
                 <Route path="documents/:id" element={<InternalDocDetail />} />

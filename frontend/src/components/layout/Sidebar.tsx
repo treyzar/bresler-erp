@@ -53,6 +53,11 @@ const navItems: NavItemWithModule[] = [
     label: "ЭДО",
     module: "edo",
     subItems: [
+      { to: "/edo/inbox", label: "Входящие на согласование" },
+      { to: "/edo/outbox", label: "Мои отправленные" },
+      { to: "/edo/drafts", label: "Черновики" },
+      { to: "/edo/archive", label: "Архив" },
+      { to: "/edo/new", label: "Создать документ" },
       { to: "/edo/registry", label: "Реестр писем" },
       { to: "/edo/templates", label: "Шаблоны" },
       { to: "/edo/builder", label: "Конструктор" },
