@@ -1,18 +1,18 @@
-"""Сматчить пользователей БД с Excel-файлом и проставить department_unit/company_unit.
+"""Импорт пользователей из Excel-файла + сматчивание/проставление FK.
 
-Логика:
-1. Читаем Excel: колонки [Сотрудник, Подразделение, E-Mail].
-2. Для каждого активного User в БД по email находим строку в Excel.
-3. Чистим текст подразделения:
-   - Убираем числовой префикс «11. », «66. ».
-   - Если несколько подразделений через запятую — берём первое.
-   - Если значение «Бреслер» — сотрудник сидит на уровне компании (department=NULL).
-4. Находим или создаём Department с этим именем под нужным OrgUnit
-   (по умолчанию — единственный internal company; если их несколько,
-   передаётся через --company-id).
-5. Проставляем User.company_unit + User.department_unit.
+Что делает (за один проход):
+1. Читает Excel: [Сотрудник, Подразделение, E-Mail].
+2. Чистит текст подразделения: убирает «11. » префикс, берёт первый сегмент
+   при «X, Y», «Бреслер» = уровень компании (department=NULL).
+3. Для каждой строки Excel:
+   - Ищет User по email. Найден → проставляет company_unit + department_unit.
+   - Не найден И флаг --create-missing → создаёт нового User
+     (username=email, password=DEFAULT_PASSWORD, ФИО распарсивается из
+     «Сотрудник», is_active=True, group'ы не назначаются).
+4. Создаёт недостающие Department как корневые узлы под выбранной компанией —
+   потом админ перетаскивает их в дереве куда нужно.
 
-Тестовые / системные пользователи (по списку SKIP_USERNAMES) пропускаются.
+Тест-аккаунты (SKIP_USERNAMES / SKIP_FULL_NAMES) пропускаются.
 """
 
 from __future__ import annotations
@@ -20,11 +20,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.directory.models import Department, OrgUnit
 from apps.users.models import User
+
+DEFAULT_PASSWORD = "qwerty123"
 
 
 SKIP_USERNAMES = {"panin_test_user"}
@@ -67,6 +70,17 @@ def _read_xlsx(path: Path) -> dict[str, dict]:
     return by_email
 
 
+def _split_full_name(full_name: str) -> tuple[str, str, str]:
+    """«Панин Андрей Андреевич» → (last, first, patronymic).
+    Если меньше 3 токенов — недостающие будут пустыми.
+    """
+    parts = (full_name or "").split()
+    last = parts[0] if len(parts) >= 1 else ""
+    first = parts[1] if len(parts) >= 2 else ""
+    patronymic = " ".join(parts[2:]) if len(parts) >= 3 else ""
+    return last, first, patronymic
+
+
 class Command(BaseCommand):
     help = "Сматчить активных User по email с Excel-файлом и проставить FK на Department."
 
@@ -78,6 +92,9 @@ class Command(BaseCommand):
                             help="Только показать, что бы изменилось")
         parser.add_argument("--force", action="store_true",
                             help="Перезаписать уже проставленные FK")
+        parser.add_argument("--create-missing", action="store_true",
+                            help=("Создавать новых User для строк Excel, которых нет в БД "
+                                  f"(username=email, password={DEFAULT_PASSWORD!r}, is_active=True)"))
 
     def handle(self, *args, **options):
         path = Path(options["xlsx"])
@@ -113,87 +130,112 @@ class Command(BaseCommand):
 
         prefix = "[DRY-RUN] " if options["dry_run"] else ""
         force = options["force"]
+        create_missing = options["create_missing"]
+        dry_run = options["dry_run"]
 
-        users = User.objects.filter(is_active=True).exclude(email="")
-        if not force:
-            users = users.filter(department_unit__isnull=True, company_unit__isnull=True)
+        # Email-set уже существующих в БД пользователей.
+        db_emails: dict[str, User] = {
+            u.email.lower(): u
+            for u in User.objects.exclude(email="")
+        }
 
         matched_company_only = 0
         matched_full = 0
+        created_users = 0
         skipped = 0
-        not_in_excel = 0
         created_depts: list[str] = []
 
-        for user in users.order_by("last_name", "first_name"):
-            if user.username in SKIP_USERNAMES:
-                skipped += 1
-                continue
-            if (user.get_full_name() or "").lower() in SKIP_FULL_NAMES:
-                skipped += 1
-                continue
-
-            xls = excel.get(user.email.lower())
-            if not xls:
-                not_in_excel += 1
-                self.stdout.write(self.style.WARNING(
-                    f"  ! не найден в Excel: {user.email} ({user.get_full_name()})"
-                ))
-                continue
-
-            dept_clean = _clean_dept(xls["dept_raw"])
-            company_level = dept_clean.lower() in COMPANY_LEVEL_VALUES
-
-            if not dept_clean or company_level:
-                self.stdout.write(
-                    f"  · {prefix}{user.email} → company={company.name!r} (на уровне компании)"
-                )
-                if not options["dry_run"]:
-                    user.company_unit = company
-                    user.department_unit = None
-                    user.save(update_fields=["company_unit", "department_unit"])
-                matched_company_only += 1
-                continue
-
+        def _resolve_dept(dept_raw: str):
+            """(department_obj_or_None, is_company_level)."""
+            dept_clean = _clean_dept(dept_raw)
+            if not dept_clean or dept_clean.lower() in COMPANY_LEVEL_VALUES:
+                return None, True
             dept = dept_cache.get(dept_clean.lower())
             if dept is None:
-                # Создаём как корневой узел дерева Department с unit_type="department"
-                # (тип потом поправят руками в админке, если хочется service/sector).
-                if options["dry_run"]:
-                    self.stdout.write(
-                        f"  + [DRY-RUN] СОЗДАТЬ Department {dept_clean!r}"
-                    )
+                if dry_run:
+                    created_depts.append(dept_clean)
                 else:
                     dept = Department.add_root(
                         name=dept_clean, unit_type="department", company=company,
                     )
                     dept_cache[dept_clean.lower()] = dept
-                created_depts.append(dept_clean)
+                    created_depts.append(dept_clean)
+            return dept, False
 
-            self.stdout.write(
-                f"  · {prefix}{user.email} → dept={dept_clean!r}"
-            )
-            if not options["dry_run"]:
+        def _apply_to_user(user: User, dept, company_level: bool):
+            if not dry_run:
                 user.company_unit = company
-                user.department_unit = dept
+                user.department_unit = None if company_level else dept
                 user.save(update_fields=["company_unit", "department_unit"])
-            matched_full += 1
+
+        # Идём по Excel — он источник истины.
+        for email, info in excel.items():
+            full_name = info["full_name"]
+            if full_name.lower() in SKIP_FULL_NAMES:
+                skipped += 1
+                continue
+
+            user = db_emails.get(email)
+            dept_raw = info["dept_raw"]
+
+            if user is not None:
+                if user.username in SKIP_USERNAMES:
+                    skipped += 1
+                    continue
+                # Уже есть в БД — обновляем FK.
+                if not force and (user.company_unit_id or user.department_unit_id):
+                    continue
+                dept, company_level = _resolve_dept(dept_raw)
+                _apply_to_user(user, dept, company_level)
+                if company_level:
+                    matched_company_only += 1
+                else:
+                    matched_full += 1
+                continue
+
+            # Не в БД — создаём, если разрешено.
+            if not create_missing:
+                continue
+
+            last, first, patronymic = _split_full_name(full_name)
+            dept, company_level = _resolve_dept(dept_raw)
+            self.stdout.write(
+                f"  + {prefix}NEW user {email!r} ({full_name}) "
+                f"→ {'company-level' if company_level else f'dept={dept.name!r}' if dept else 'dept=?'}"
+            )
+            if not dry_run:
+                u = User(
+                    username=email,
+                    email=email,
+                    last_name=last,
+                    first_name=first,
+                    patronymic=patronymic,
+                    is_active=True,
+                    password=make_password(DEFAULT_PASSWORD),
+                    company_unit=company,
+                    department_unit=None if company_level else dept,
+                )
+                u.save()
+            created_users += 1
 
         self.stdout.write("")
         self.stdout.write("=" * 70)
         self.stdout.write(self.style.SUCCESS(
-            f"{prefix}Сматчено полностью (с подразделением): {matched_full}"
+            f"{prefix}Сматчено существующих с подразделением: {matched_full}"
         ))
         self.stdout.write(self.style.SUCCESS(
-            f"{prefix}Сматчено только до компании: {matched_company_only}"
+            f"{prefix}Сматчено существующих на уровне компании: {matched_company_only}"
         ))
+        if create_missing:
+            self.stdout.write(self.style.SUCCESS(
+                f"{prefix}Создано новых User'ов: {created_users}"
+            ))
         if created_depts:
             self.stdout.write(self.style.SUCCESS(
-                f"{prefix}Новых Department создано бы: {len(set(created_depts))}"
+                f"{prefix}Новых Department: {len(set(created_depts))}"
             ))
             for d in sorted(set(created_depts)):
                 self.stdout.write(f"    - {d}")
         if skipped:
             self.stdout.write(f"Пропущено (тест-аккаунты): {skipped}")
-        if not_in_excel:
-            self.stdout.write(self.style.WARNING(f"Не найдено в Excel: {not_in_excel}"))
         self.stdout.write("=" * 70)
