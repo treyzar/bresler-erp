@@ -290,6 +290,13 @@ function StepRow({ step }: { step: ApprovalStep }) {
     step.status === "revision_requested" ? "text-amber-600" :
     step.status === "pending" ? "text-primary" :
     "text-muted-foreground"
+
+  // Для коллективного шага (role_key=group:NAME[@company]) показываем
+  // «Любой сотрудник группы», пока кто-то реально не принял решение —
+  // pre-resolved approver вводит в заблуждение.
+  const isGroupStep = (step.role_key || "").startsWith("group:")
+  const showResolvedUser = !isGroupStep || step.status !== "pending"
+
   return (
     <div className="flex items-start gap-3">
       <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${color}`} />
@@ -299,7 +306,7 @@ function StepRow({ step }: { step: ApprovalStep }) {
           <Badge variant="outline" className="text-xs">{step.action_display}</Badge>
         </div>
         <div className="flex items-center gap-2 mt-1">
-          {step.approver && (
+          {showResolvedUser && step.approver && (
             <>
               <Avatar className="h-5 w-5">
                 <AvatarFallback className="text-[10px]">
@@ -310,6 +317,11 @@ function StepRow({ step }: { step: ApprovalStep }) {
                 {step.approver.full_name_short}
               </span>
             </>
+          )}
+          {!showResolvedUser && (
+            <span className="text-xs text-muted-foreground italic">
+              Любой сотрудник группы
+            </span>
           )}
           {step.decided_at && (
             <span className="text-xs text-muted-foreground">

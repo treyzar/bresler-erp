@@ -106,9 +106,15 @@ class DocumentListSerializer(serializers.ModelSerializer):
         return obj.current_step.role_label if obj.current_step else None
 
     def get_current_step_approver(self, obj):
-        if not obj.current_step or not obj.current_step.approver_id:
+        step = obj.current_step
+        if not step or not step.approver_id:
             return None
-        return UserLiteSerializer(obj.current_step.approver).data
+        # Для коллективных шагов (role_key=group:NAME) pre-resolved approver
+        # — это просто первый сотрудник из группы по алфавиту. Показывать его
+        # в списке вводит в заблуждение, поэтому скрываем до момента решения.
+        if (step.role_key or "").startswith("group:") and step.status == "pending":
+            return None
+        return UserLiteSerializer(step.approver).data
 
 
 class DocumentDetailSerializer(serializers.ModelSerializer):
