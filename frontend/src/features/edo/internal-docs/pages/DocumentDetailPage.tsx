@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ChevronLeft, CheckCircle, XCircle, RotateCcw, FileText,
   Clock, CheckCheck, AlertCircle, Loader2, Trash2, Send, Download,
-  Paperclip, Upload, UserPlus,
+  Paperclip, Upload, UserPlus, Pencil, Save, X,
 } from "lucide-react"
 import { toast } from "sonner"
 import api from "@/api/client"
@@ -20,8 +20,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { useAuthStore } from "@/stores/useAuthStore"
+import { DynamicField } from "../components/DynamicField"
 import { internalDocsApi } from "../api/client"
-import type { ApprovalStep, DocumentAttachment, DocumentDetail, DocumentStatus } from "../api/types"
+import type { ApprovalStep, DocumentAttachment, DocumentDetail, DocumentStatus, FieldSpec } from "../api/types"
 
 const STATUS_VARIANT: Record<DocumentStatus, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "outline",
@@ -111,6 +112,7 @@ export function DocumentDetailPage() {
   }
 
   const isAuthor = user?.id === doc.author.id
+  const canEdit = isAuthor && ["draft", "revision_requested"].includes(doc.status)
   const activeStep = doc.steps.find((s) => s.id === doc.current_step)
   const canAct = activeStep?.approver?.id === user?.id && doc.status === "pending"
   const canCancel = isAuthor && ["draft", "pending", "revision_requested"].includes(doc.status)
@@ -201,7 +203,7 @@ export function DocumentDetailPage() {
             </CardContent>
           </Card>
 
-          <FieldsSummary doc={doc} />
+          <FieldsSummary doc={doc} canEdit={canEdit} onSaved={invalidate} />
 
           <AttachmentsCard doc={doc} canUpload={isAuthor || canAct} onChanged={invalidate} />
 
@@ -325,26 +327,103 @@ function StepRow({ step }: { step: ApprovalStep }) {
   )
 }
 
-function FieldsSummary({ doc }: { doc: DocumentDetail }) {
-  const schema = doc.type.field_schema
+function FieldsSummary({
+  doc, canEdit, onSaved,
+}: { doc: DocumentDetail; canEdit: boolean; onSaved: () => void }) {
+  const schema: FieldSpec[] = doc.type.field_schema ?? []
   const display = doc.field_values_display ?? {}
+  const [isEditing, setIsEditing] = useState(false)
+  const [values, setValues] = useState<Record<string, unknown>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const startEdit = () => {
+    setValues({ ...(doc.field_values ?? {}) })
+    setErrors({})
+    setIsEditing(true)
+  }
+
+  const save = useMutation({
+    mutationFn: () => internalDocsApi.updateDocument(doc.id, { field_values: values }),
+    onSuccess: () => {
+      toast.success("Изменения сохранены")
+      setIsEditing(false)
+      onSaved()
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка сохранения"),
+  })
+
+  const handleSave = () => {
+    const next: Record<string, string> = {}
+    for (const spec of schema) {
+      if (spec.required) {
+        const v = values[spec.name]
+        const empty = v === undefined || v === null || v === "" ||
+          (Array.isArray(v) && v.length === 0)
+        if (empty) next[spec.name] = "Обязательное поле"
+      }
+    }
+    setErrors(next)
+    if (Object.keys(next).length) {
+      toast.error("Заполните обязательные поля")
+      return
+    }
+    save.mutate()
+  }
+
   if (!schema.length) return null
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Поля документа</CardTitle>
+      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+        <div>
+          <CardTitle className="text-base">Поля документа</CardTitle>
+          {doc.status === "revision_requested" && canEdit && !isEditing && (
+            <p className="text-sm text-amber-600 mt-1">
+              Запрошены правки — внесите изменения и отправьте документ повторно.
+            </p>
+          )}
+        </div>
+        {canEdit && !isEditing && (
+          <Button variant="outline" size="sm" onClick={startEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Внести правки
+          </Button>
+        )}
+        {isEditing && (
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={save.isPending}>
+              <X className="mr-2 h-4 w-4" />Отмена
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={save.isPending}>
+              {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Сохранить
+            </Button>
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="space-y-2">
-        {schema.map((spec) => {
-          const value = display[spec.name]
-          if (!value) return null
-          return (
-            <div key={spec.name} className="grid grid-cols-[1fr_2fr] gap-3 text-sm">
-              <span className="text-muted-foreground">{spec.label}</span>
-              <span className="break-words whitespace-pre-line">{value}</span>
-            </div>
-          )
-        })}
+      <CardContent className="space-y-3">
+        {isEditing ? (
+          schema.map((spec) => (
+            <DynamicField
+              key={spec.name}
+              spec={spec}
+              value={values[spec.name]}
+              onChange={(v) => setValues((prev) => ({ ...prev, [spec.name]: v }))}
+              error={errors[spec.name]}
+            />
+          ))
+        ) : (
+          schema.map((spec) => {
+            const value = display[spec.name]
+            if (!value) return null
+            return (
+              <div key={spec.name} className="grid grid-cols-[1fr_2fr] gap-3 text-sm">
+                <span className="text-muted-foreground">{spec.label}</span>
+                <span className="break-words whitespace-pre-line">{value}</span>
+              </div>
+            )
+          })
+        )}
       </CardContent>
     </Card>
   )
