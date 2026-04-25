@@ -3,7 +3,6 @@ import {
   Mail,
   FileText,
   ClipboardList,
-  StickyNote,
   Wrench,
   Scan,
 } from "lucide-react"
@@ -32,14 +31,6 @@ const sections: EdoSection[] = [
     href: "/edo/registry",
     icon: <Mail className="h-8 w-8" />,
     available: true,
-  },
-  {
-    title: "Служебные записки (legacy)",
-    description: "Старый путь; переехал в «Мои документы».",
-    href: "/edo/my",
-    icon: <StickyNote className="h-8 w-8" />,
-    available: true,
-    badge: "→ Мои документы",
   },
   {
     title: "Шаблоны документов",

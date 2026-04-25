@@ -48,12 +48,19 @@ export function DocumentDetailPage() {
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
 
+  const accessToken = useAuthStore((s) => s.accessToken)
   const { data: doc, isLoading, isError } = useQuery({
     queryKey: ["internal-doc", docId],
     queryFn: () => internalDocsApi.getDocument(docId),
-    enabled: !!docId,
-    refetchInterval: 20_000,           // pull статус документа каждые 20с
-    refetchOnWindowFocus: true,         // и при возврате во вкладку
+    enabled: !!docId && !!accessToken,
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
+    // Не зацикливаем 401/403/404 — это не транзиентные ошибки, ретрай только усугубит.
+    retry: (failureCount, error: any) => {
+      const status = error?.response?.status
+      if (status === 401 || status === 403 || status === 404) return false
+      return failureCount < 2
+    },
   })
 
   const invalidate = () => {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Link } from "react-router"
+import { useState } from "react"
+import { Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Plus, FileText, Inbox, Send, FileClock, Archive } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -131,27 +131,29 @@ function DocumentsList({ tab }: { tab: Tab }) {
 }
 
 function DocumentRow({ doc, tab }: { doc: DocumentListItem; tab: Tab }) {
+  const navigate = useNavigate()
   const lastDate = doc.closed_at ?? doc.submitted_at ?? doc.created_at
   return (
-    <TableRow className="cursor-pointer hover:bg-muted/50" asChild>
-      <Link to={`/edo/documents/${doc.id}`} className="contents">
-        <TableCell className="font-mono text-xs">
-          {doc.number || <span className="text-muted-foreground">—</span>}
-        </TableCell>
-        <TableCell className="text-sm">{doc.type_name}</TableCell>
-        <TableCell className="max-w-md truncate">{doc.title}</TableCell>
-        <TableCell>
-          <Badge variant={STATUS_VARIANT[doc.status]}>{doc.status_display}</Badge>
-        </TableCell>
-        <TableCell className="text-sm text-muted-foreground">
-          {tab === "inbox"
-            ? doc.author.full_name_short
-            : doc.current_step_label || "—"}
-        </TableCell>
-        <TableCell className="text-sm text-muted-foreground">
-          {new Date(lastDate).toLocaleDateString("ru-RU")}
-        </TableCell>
-      </Link>
+    <TableRow
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => navigate(`/edo/documents/${doc.id}`)}
+    >
+      <TableCell className="font-mono text-xs">
+        {doc.number || <span className="text-muted-foreground">—</span>}
+      </TableCell>
+      <TableCell className="text-sm">{doc.type_name}</TableCell>
+      <TableCell className="max-w-md truncate">{doc.title}</TableCell>
+      <TableCell>
+        <Badge variant={STATUS_VARIANT[doc.status]}>{doc.status_display}</Badge>
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">
+        {tab === "inbox"
+          ? doc.author.full_name_short
+          : doc.current_step_label || "—"}
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">
+        {new Date(lastDate).toLocaleDateString("ru-RU")}
+      </TableCell>
     </TableRow>
   )
 }

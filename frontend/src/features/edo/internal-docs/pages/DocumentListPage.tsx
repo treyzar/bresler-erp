@@ -1,4 +1,4 @@
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Plus, FileText, Inbox, Send, FileClock, Archive } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -6,8 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useAuthStore } from "@/stores/useAuthStore"
 import { internalDocsApi } from "../api/client"
 import type { DocumentListItem, DocumentStatus, ListParams } from "../api/types"
+
+const NO_RETRY_ON_AUTH = (failureCount: number, error: any) => {
+  const status = error?.response?.status
+  if (status === 401 || status === 403 || status === 404) return false
+  return failureCount < 2
+}
 
 type Tab = NonNullable<ListParams["tab"]>
 
@@ -63,10 +70,13 @@ export function DocumentListPage({ tab }: { tab: Tab }) {
   const meta = PAGES[tab]
   const Icon = meta.icon
 
+  const accessToken = useAuthStore((s) => s.accessToken)
   const { data: inboxCount } = useQuery({
     queryKey: ["internal-docs", "inbox-count"],
     queryFn: () => internalDocsApi.inboxCount(),
     refetchInterval: 60_000,
+    enabled: !!accessToken,
+    retry: NO_RETRY_ON_AUTH,
   })
 
   return (
@@ -102,10 +112,13 @@ export function DocumentListPage({ tab }: { tab: Tab }) {
 }
 
 function DocumentsList({ tab, meta }: { tab: Tab; meta: PageMeta }) {
+  const accessToken = useAuthStore((s) => s.accessToken)
   const { data, isLoading, isError } = useQuery({
     queryKey: ["internal-docs", "list", tab],
     queryFn: () => internalDocsApi.listDocuments({ tab, page_size: 50 }),
     refetchInterval: 30_000,
+    enabled: !!accessToken,
+    retry: NO_RETRY_ON_AUTH,
   })
 
   if (isLoading) return <DocumentsListSkeleton />
@@ -154,27 +167,30 @@ function DocumentRow({ doc, primary }: {
   doc: DocumentListItem
   primary: "author" | "current" | "closed"
 }) {
+  const navigate = useNavigate()
   const lastDate = doc.closed_at ?? doc.submitted_at ?? doc.created_at
   const primaryCell =
     primary === "author" ? doc.author.full_name_short :
     primary === "current" ? (doc.current_step_label || "—") :
     (doc.closed_at ? new Date(doc.closed_at).toLocaleDateString("ru-RU") : "—")
+  // Без <a> внутри <tr> — это невалидный HTML. Кликабельность через row onClick.
   return (
-    <TableRow className="cursor-pointer hover:bg-muted/50" asChild>
-      <Link to={`/edo/documents/${doc.id}`} className="contents">
-        <TableCell className="font-mono text-xs">
-          {doc.number || <span className="text-muted-foreground">—</span>}
-        </TableCell>
-        <TableCell className="text-sm">{doc.type_name}</TableCell>
-        <TableCell className="max-w-md truncate">{doc.title}</TableCell>
-        <TableCell>
-          <Badge variant={STATUS_VARIANT[doc.status]}>{doc.status_display}</Badge>
-        </TableCell>
-        <TableCell className="text-sm text-muted-foreground">{primaryCell}</TableCell>
-        <TableCell className="text-sm text-muted-foreground">
-          {new Date(lastDate).toLocaleDateString("ru-RU")}
-        </TableCell>
-      </Link>
+    <TableRow
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => navigate(`/edo/documents/${doc.id}`)}
+    >
+      <TableCell className="font-mono text-xs">
+        {doc.number || <span className="text-muted-foreground">—</span>}
+      </TableCell>
+      <TableCell className="text-sm">{doc.type_name}</TableCell>
+      <TableCell className="max-w-md truncate">{doc.title}</TableCell>
+      <TableCell>
+        <Badge variant={STATUS_VARIANT[doc.status]}>{doc.status_display}</Badge>
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">{primaryCell}</TableCell>
+      <TableCell className="text-sm text-muted-foreground">
+        {new Date(lastDate).toLocaleDateString("ru-RU")}
+      </TableCell>
     </TableRow>
   )
 }
