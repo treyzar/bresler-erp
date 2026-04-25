@@ -114,7 +114,7 @@ export function DocumentDetailPage() {
   const isAuthor = user?.id === doc.author.id
   const canEdit = isAuthor && ["draft", "revision_requested"].includes(doc.status)
   const activeStep = doc.steps.find((s) => s.id === doc.current_step)
-  const canAct = activeStep?.approver?.id === user?.id && doc.status === "pending"
+  const canAct = doc.status === "pending" && _userCanActOnStep(activeStep, user)
   const canCancel = isAuthor && ["draft", "pending", "revision_requested"].includes(doc.status)
     && !doc.steps.some((s) => s.status === "approved")
   const canSubmit = isAuthor && ["draft", "revision_requested"].includes(doc.status)
@@ -613,4 +613,21 @@ function DelegateButton({
       </Dialog>
     </>
   )
+}
+
+
+/** Может ли user принять решение по шагу: либо он лично approver, либо
+ * шаг коллективный (role_key=group:NAME[@company]) и он в этой группе.
+ * Backend всё равно проверит на approve — здесь оптимистично включаем UI.
+ */
+function _userCanActOnStep(
+  step: ApprovalStep | undefined,
+  user: { id: number; groups?: string[] } | null | undefined,
+): boolean {
+  if (!step || !user) return false
+  if (step.approver?.id === user.id) return true
+  const rk = step.role_key || ""
+  if (!rk.startsWith("group:")) return false
+  const groupName = rk.slice("group:".length).split("@")[0]
+  return (user.groups ?? []).includes(groupName)
 }
