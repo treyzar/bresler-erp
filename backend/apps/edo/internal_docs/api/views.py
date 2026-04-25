@@ -65,17 +65,24 @@ class DocumentViewSet(viewsets.ModelViewSet):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
-        qs = Document.objects.for_user(self.request.user).select_related(
+        user = self.request.user
+        # Фильтры для вкладок ЛК.
+        tab = self.request.query_params.get("tab")
+
+        # inbox использует специальный queryset, который учитывает коллективные
+        # шаги (group:NAME[@company]) — иначе видно только лично назначенных
+        # как approver, а коллективные шаги обходят стороной всю группу.
+        if tab == "inbox":
+            qs = Document.objects.inbox_for(user)
+        else:
+            qs = Document.objects.for_user(user)
+
+        qs = qs.select_related(
             "type", "author", "addressee", "current_step",
             "current_step__approver",
         )
 
-        # Фильтры для вкладок ЛК.
-        tab = self.request.query_params.get("tab")
-        user = self.request.user
-        if tab == "inbox":
-            qs = qs.filter(current_step__approver=user, status=Document.Status.PENDING)
-        elif tab == "outbox":
+        if tab == "outbox":
             qs = qs.filter(author=user, status__in=[
                 Document.Status.PENDING, Document.Status.REVISION_REQUESTED,
             ])
@@ -254,11 +261,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="inbox-count")
     def inbox_count(self, request, *args, **kwargs):
-        """Счётчик «ждут меня» для индикатора в меню."""
-        n = Document.objects.filter(
-            current_step__approver=request.user,
-            status=Document.Status.PENDING,
-        ).count()
+        """Счётчик «ждут меня» для индикатора в меню. Учитывает коллективные шаги."""
+        n = Document.objects.inbox_for(request.user).count()
         return Response({"count": n})
 
     @action(detail=True, methods=["post"], url_path="upload-attachment", parser_classes=[MultiPartParser, FormParser])
