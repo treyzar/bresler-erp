@@ -522,8 +522,46 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = User.objects.filter(is_active=True)
-        if self.request.query_params.get("same_group"):
+        params = self.request.query_params
+        me = self.request.user
+
+        if params.get("same_group"):
             from apps.edo.registry.services.registry_service import get_department_user_ids
-            ids = get_department_user_ids(self.request.user)
-            qs = qs.filter(id__in=ids)
+            qs = qs.filter(id__in=get_department_user_ids(me))
+
+        # Только сотрудники моего поддерева подразделений (включая меня).
+        # Если у меня нет department_unit, но есть company_unit — все из моей компании.
+        if params.get("in_my_subtree"):
+            qs = qs.filter(id__in=_subtree_user_ids(me))
+
+        # Только сотрудники моей компании (любой уровень дерева, включая меня).
+        if params.get("in_my_company"):
+            if me.company_unit_id:
+                qs = qs.filter(company_unit_id=me.company_unit_id)
+            else:
+                qs = qs.none()
+
+        # Опциональный фильтр по флагу руководителя.
+        if params.get("is_department_head") in ("true", "True", "1"):
+            qs = qs.filter(is_department_head=True)
+
         return qs
+
+
+def _subtree_user_ids(user) -> list[int]:
+    """ID пользователей в моём department_unit и всех узлах ниже по дереву.
+    Если department_unit нет — все из моей company_unit. Если и компании нет — только я."""
+    if user.department_unit_id:
+        from apps.directory.models import Department
+        subtree = Department.get_tree(user.department_unit)
+        dept_ids = list(subtree.values_list("pk", flat=True))
+        return list(
+            User.objects.filter(is_active=True, department_unit_id__in=dept_ids)
+            .values_list("pk", flat=True)
+        )
+    if user.company_unit_id:
+        return list(
+            User.objects.filter(is_active=True, company_unit_id=user.company_unit_id)
+            .values_list("pk", flat=True)
+        )
+    return [user.pk]

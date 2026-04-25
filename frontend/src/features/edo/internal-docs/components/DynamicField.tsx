@@ -152,14 +152,23 @@ async function fetchUsers(params: Record<string, unknown>): Promise<UserOption[]
   }))
 }
 
+/** Преобразует FieldSpec.filter в query-параметры для GET /api/users/. */
+function _filterToParams(filter: Record<string, unknown> | undefined): Record<string, unknown> {
+  const p: Record<string, unknown> = {}
+  if (!filter) return p
+  // scope: 'subtree' — мой department_unit + поддерево; 'company' — моя компания
+  if (filter.scope === "subtree" || filter.subordinates_only) p.in_my_subtree = true
+  if (filter.scope === "company" || filter.in_my_company) p.in_my_company = true
+  if (filter.is_department_head) p.is_department_head = true
+  return p
+}
+
 function UserField({
   value, onChange, filter,
 }: { value: number | null; onChange: (v: number | null) => void; filter?: Record<string, unknown> }) {
   const [options, setOptions] = useState<UserOption[]>([])
   useEffect(() => {
-    const params: Record<string, unknown> = {}
-    if (filter && filter.is_department_head) params.is_department_head = true
-    fetchUsers(params).then(setOptions)
+    fetchUsers(_filterToParams(filter)).then(setOptions)
   }, [filter])
 
   return (
@@ -177,12 +186,12 @@ function UserField({
 }
 
 function UserMultiField({
-  value, onChange,
+  value, onChange, filter,
 }: { value: number[]; onChange: (v: number[]) => void; filter?: Record<string, unknown> }) {
   const [options, setOptions] = useState<UserOption[]>([])
   useEffect(() => {
-    fetchUsers({}).then(setOptions)
-  }, [])
+    fetchUsers(_filterToParams(filter)).then(setOptions)
+  }, [filter])
 
   return (
     <MultiSelect

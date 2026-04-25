@@ -461,7 +461,9 @@ function DelegateButton({
 
   useEffect(() => {
     if (!open) return
-    api.get("/users/", { params: { page_size: 200 } }).then((r) => {
+    // Делегируем коллегам по своей компании — за пределы юрлица обычно
+    // делегировать не имеет смысла, и список из 400+ человек неудобен.
+    api.get("/users/", { params: { page_size: 500, in_my_company: true } }).then((r) => {
       const raw = r.data?.results ?? r.data ?? []
       setOptions(raw.map((u: any) => ({
         id: u.id,
