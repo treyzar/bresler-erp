@@ -459,3 +459,122 @@ def report_top_by_type(request):
     limit = int(request.query_params.get("limit", 20))
     return Response({"results": top_by_type(period_days=days, limit=limit), "period_days": days})
 
+
+# ===================== Массовые операции (admin-only) =====================
+
+
+@api_view(["POST"])
+@permission_classes([_IsEDOAdmin])
+def bulk_cancel(request):
+    """Принудительно отменяет указанные документы.
+
+    Body: {"document_ids": [1, 2, 3], "reason": "..."}
+    Документы в финальном статусе пропускаются (idempotent).
+    """
+    ids = request.data.get("document_ids") or []
+    reason = (request.data.get("reason") or "").strip()
+    if not isinstance(ids, list) or not ids:
+        return Response({"detail": "document_ids — обязательный непустой список"},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if not reason:
+        return Response({"detail": "Причина обязательна"}, status=status.HTTP_400_BAD_REQUEST)
+
+    cancelled, skipped, errors = [], [], []
+    for doc in Document.objects.filter(pk__in=ids):
+        try:
+            svc.force_cancel(doc, request.user, reason=reason)
+            cancelled.append(doc.pk)
+        except svc.DocumentServiceError as e:
+            skipped.append({"id": doc.pk, "reason": str(e)})
+        except Exception as e:  # noqa: BLE001
+            errors.append({"id": doc.pk, "error": str(e)})
+    return Response({"cancelled": cancelled, "skipped": skipped, "errors": errors})
+
+
+@api_view(["GET"])
+@permission_classes([_IsEDOAdmin])
+def export_archive_zip(request):
+    """ZIP-экспорт документов за период.
+
+    Query: ?from=YYYY-MM-DD&to=YYYY-MM-DD[&status=approved,rejected]
+    """
+    from datetime import date
+    from django.http import HttpResponse
+    from ..services.zip_archive import build_archive
+
+    try:
+        date_from = date.fromisoformat(request.query_params.get("from", ""))
+        date_to = date.fromisoformat(request.query_params.get("to", ""))
+    except ValueError:
+        return Response(
+            {"detail": "Параметры from/to должны быть в формате YYYY-MM-DD"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if date_from > date_to:
+        return Response(
+            {"detail": "from не может быть позже to"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    status_filter_raw = request.query_params.get("status", "").strip()
+    status_filter = [s for s in status_filter_raw.split(",") if s] or None
+
+    data, summary = build_archive(date_from, date_to, status_filter)
+    resp = HttpResponse(data, content_type="application/zip")
+    fname = f"edo_archive_{date_from}_{date_to}.zip"
+    resp["Content-Disposition"] = f'attachment; filename="{fname}"'
+    resp["X-Archive-Summary"] = (
+        f"total={summary['total']}; pdf_ok={summary['pdf_ok']}; "
+        f"pdf_failed={summary['pdf_failed']}; attachments={summary['attachments_total']}"
+    )
+    return resp
+
+
+@api_view(["POST"])
+@permission_classes([_IsEDOAdmin])
+def bulk_remind(request):
+    """Шлёт напоминание текущим согласующим указанных документов.
+
+    Body: {"document_ids": [1, 2, 3], "message": "..."}
+    Документы не в PENDING пропускаются. По активному step'у каждого
+    документа (или коллективному group-step'у) уходит уведомление.
+    """
+    from apps.notifications.services import create_notification
+
+    ids = request.data.get("document_ids") or []
+    message = (request.data.get("message") or "").strip()
+    if not isinstance(ids, list) or not ids:
+        return Response({"detail": "document_ids — обязательный непустой список"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    sent, skipped = [], []
+    for doc in Document.objects.filter(pk__in=ids).select_related("current_step", "current_step__approver"):
+        if doc.status != Document.Status.PENDING:
+            skipped.append({"id": doc.pk, "reason": f"status={doc.status}"})
+            continue
+        # Все pending active-шаги (включая параллельных).
+        pending_steps = list(
+            doc.steps.filter(
+                status=ApprovalStep.Status.PENDING,
+                action__in=(ApprovalStep.Action.APPROVE, ApprovalStep.Action.SIGN),
+            ).select_related("approver")
+        )
+        if not pending_steps:
+            skipped.append({"id": doc.pk, "reason": "no pending active step"})
+            continue
+        for step in pending_steps:
+            if not step.approver_id:
+                continue
+            create_notification(
+                recipients=step.approver,
+                title=f"Напоминание по документу {doc.number}",
+                message=(message or f"Просьба согласовать документ «{doc.title}» — шаг «{step.role_label}».")[:500],
+                category="warning",
+                target=doc,
+                link=f"/edo/documents/{doc.pk}/",
+                deduplicate_key=f"internal_doc.reminder.{doc.pk}.{step.pk}",
+                deduplicate_hours=4,
+            )
+        sent.append(doc.pk)
+    return Response({"reminded": sent, "skipped": skipped})
+

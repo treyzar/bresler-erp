@@ -122,6 +122,10 @@ class Document(models.Model):
             models.Index(fields=["author", "status"]),
             models.Index(fields=["type", "status"]),
             models.Index(fields=["-submitted_at"]),
+            # Горячие фильтры в Document.objects.for_user / inbox_for:
+            # tenant-scope (author_company_unit) + subtree-видимость (author_department_unit).
+            models.Index(fields=["author_company_unit", "status"]),
+            models.Index(fields=["author_department_unit"]),
         ]
 
     def __str__(self):
@@ -237,6 +241,12 @@ class ApprovalStep(models.Model):
         indexes = [
             models.Index(fields=["approver", "status"]),
             models.Index(fields=["document", "order"]),
+            # Inbox для group-шагов: WHERE status='pending' AND role_key='group:...'
+            models.Index(fields=["status", "role_key"]),
+            # for_user смотрит на original_approver (после делегирования / silent pickup)
+            models.Index(fields=["original_approver"]),
+            # SLA-чекер: WHERE status='pending' AND sla_due_at < now AND sla_breached_at IS NULL
+            models.Index(fields=["status", "sla_due_at"]),
         ]
         constraints = [
             models.UniqueConstraint(

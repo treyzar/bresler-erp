@@ -1,13 +1,26 @@
 /** Отчёты по EDO для админа: висящие документы, нарушения SLA, топ по типам.
  *
- *  Бэкенд: 3 endpoint'а под /admin/reports/. Все принимают `?days=N`. */
+ *  Бэкенд: 3 endpoint'а под /admin/reports/. Все принимают `?days=N`.
+ *  На отчёте «Висящие документы» — bulk-actions для админа. */
+import { useState } from "react"
 import { Link } from "react-router"
-import { useQuery } from "@tanstack/react-query"
-import { ChevronLeft, AlertTriangle, Clock, BarChart3 } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import {
+  ChevronLeft, AlertTriangle, Clock, BarChart3,
+  Bell, Trash2, Loader2, Download,
+} from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
 import api from "@/api/client"
 
 interface StuckDoc {
@@ -49,9 +62,57 @@ const fetchReport = async <T,>(path: string, days: number): Promise<{ results: T
 }
 
 export function AdminReportsPage() {
+  const qc = useQueryClient()
   const { data: stuck, isLoading: l1 } = useQuery({
     queryKey: ["edo-report", "stuck", 3],
     queryFn: () => fetchReport<StuckDoc>("/edo/internal/admin/reports/stuck-documents/", 3),
+  })
+
+  // Bulk-selection state живёт здесь, чтобы переживать перезагрузку секции.
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [actionMode, setActionMode] = useState<null | "remind" | "cancel">(null)
+  const [comment, setComment] = useState("")
+
+  const toggle = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  const toggleAll = (rows: StuckDoc[]) => {
+    setSelected((prev) =>
+      prev.size === rows.length ? new Set() : new Set(rows.map((r) => r.id))
+    )
+  }
+  const closeDialog = () => { setActionMode(null); setComment("") }
+
+  const remind = useMutation({
+    mutationFn: () => api.post("/edo/internal/admin/bulk-remind/", {
+      document_ids: Array.from(selected),
+      message: comment,
+    }),
+    onSuccess: (r: any) => {
+      toast.success(`Напоминания отправлены: ${r.data.reminded.length}`)
+      closeDialog()
+      setSelected(new Set())
+      qc.invalidateQueries({ queryKey: ["edo-report"] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+  })
+
+  const cancel = useMutation({
+    mutationFn: () => api.post("/edo/internal/admin/bulk-cancel/", {
+      document_ids: Array.from(selected),
+      reason: comment,
+    }),
+    onSuccess: (r: any) => {
+      toast.success(`Отменено: ${r.data.cancelled.length}; пропущено: ${r.data.skipped.length}`)
+      closeDialog()
+      setSelected(new Set())
+      qc.invalidateQueries({ queryKey: ["edo-report"] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
   })
 
   const { data: breaches, isLoading: l2 } = useQuery({
@@ -76,18 +137,42 @@ export function AdminReportsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Отчёты ЭДО</h1>
       </header>
 
+      <ArchiveExportCard />
+
+
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
             <Clock className="h-4 w-4" />
             Висящие документы (≥ 3 дней в работе)
           </CardTitle>
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Выбрано: {selected.size}</span>
+              <Button size="sm" variant="outline" onClick={() => setActionMode("remind")}>
+                <Bell className="mr-2 h-4 w-4" />Напомнить
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => setActionMode("cancel")}>
+                <Trash2 className="mr-2 h-4 w-4" />Отменить
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {l1 ? <Skeleton className="h-32" /> : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={
+                        (stuck?.results.length ?? 0) > 0 &&
+                        selected.size === (stuck?.results.length ?? 0)
+                      }
+                      onCheckedChange={() => toggleAll(stuck?.results ?? [])}
+                      disabled={(stuck?.results.length ?? 0) === 0}
+                    />
+                  </TableHead>
                   <TableHead>№</TableHead>
                   <TableHead>Тип</TableHead>
                   <TableHead>Заголовок</TableHead>
@@ -98,7 +183,13 @@ export function AdminReportsPage() {
               </TableHeader>
               <TableBody>
                 {(stuck?.results ?? []).map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(r.id)}
+                        onCheckedChange={() => toggle(r.id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-xs">
                       <Link to={`/edo/documents/${r.id}`} className="hover:underline">{r.number}</Link>
                     </TableCell>
@@ -116,7 +207,7 @@ export function AdminReportsPage() {
                 ))}
                 {(stuck?.results ?? []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       Зависших документов нет.
                     </TableCell>
                   </TableRow>
@@ -126,6 +217,51 @@ export function AdminReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Диалог bulk-действия */}
+      <Dialog open={actionMode !== null} onOpenChange={(o) => !o && closeDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionMode === "remind" ? "Напомнить согласующим" : "Принудительно отменить документы"}
+            </DialogTitle>
+            <DialogDescription>
+              {actionMode === "remind"
+                ? `Будет отправлено уведомление по ${selected.size} документ(ам) активным согласующим.`
+                : `${selected.size} документ(ов) будут принудительно отменены. Действие необратимо.`}
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={
+              actionMode === "remind"
+                ? "Сообщение (опционально)"
+                : "Причина отмены (обязательна)"
+            }
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={closeDialog}>Отмена</Button>
+            <Button
+              variant={actionMode === "cancel" ? "destructive" : "default"}
+              onClick={() => {
+                if (actionMode === "remind") remind.mutate()
+                else if (actionMode === "cancel") {
+                  if (!comment.trim()) { toast.error("Укажите причину"); return }
+                  cancel.mutate()
+                }
+              }}
+              disabled={remind.isPending || cancel.isPending}
+            >
+              {(remind.isPending || cancel.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {actionMode === "remind" ? "Отправить напоминание" : "Отменить документы"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -219,5 +355,84 @@ export function AdminReportsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+
+/** Карточка ZIP-экспорта архива за период. Запросом возвращается binary stream. */
+function ArchiveExportCard() {
+  const [from, setFrom] = useState(() => {
+    const d = new Date()
+    d.setMonth(d.getMonth() - 1)
+    return d.toISOString().slice(0, 10)
+  })
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10))
+  const [busy, setBusy] = useState(false)
+
+  const download = async () => {
+    if (!from || !to) {
+      toast.error("Укажите диапазон дат")
+      return
+    }
+    setBusy(true)
+    try {
+      const r = await api.get("/edo/internal/admin/export-archive-zip/", {
+        params: { from, to },
+        responseType: "blob",
+      })
+      const summary = r.headers["x-archive-summary"] || ""
+      const url = URL.createObjectURL(r.data)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `edo_archive_${from}_${to}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(`Архив скачан${summary ? ` (${summary})` : ""}`)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail ?? "Ошибка экспорта")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Download className="h-4 w-4" />
+          Экспорт архива (ZIP)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Архив документов с PDF-рендером, метаданными и вложениями. Выберите
+          период по дате отправки или закрытия документа.
+        </p>
+        <div className="flex items-end gap-3">
+          <div>
+            <Label htmlFor="archive-from">С</Label>
+            <Input
+              id="archive-from" type="date"
+              value={from} onChange={(e) => setFrom(e.target.value)}
+              className="w-44"
+            />
+          </div>
+          <div>
+            <Label htmlFor="archive-to">По</Label>
+            <Input
+              id="archive-to" type="date"
+              value={to} onChange={(e) => setTo(e.target.value)}
+              className="w-44"
+            />
+          </div>
+          <Button onClick={download} disabled={busy}>
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            Скачать ZIP
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

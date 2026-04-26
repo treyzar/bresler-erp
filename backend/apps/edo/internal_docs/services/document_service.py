@@ -546,6 +546,33 @@ def delegate(step: ApprovalStep, from_user, to_user) -> ApprovalStep:
 
 
 @transaction.atomic
+def force_cancel(document: Document, user, *, reason: str) -> Document:
+    """Принудительная отмена документа админом. В отличие от `cancel()`:
+    - не требует, чтобы `user` был автором;
+    - разрешена даже после approve (но не после финального approved/rejected);
+    - в комментарий пишется reason — для аудита.
+    """
+    if document.status in (Document.Status.APPROVED, Document.Status.REJECTED, Document.Status.CANCELLED):
+        raise DocumentServiceError(f"Документ уже закрыт (статус: {document.status})")
+    if not reason:
+        raise ValidationError("Причина обязательна при принудительной отмене")
+
+    document.status = Document.Status.CANCELLED
+    document.closed_at = timezone.now()
+    document.current_step = None
+    document.save(update_fields=["status", "closed_at", "current_step"])
+    document.steps.filter(
+        status__in=(ApprovalStep.Status.PENDING, ApprovalStep.Status.WAITING),
+    ).update(
+        status=ApprovalStep.Status.SKIPPED,
+        decided_at=timezone.now(),
+        comment=f"[Отменено администратором {user.get_full_name() or user.username}: {reason}]",
+    )
+    trigger_event("document.force_cancelled", instance=document, user=user, reason=reason)
+    return document
+
+
+@transaction.atomic
 def cancel(document: Document, user) -> Document:
     """Автор отменяет документ до первого approve."""
     if document.author_id != user.pk:
