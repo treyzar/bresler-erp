@@ -1,15 +1,3 @@
-<!--
-Презентация модуля ЭДО для пользователей и заказчиков.
-
-Формат: Marp (https://marp.app/) — markdown с frontmatter, рендерится
-в HTML/PDF/PPTX.
-
-Как открыть:
-  • VS Code → расширение «Marp for VS Code» → Preview/Export
-  • CLI:    npx @marp-team/marp-cli docs/edo_presentation.md --pdf
-  • Online: https://web.marp.app — paste содержимое файла
--->
-
 ---
 marp: true
 theme: default
