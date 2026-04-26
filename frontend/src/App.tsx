@@ -36,6 +36,7 @@ import { AdminTypesPage as EdoAdminTypesPage } from "@/features/edo/internal-doc
 import { AdminTypeEditPage as EdoAdminTypeEditPage } from "@/features/edo/internal-docs/pages/AdminTypeEditPage"
 import { AdminOrgHeadsPage as EdoAdminOrgHeadsPage } from "@/features/edo/internal-docs/pages/AdminOrgHeadsPage"
 import { AdminReportsPage as EdoAdminReportsPage } from "@/features/edo/internal-docs/pages/AdminReportsPage"
+import { EmailActionPage as EdoEmailActionPage } from "@/features/edo/internal-docs/pages/EmailActionPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
 import { NotificationsPage } from "@/features/notifications/NotificationsPage"
 import { ImportPage } from "@/features/import/ImportPage"
@@ -67,6 +68,9 @@ function App() {
             isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
           }
         />
+        {/* Публичная страница email-link approve. Без auth — авторизация по
+            подписанному токену в URL. Должна быть ВНЕ ProtectedRoute. */}
+        <Route path="/edo/email-action/:token" element={<EdoEmailActionPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/403" element={<ForbiddenPage />} />
