@@ -2,6 +2,7 @@ import { Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
   FileText, ClockAlert, CalendarSync, Mail, Plane, Bell, HelpCircle,
+  TrendingUp, Award, CalendarX, BellRing,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,6 +18,11 @@ const ICONS: Record<string, React.ElementType> = {
   "mail": Mail,
   "plane": Plane,
   "bell": Bell,
+  // Phase 2 типы
+  "trending-up": TrendingUp,
+  "award": Award,
+  "calendar-x": CalendarX,
+  "bell-ring": BellRing,
 }
 
 export function CatalogPage() {

@@ -6,6 +6,14 @@ export type FieldType =
   | "user" | "user_multi"
   | "orgunit" | "department"
   | "file"
+  | "table"
+
+/** Колонка внутри type=table. Не может быть вложенной таблицей. */
+export interface ColumnSpec {
+  name: string
+  label?: string
+  type: Exclude<FieldType, "table">
+}
 
 export interface FieldSpec {
   name: string
@@ -16,6 +24,14 @@ export interface FieldSpec {
   help_text?: string
   choices?: [string, string][]
   filter?: Record<string, unknown>
+  /** Только для type=table: описание колонок строки. */
+  columns?: ColumnSpec[]
+}
+
+/** Значение для type=date_range. */
+export interface DateRangeValue {
+  from: string | null
+  to: string | null
 }
 
 export interface ApprovalChainStep {

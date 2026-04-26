@@ -4,6 +4,7 @@ import { useAuthStore } from "@/stores/useAuthStore"
 import { LoginPage } from "@/features/auth/LoginPage"
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
 import { ModuleGuard } from "@/features/auth/ModuleGuard"
+import { GroupGuard } from "@/features/auth/GroupGuard"
 import { ForbiddenPage } from "@/features/auth/ForbiddenPage"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { EquipmentPage } from "@/features/directory/EquipmentPage"
@@ -31,6 +32,10 @@ import { DocumentListPage } from "@/features/edo/internal-docs/pages/DocumentLis
 import { CatalogPage as InternalDocsCatalog } from "@/features/edo/internal-docs/pages/CatalogPage"
 import { CreateDocumentPage } from "@/features/edo/internal-docs/pages/CreateDocumentPage"
 import { DocumentDetailPage as InternalDocDetail } from "@/features/edo/internal-docs/pages/DocumentDetailPage"
+import { AdminTypesPage as EdoAdminTypesPage } from "@/features/edo/internal-docs/pages/AdminTypesPage"
+import { AdminTypeEditPage as EdoAdminTypeEditPage } from "@/features/edo/internal-docs/pages/AdminTypeEditPage"
+import { AdminOrgHeadsPage as EdoAdminOrgHeadsPage } from "@/features/edo/internal-docs/pages/AdminOrgHeadsPage"
+import { AdminReportsPage as EdoAdminReportsPage } from "@/features/edo/internal-docs/pages/AdminReportsPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
 import { NotificationsPage } from "@/features/notifications/NotificationsPage"
 import { ImportPage } from "@/features/import/ImportPage"
@@ -117,6 +122,12 @@ function App() {
                 <Route path="new" element={<InternalDocsCatalog />} />
                 <Route path="new/:code" element={<CreateDocumentPage />} />
                 <Route path="documents/:id" element={<InternalDocDetail />} />
+                <Route path="admin" element={<GroupGuard group="admin" />}>
+                  <Route path="types" element={<EdoAdminTypesPage />} />
+                  <Route path="types/:code" element={<EdoAdminTypeEditPage />} />
+                  <Route path="org-heads" element={<EdoAdminOrgHeadsPage />} />
+                  <Route path="reports" element={<EdoAdminReportsPage />} />
+                </Route>
                 <Route path="registry" element={<LetterRegistryPage />} />
                 <Route path="registry/:id" element={<LetterDetailPage />} />
                 <Route path="builder" element={<MainEditor />} />

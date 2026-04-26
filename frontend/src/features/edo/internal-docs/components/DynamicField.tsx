@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
+import { Plus, Trash2 } from "lucide-react"
 import api from "@/api/client"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,7 +11,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
 import { MultiSelect } from "@/components/shared/MultiSelect"
-import type { FieldSpec } from "../api/types"
+import type { ColumnSpec, DateRangeValue, FieldSpec } from "../api/types"
 
 interface DynamicFieldProps {
   spec: FieldSpec
@@ -87,6 +89,26 @@ function FieldControl({ spec, value, onChange }: Omit<DynamicFieldProps, "error"
           onChange={(e) => onChange(e.target.value)}
         />
       )
+    case "date_range": {
+      const range = (value as DateRangeValue | null) ?? { from: null, to: null }
+      return (
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={range.from ?? ""}
+            onChange={(e) => onChange({ ...range, from: e.target.value || null })}
+            placeholder="С"
+          />
+          <span className="text-muted-foreground text-sm">—</span>
+          <Input
+            type="date"
+            value={range.to ?? ""}
+            onChange={(e) => onChange({ ...range, to: e.target.value || null })}
+            placeholder="По"
+          />
+        </div>
+      )
+    }
     case "time":
       return (
         <Input
@@ -130,6 +152,14 @@ function FieldControl({ spec, value, onChange }: Omit<DynamicFieldProps, "error"
       return <UserMultiField value={(value as number[]) ?? []} onChange={onChange} filter={spec.filter} />
     case "department":
       return <DepartmentField value={value as number | null} onChange={onChange} />
+    case "table":
+      return (
+        <TableField
+          columns={spec.columns ?? []}
+          value={(value as Record<string, unknown>[] | null) ?? []}
+          onChange={onChange}
+        />
+      )
     default:
       return (
         <Input
@@ -227,5 +257,84 @@ function DepartmentField({
       placeholder="Выберите подразделение..."
       searchPlaceholder="Поиск по названию..."
     />
+  )
+}
+
+
+/** Универсальный редактор таблицы: колонки описаны в `columns`, значение — массив строк-объектов.
+ *  Каждая ячейка использует FieldControl для нужного типа; добавление/удаление строк — кнопками. */
+function TableField({
+  columns, value, onChange,
+}: {
+  columns: ColumnSpec[]
+  value: Record<string, unknown>[]
+  onChange: (v: Record<string, unknown>[]) => void
+}) {
+  const rows = value ?? []
+
+  const addRow = () => {
+    const empty: Record<string, unknown> = {}
+    for (const col of columns) empty[col.name] = null
+    onChange([...rows, empty])
+  }
+
+  const removeRow = (idx: number) => {
+    onChange(rows.filter((_, i) => i !== idx))
+  }
+
+  const updateCell = (rowIdx: number, name: string, cellValue: unknown) => {
+    const next = rows.map((r, i) => (i === rowIdx ? { ...r, [name]: cellValue } : r))
+    onChange(next)
+  }
+
+  if (columns.length === 0) {
+    return <p className="text-sm text-destructive">Колонки таблицы не настроены в типе документа.</p>
+  }
+
+  return (
+    <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic">Список пуст</p>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((row, rowIdx) => (
+            <div key={rowIdx} className="grid gap-2 p-2 rounded bg-background border" style={{
+              gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) auto`,
+            }}>
+              {columns.map((col) => (
+                <div key={col.name} className="space-y-1">
+                  {rowIdx === 0 && (
+                    <Label className="text-xs text-muted-foreground">{col.label || col.name}</Label>
+                  )}
+                  <FieldControl
+                    spec={{
+                      name: `${col.name}__${rowIdx}`,
+                      label: col.label || col.name,
+                      type: col.type as FieldSpec["type"],
+                    }}
+                    value={row[col.name]}
+                    onChange={(v) => updateCell(rowIdx, col.name, v)}
+                  />
+                </div>
+              ))}
+              <div className="flex items-end pb-1">
+                <Button
+                  type="button"
+                  variant="ghost" size="icon"
+                  onClick={() => removeRow(rowIdx)}
+                  title="Удалить строку"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Button type="button" variant="outline" size="sm" onClick={addRow}>
+        <Plus className="mr-2 h-4 w-4" />
+        Добавить строку
+      </Button>
+    </div>
   )
 }

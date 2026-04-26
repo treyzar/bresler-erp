@@ -3,10 +3,17 @@ import { useUIStore } from "@/stores/useUIStore"
 import { cn } from "@/lib/utils"
 import { type NavItem, SidebarNavItem } from "./SidebarNavItem"
 
+type SubItem = NavItem & {
+  module?: string
+  /** Если задана, пункт виден только пользователям этой группы (или одной из, если массив). */
+  group?: string | string[]
+}
+
 type NavItemWithModule = NavItem & {
   module?: string
+  group?: string | string[]
   requireAccess?: "dashboard"
-  subItems?: (NavItem & { module?: string })[]
+  subItems?: SubItem[]
 }
 
 const navItems: NavItemWithModule[] = [
@@ -62,6 +69,10 @@ const navItems: NavItemWithModule[] = [
       { to: "/edo/templates", label: "Шаблоны" },
       { to: "/edo/builder", label: "Конструктор" },
       { to: "/edo/parser", label: "Распознавание документов" },
+      // Admin-only пункты — отфильтруются ниже по `group`.
+      { to: "/edo/admin/types", label: "Админ: типы документов", group: "admin" },
+      { to: "/edo/admin/org-heads", label: "Админ: шапки организаций", group: "admin" },
+      { to: "/edo/admin/reports", label: "Админ: отчёты", group: "admin" },
     ],
   },
   {
@@ -83,16 +94,41 @@ const navItems: NavItemWithModule[] = [
   { to: "/manager-dashboard", label: "Руководитель", requireAccess: "dashboard" },
 ]
 
+/** Проверка одного group-выражения через состояние auth. */
+function checkGroup(
+  hasGroup: (g: string) => boolean,
+  group: string | string[] | undefined,
+): boolean {
+  if (!group) return true
+  const groups = Array.isArray(group) ? group : [group]
+  return groups.some((g) => hasGroup(g))
+}
+
 export function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const hasModuleAccess = useAuthStore((s) => s.hasModuleAccess)
+  const hasGroup = useAuthStore((s) => s.hasGroup)
   const canAccessDashboard = useAuthStore((s) => s.canAccessDashboard)
 
-  const visibleItems = navItems.filter(
-    (item) =>
-      (!item.module || hasModuleAccess(item.module)) &&
-      (!item.requireAccess || (item.requireAccess === "dashboard" && canAccessDashboard())),
-  )
+  const visibleItems = navItems
+    .filter(
+      (item) =>
+        (!item.module || hasModuleAccess(item.module)) &&
+        checkGroup(hasGroup, item.group) &&
+        (!item.requireAccess || (item.requireAccess === "dashboard" && canAccessDashboard())),
+    )
+    .map((item) =>
+      item.subItems
+        ? {
+            ...item,
+            subItems: item.subItems.filter(
+              (sub) =>
+                (!sub.module || hasModuleAccess(sub.module)) &&
+                checkGroup(hasGroup, sub.group),
+            ),
+          }
+        : item,
+    )
 
   return (
     <aside

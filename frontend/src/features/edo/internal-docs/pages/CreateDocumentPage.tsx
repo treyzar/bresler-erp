@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DynamicField } from "../components/DynamicField"
+import { useAutoCompute } from "../hooks/useAutoCompute"
 import { internalDocsApi } from "../api/client"
 import type { FieldSpec } from "../api/types"
 
@@ -22,6 +23,7 @@ export function CreateDocumentPage() {
 
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  useAutoCompute(code, values, setValues)
 
   const create = useMutation({
     mutationFn: async (submitAfter: boolean) => {

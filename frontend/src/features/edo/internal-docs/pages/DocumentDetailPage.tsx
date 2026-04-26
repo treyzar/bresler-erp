@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Timeline } from "@/components/shared/Timeline"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
+import { SignaturePad } from "@/components/shared/SignaturePad"
+import { LinkedDocuments } from "@/components/shared/LinkedDocuments"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -71,7 +73,8 @@ export function DocumentDetailPage() {
   }
 
   const approve = useMutation({
-    mutationFn: (comment: string) => internalDocsApi.approveDocument(docId, { comment }),
+    mutationFn: (payload: { comment: string; signature_image?: string }) =>
+      internalDocsApi.approveDocument(docId, payload),
     onSuccess: () => { toast.success("Согласовано"); invalidate() },
     onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
   })
@@ -97,6 +100,7 @@ export function DocumentDetailPage() {
   })
 
   const [comment, setComment] = useState("")
+  const [signatureImage, setSignatureImage] = useState<string | null>(null)
 
   if (isLoading) {
     return <div className="container mx-auto p-6 max-w-6xl"><Skeleton className="h-96" /></div>
@@ -207,6 +211,12 @@ export function DocumentDetailPage() {
 
           <AttachmentsCard doc={doc} canUpload={isAuthor || canAct} onChanged={invalidate} />
 
+          <LinkedDocuments
+            sourceModel="document"
+            sourceId={doc.id}
+            canEdit={isAuthor || canAct}
+          />
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Комментарии и история</CardTitle>
@@ -244,9 +254,24 @@ export function DocumentDetailPage() {
                   onChange={(e) => setComment(e.target.value)}
                   rows={3}
                 />
+                {doc.type.requires_drawn_signature && (
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium">Подпись</p>
+                    <SignaturePad onChange={setSignatureImage} width={400} height={140} />
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
                   <Button
-                    onClick={() => approve.mutate(comment)}
+                    onClick={() => {
+                      if (doc.type.requires_drawn_signature && !signatureImage) {
+                        toast.error("Документ требует подпись — поставьте её на холсте")
+                        return
+                      }
+                      approve.mutate({
+                        comment,
+                        signature_image: signatureImage ?? undefined,
+                      })
+                    }}
                     disabled={approve.isPending}
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />Согласовать
