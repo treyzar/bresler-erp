@@ -119,11 +119,14 @@ export const ROLE_KEY_PRESETS: { value: string; label: string }[] = [
   { value: "supervisor", label: "Непосредственный руководитель" },
   { value: "dept_head:self", label: "Руководитель моего подразделения" },
   { value: "dept_head:parent", label: "Руководитель родительского подразделения" },
-  { value: "company_head", label: "Директор компании" },
+  { value: "dept_head:up(2)", label: "Руководитель на 2 уровня выше (up(2))" },
+  { value: "dept_head:up(3)", label: "Руководитель на 3 уровня выше (up(3))" },
+  { value: "company_head", label: "Директор компании (верхний уровень)" },
   { value: "group:accounting@company", label: "Бухгалтерия (моей компании)" },
   { value: "group:hr@company", label: "Отдел кадров (моей компании)" },
   { value: "group:admin", label: "Администраторы" },
   { value: "author", label: "Автор документа (для обратных потоков)" },
+  { value: "fixed_user:", label: "Конкретный сотрудник (нужно дописать ID после двоеточия)" },
 ]
 
 export const ACTION_OPTIONS = [

@@ -75,33 +75,37 @@ export function ChainStepsEditor({ value, onChange }: Props) {
               </Button>
             </div>
 
-            <div className="grid grid-cols-[2fr_1fr_auto] gap-2 items-center">
+            <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground w-24">role_key</Label>
+                <Label className="text-xs text-muted-foreground w-24 shrink-0">role_key</Label>
+                <Input
+                  value={step.role_key}
+                  onChange={(e) => update(idx, { role_key: e.target.value })}
+                  placeholder="например: supervisor, fixed_user:42, dept_head:up(2)"
+                  className="font-mono text-xs flex-1"
+                />
                 <Select
-                  value={
-                    ROLE_KEY_PRESETS.some((p) => p.value === step.role_key) ? step.role_key : "custom"
-                  }
+                  value=""
                   onValueChange={(v) => {
-                    if (v === "custom") return
+                    // Dropdown — shortcut: выбор пресета пишет его в Input.
+                    // Input — единственный source of truth, можно дописать вручную.
                     update(idx, { role_key: v })
                   }}
                 >
-                  <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-44 shrink-0">
+                    <SelectValue placeholder="Готовые шаблоны…" />
+                  </SelectTrigger>
                   <SelectContent>
                     {ROLE_KEY_PRESETS.map((p) => (
                       <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
                     ))}
-                    <SelectItem value="custom">— другое (ввести вручную) —</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input
-                  value={step.role_key}
-                  onChange={(e) => update(idx, { role_key: e.target.value })}
-                  placeholder="role_key"
-                  className="font-mono text-xs flex-1"
-                />
               </div>
+              <p className="text-xs text-muted-foreground pl-26">
+                Поле редактируется вручную. Дропдаун справа — пресеты для удобства.
+                Полный список форматов role_key — см. <code>docs/edo_admin_guide.md</code>.
+              </p>
             </div>
 
             <div className="grid grid-cols-4 gap-2">
