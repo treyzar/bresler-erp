@@ -372,6 +372,342 @@ style: |
   section.compact .pill { font-size: 10px; padding: 2px 8px; margin-top: 6px; }
   /* SVG в compact-режиме ещё меньше */
   section.compact svg { max-height: 320px; }
+
+  /* ============== RESOLVERS-режим: 2-колонки ============== */
+  section.resolvers { padding: 40px 60px; }
+  section.resolvers h2 { font-size: 28px; margin-bottom: 0.4em; padding-bottom: 12px; }
+  .resolvers-grid {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 20px;
+    margin-top: 8px;
+  }
+  .res-tree, .res-formulas {
+    background: #232329;
+    border: 1px solid #2E2E36;
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .res-head {
+    color: #7C7C84;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 14px;
+  }
+  .res-node {
+    background: #1A1A1F;
+    border: 1px solid #36363F;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0;
+  }
+  .res-node.author {
+    border-color: #E73F0C;
+    background: linear-gradient(90deg, rgba(231, 63, 12, 0.08) 0%, #1A1A1F 100%);
+  }
+  .res-tag {
+    color: #7C7C84;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+  .res-name {
+    color: #F4F4F6;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .res-arrow {
+    color: #5C5C66;
+    font-size: 14px;
+    text-align: center;
+    line-height: 1;
+    padding: 2px 0;
+  }
+  .res-row {
+    display: grid;
+    grid-template-columns: 1.1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    background: #1A1A1F;
+    border: 1px solid #36363F;
+    border-radius: 8px;
+    margin-bottom: 6px;
+  }
+  .res-row code {
+    background: transparent;
+    border: none;
+    color: #DEDEE2;
+    font-size: 13px;
+    padding: 0;
+  }
+  .res-arrow-h {
+    color: #E73F0C;
+    font-weight: 700;
+    text-align: center;
+  }
+  .res-person {
+    color: #F4F4F6;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .res-summary {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: rgba(231, 63, 12, 0.06);
+    border-left: 2px solid #E73F0C;
+    border-radius: 0 8px 8px 0;
+    color: #B8B8C0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ============== ANATOMY-режим: PDF-mockup + аннотации ============== */
+  section.anatomy { padding: 40px 60px; }
+  section.anatomy h2 { font-size: 28px; margin-bottom: 0.4em; padding-bottom: 12px; }
+  .anatomy-grid {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 24px;
+    margin-top: 8px;
+    align-items: start;
+  }
+  /* Бумажный документ — светлый блок на тёмном фоне */
+  .anatomy-doc {
+    background: #F8F8F0;
+    color: #18181B;
+    border-radius: 6px;
+    padding: 18px 20px;
+    font-family: "Times New Roman", Georgia, serif;
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    position: relative;
+  }
+  .doc-headline {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .doc-from, .doc-to {
+    background: #EFEFE8;
+    padding: 8px 10px;
+    border-radius: 3px;
+    flex: 1;
+    font-size: 10px;
+  }
+  .doc-company { font-weight: 700; font-size: 11px; margin-bottom: 2px; }
+  .doc-tag { font-weight: 700; font-size: 11px; margin-bottom: 2px; }
+  .doc-line { color: #4B5563; font-size: 10px; }
+  .doc-title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
+    margin: 8px 0 4px;
+    color: #18181B;
+  }
+  .doc-num {
+    text-align: center;
+    font-size: 9px;
+    color: #71717A;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #D4D4D8;
+    padding-bottom: 8px;
+  }
+  .doc-body { font-size: 11px; color: #1F1F23; }
+  .doc-body > div { margin: 4px 0; }
+  .doc-row { margin: 6px 0; }
+  .doc-bold { font-weight: 700; margin-top: 8px; }
+  .doc-list {
+    margin: 4px 0;
+    padding-left: 12px;
+  }
+  .doc-list > div {
+    display: flex;
+    justify-content: space-between;
+    color: #4B5563;
+    margin: 2px 0;
+  }
+  .doc-list .doc-total {
+    color: #18181B;
+    border-top: 1px solid #D4D4D8;
+    padding-top: 4px;
+    margin-top: 4px;
+  }
+  .doc-sign {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 18px;
+    font-size: 10px;
+  }
+  .doc-sign-date { color: #4B5563; }
+  .doc-sign-block { text-align: center; min-width: 140px; }
+  .doc-sign-curve {
+    font-size: 16px;
+    color: #1E3A8A;
+    font-style: italic;
+    margin-bottom: -4px;
+    transform: rotate(-2deg);
+    display: inline-block;
+  }
+  .doc-sign-line {
+    border-bottom: 1px solid #18181B;
+    margin: 2px 0 4px;
+  }
+  .doc-sign-name { font-weight: 700; font-size: 10px; }
+
+  /* Правая колонка с аннотациями */
+  .anatomy-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .anote {
+    display: grid;
+    grid-template-columns: 6px 1fr;
+    gap: 14px;
+    background: #232329;
+    border: 1px solid #2E2E36;
+    border-radius: 8px;
+    padding: 10px 14px;
+    align-items: stretch;
+  }
+  .anote-marker {
+    background: #E73F0C;
+    border-radius: 3px;
+    width: 4px;
+  }
+  .anote-title {
+    color: #F4F4F6;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+  }
+  .anote-desc {
+    color: #A8A8B0;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .anote-desc code {
+    background: #1A1A1F;
+    border: 1px solid #36363F;
+    color: #DEDEE2;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+
+  /* ============== AUDIT-режим ============== */
+  section.audit { padding: 40px 60px; }
+  section.audit h2 { font-size: 28px; margin-bottom: 0.4em; padding-bottom: 12px; }
+  .audit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.1fr;
+    gap: 16px;
+    margin-top: 8px;
+    align-items: stretch;
+  }
+  .audit-col {
+    background: #232329;
+    border: 1px solid #2E2E36;
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .audit-result {
+    background: linear-gradient(180deg, rgba(231, 63, 12, 0.06) 0%, #232329 100%);
+    border-color: rgba(231, 63, 12, 0.4);
+  }
+  .audit-head {
+    color: #7C7C84;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .audit-head.accent { color: #E73F0C; }
+  .audit-title {
+    color: #F4F4F6;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .audit-item {
+    background: #1A1A1F;
+    border: 1px solid #36363F;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .audit-item code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #DEDEE2;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .audit-item span {
+    color: #9090A0;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .audit-row {
+    background: #1A1A1F;
+    border: 1px solid #36363F;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .audit-row-title {
+    color: #F4F4F6;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .audit-row-desc {
+    color: #9090A0;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .audit-checks {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .audit-checks li {
+    color: #DEDEE2;
+    font-size: 13px;
+    padding: 5px 0 5px 22px;
+    position: relative;
+    line-height: 1.4;
+  }
+  .audit-checks li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #6EE7B7;
+    font-weight: 700;
+  }
+  .audit-checks li code {
+    background: #1A1A1F;
+    border: 1px solid #36363F;
+    color: #DEDEE2;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
 ---
 
 # Bresler ЭДО
@@ -811,69 +1147,72 @@ Sequential, parallel, AND/OR — всё через UI.
 
 ---
 
-<!-- _class: compact -->
+<!-- _class: resolvers -->
 
 ## Резолверы — формулы вместо имён
 
-<svg viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg">
-  <rect x="40" y="40" width="280" height="60" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="60" y="65" fill="#71717A" font-size="10" font-weight="600" letter-spacing="1">DEPTH 1 · MANAGEMENT</text>
-  <text x="60" y="88" fill="#FAFAFA" font-size="16" font-weight="600">Управляющий ГК</text>
+<div class="resolvers-grid">
 
-  <line x1="180" y1="100" x2="180" y2="118" stroke="#3F3F46" stroke-width="1.5"/>
+<div class="res-tree">
 
-  <rect x="40" y="120" width="280" height="60" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="60" y="145" fill="#71717A" font-size="10" font-weight="600" letter-spacing="1">DEPTH 2 · DIVISION</text>
-  <text x="60" y="168" fill="#FAFAFA" font-size="16" font-weight="600">Технический директор</text>
+<div class="res-head">ДЕРЕВО ПОДРАЗДЕЛЕНИЙ</div>
 
-  <line x1="180" y1="180" x2="180" y2="198" stroke="#3F3F46" stroke-width="1.5"/>
+<div class="res-node">
+  <div class="res-tag">depth 1 · management</div>
+  <div class="res-name">Управляющий ГК</div>
+</div>
+<div class="res-arrow">↓</div>
+<div class="res-node">
+  <div class="res-tag">depth 2 · division</div>
+  <div class="res-name">Технический директор</div>
+</div>
+<div class="res-arrow">↓</div>
+<div class="res-node">
+  <div class="res-tag">depth 3 · service</div>
+  <div class="res-name">Служба РЗА</div>
+</div>
+<div class="res-arrow">↓</div>
+<div class="res-node author">
+  <div class="res-tag">depth 4 · department</div>
+  <div class="res-name">Отдел РЗА 1 — автор</div>
+</div>
 
-  <rect x="40" y="200" width="280" height="60" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="60" y="225" fill="#71717A" font-size="10" font-weight="600" letter-spacing="1">DEPTH 3 · SERVICE</text>
-  <text x="60" y="248" fill="#FAFAFA" font-size="16" font-weight="600">Служба РЗА</text>
+</div>
 
-  <line x1="180" y1="260" x2="180" y2="278" stroke="#3F3F46" stroke-width="1.5"/>
+<div class="res-formulas">
 
-  <rect x="40" y="280" width="280" height="60" rx="6" fill="#09090B" stroke="#3F3F46"/>
-  <text x="60" y="305" fill="#A1A1AA" font-size="10" font-weight="600" letter-spacing="1">DEPTH 4 · DEPARTMENT</text>
-  <text x="60" y="328" fill="#FAFAFA" font-size="16" font-weight="600">Отдел РЗА 1 ← автор тут</text>
+<div class="res-head">FORMULA → ВЫБРАННЫЙ ЧЕЛОВЕК</div>
 
-  <text x="380" y="80" fill="#71717A" font-size="12" font-weight="600" letter-spacing="1">FORMULA</text>
-  <rect x="380" y="100" width="350" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="395" y="123" fill="#D4D4D8" font-size="13" font-family="JetBrains Mono">supervisor</text>
-  <text x="395" y="142" fill="#71717A" font-size="12">→ head моего отдела</text>
+<div class="res-row">
+  <code>supervisor</code>
+  <span class="res-arrow-h">→</span>
+  <span class="res-person">Бычков Ю. В.</span>
+</div>
+<div class="res-row">
+  <code>dept_head_type:service</code>
+  <span class="res-arrow-h">→</span>
+  <span class="res-person">Сидоров С. С.</span>
+</div>
+<div class="res-row">
+  <code>dept_head_type:division</code>
+  <span class="res-arrow-h">→</span>
+  <span class="res-person">Петров П. П.</span>
+</div>
+<div class="res-row">
+  <code>company_head</code>
+  <span class="res-arrow-h">→</span>
+  <span class="res-person">Ефимов М. Н.</span>
+</div>
 
-  <rect x="380" y="160" width="350" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="395" y="183" fill="#D4D4D8" font-size="13" font-family="JetBrains Mono">dept_head_type:service</text>
-  <text x="395" y="202" fill="#71717A" font-size="12">→ head ближайшей службы вверх</text>
+<div class="res-summary">
+  <strong>11 резолверов</strong> — supervisor, dept_head_type, company_head,
+  group, fixed_user, field_user_supervisor, author и др.
+  Цепочка остаётся валидной даже после кадровых перестановок.
+</div>
 
-  <rect x="380" y="220" width="350" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="395" y="243" fill="#D4D4D8" font-size="13" font-family="JetBrains Mono">dept_head_type:division</text>
-  <text x="395" y="262" fill="#71717A" font-size="12">→ head ближайшей дирекции вверх</text>
+</div>
 
-  <rect x="380" y="280" width="350" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="395" y="303" fill="#D4D4D8" font-size="13" font-family="JetBrains Mono">company_head</text>
-  <text x="395" y="322" fill="#71717A" font-size="12">→ верхушка компании</text>
-
-  <text x="780" y="80" fill="#71717A" font-size="12" font-weight="600" letter-spacing="1">RESOLVES TO</text>
-  <rect x="780" y="100" width="280" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="800" y="125" fill="#FAFAFA" font-size="14" font-weight="600">Бычков Ю. В.</text>
-  <text x="800" y="143" fill="#71717A" font-size="12">head «Отдел РЗА 1»</text>
-
-  <rect x="780" y="160" width="280" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="800" y="185" fill="#FAFAFA" font-size="14" font-weight="600">Сидоров С. С.</text>
-  <text x="800" y="203" fill="#71717A" font-size="12">head «Служба РЗА»</text>
-
-  <rect x="780" y="220" width="280" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="800" y="245" fill="#FAFAFA" font-size="14" font-weight="600">Петров П. П.</text>
-  <text x="800" y="263" fill="#71717A" font-size="12">head «Технический директор»</text>
-
-  <rect x="780" y="280" width="280" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="800" y="305" fill="#FAFAFA" font-size="14" font-weight="600">Ефимов М. Н.</text>
-  <text x="800" y="323" fill="#71717A" font-size="12">head «Управляющий ГК»</text>
-</svg>
-
-<p class="small center muted">11 формул — supervisor, dept_head_type:*, company_head, group:*, fixed_user:N, field_user:*, author и др.<br>Цепочка остаётся валидной даже после кадровых перестановок.</p>
+</div>
 
 ---
 
@@ -998,64 +1337,93 @@ Celery Beat (1h cron) фиксирует
 
 ---
 
-<!-- _class: compact -->
+<!-- _class: anatomy -->
 
 ## Anatomy PDF-документа
 
-<svg viewBox="0 0 1100 480" xmlns="http://www.w3.org/2000/svg">
-  <rect x="350" y="20" width="400" height="440" rx="4" fill="#FAFAFA" stroke="#D4D4D8" stroke-width="1"/>
+<div class="anatomy-grid">
 
-  <rect x="370" y="40" width="200" height="70" fill="#F4F4F5" rx="2"/>
-  <text x="380" y="62" fill="#18181B" font-size="11" font-weight="600">НПП БРЕСЛЕР</text>
-  <text x="380" y="80" fill="#52525B" font-size="10">Управляющий ГК</text>
-  <text x="380" y="95" fill="#52525B" font-size="10">Ефимов М. Н.</text>
+<!-- ===== Левая колонка: «бумажный» макет PDF ===== -->
+<div class="anatomy-doc">
+  <div class="doc-headline">
+    <div class="doc-from">
+      <div class="doc-company">НПП БРЕСЛЕР</div>
+      <div class="doc-line">Управляющий ГК</div>
+      <div class="doc-line">Ефимов М. Н.</div>
+    </div>
+    <div class="doc-to">
+      <div class="doc-tag">Кому:</div>
+      <div class="doc-line">Бухгалтерии</div>
+      <div class="doc-line">НПП БРЕСЛЕР</div>
+    </div>
+  </div>
 
-  <rect x="585" y="40" width="145" height="70" fill="#F4F4F5" rx="2"/>
-  <text x="595" y="62" fill="#18181B" font-size="11" font-weight="600">КОМУ:</text>
-  <text x="595" y="80" fill="#52525B" font-size="10">Бухгалтерии</text>
-  <text x="595" y="95" fill="#52525B" font-size="10">НПП БРЕСЛЕР</text>
+  <div class="doc-title">Смета на командировку</div>
+  <div class="doc-num">№ КОМАНД-СМЕТА-2026-0042 от 26.04.2026</div>
 
-  <text x="550" y="140" text-anchor="middle" fill="#18181B" font-size="14" font-weight="600">Смета на командировку</text>
-  <line x1="450" y1="148" x2="650" y2="148" stroke="#D4D4D8" stroke-width="1"/>
+  <div class="doc-body">
+    <div>Прошу утвердить смету расходов на служебную командировку.</div>
+    <div class="doc-row"><b>Город:</b> Санкт-Петербург</div>
+    <div class="doc-row"><b>Период:</b> 01.06.2026 — 05.06.2026</div>
+    <div class="doc-row doc-bold">Расходы:</div>
+    <div class="doc-list">
+      <div>Транспорт<span>8 500 ₽</span></div>
+      <div>Проживание<span>12 000 ₽</span></div>
+      <div>Суточные<span>4 900 ₽</span></div>
+      <div class="doc-total"><b>ИТОГО</b><span><b>25 400 ₽</b></span></div>
+    </div>
+  </div>
 
-  <text x="550" y="170" text-anchor="middle" fill="#71717A" font-size="9">№ КОМАНД-СМЕТА-2026-0042 от 26.04.2026</text>
+  <div class="doc-sign">
+    <div class="doc-sign-date">26.04.2026</div>
+    <div class="doc-sign-block">
+      <div class="doc-sign-curve">𝓣𝓮𝓻𝓮𝓷𝓽𝓲𝓮𝓿</div>
+      <div class="doc-sign-line"></div>
+      <div class="doc-sign-name">Терентьев А. Ю.</div>
+    </div>
+  </div>
+</div>
 
-  <rect x="370" y="190" width="360" height="180" fill="#FFFFFF" stroke="#E4E4E7" rx="2"/>
-  <text x="380" y="210" fill="#18181B" font-size="9">Прошу утвердить смету расходов на</text>
-  <text x="380" y="222" fill="#18181B" font-size="9">служебную командировку.</text>
-  <text x="380" y="244" fill="#18181B" font-size="9">Город: Санкт-Петербург</text>
-  <text x="380" y="256" fill="#18181B" font-size="9">Период: 01.06.2026 — 05.06.2026</text>
-  <text x="380" y="278" fill="#18181B" font-size="9" font-weight="600">Расходы:</text>
-  <text x="380" y="292" fill="#52525B" font-size="9">  Транспорт:    8 500 ₽</text>
-  <text x="380" y="304" fill="#52525B" font-size="9">  Проживание: 12 000 ₽</text>
-  <text x="380" y="316" fill="#52525B" font-size="9">  Суточные:     4 900 ₽</text>
-  <text x="380" y="334" fill="#18181B" font-size="10" font-weight="600">  ИТОГО:    25 400 ₽</text>
+<!-- ===== Правая колонка: аннотации ===== -->
+<div class="anatomy-notes">
+  <div class="anote">
+    <div class="anote-marker"></div>
+    <div>
+      <div class="anote-title">ШАПКА КОМПАНИИ</div>
+      <div class="anote-desc">из справочника <code>OrgUnitHead</code> — снепшот директора на дату submit</div>
+    </div>
+  </div>
+  <div class="anote">
+    <div class="anote-marker"></div>
+    <div>
+      <div class="anote-title">ОТРЕНДЕРЕННОЕ ТЕЛО</div>
+      <div class="anote-desc">Django-шаблон + значения полей; auto-escape, безопасно по умолчанию</div>
+    </div>
+  </div>
+  <div class="anote">
+    <div class="anote-marker"></div>
+    <div>
+      <div class="anote-title">CANVAS-ПОДПИСЬ</div>
+      <div class="anote-desc"><code>data:image/png</code> — рисуется мышью или пальцем согласующим</div>
+    </div>
+  </div>
+  <div class="anote">
+    <div class="anote-marker"></div>
+    <div>
+      <div class="anote-title">КЕШ 7 ДНЕЙ</div>
+      <div class="anote-desc">регенерация при любом изменении полей или подписей</div>
+    </div>
+  </div>
+  <div class="anote">
+    <div class="anote-marker"></div>
+    <div>
+      <div class="anote-title">ZIP-АРХИВ</div>
+      <div class="anote-desc">экспорт всех документов за период со всеми вложениями</div>
+    </div>
+  </div>
+</div>
 
-  <text x="380" y="395" fill="#52525B" font-size="9">26.04.2026</text>
-  <line x1="540" y1="405" x2="720" y2="405" stroke="#18181B"/>
-  <path d="M 555 392 Q 580 380 605 395 T 660 388" stroke="#18181B" stroke-width="1" fill="none"/>
-  <text x="630" y="425" text-anchor="middle" fill="#18181B" font-size="9" font-weight="600">Терентьев А. Ю.</text>
-
-  <line x1="120" y1="75" x2="370" y2="75" stroke="#52525B" stroke-dasharray="2 2"/>
-  <rect x="20" y="55" width="260" height="40" rx="4" fill="#09090B" stroke="#27272A"/>
-  <text x="30" y="75" fill="#FAFAFA" font-size="10" font-weight="600">ШАПКА КОМПАНИИ</text>
-  <text x="30" y="90" fill="#71717A" font-size="10">справочник OrgUnitHead</text>
-
-  <line x1="280" y1="270" x2="370" y2="270" stroke="#52525B" stroke-dasharray="2 2"/>
-  <rect x="20" y="250" width="260" height="40" rx="4" fill="#09090B" stroke="#27272A"/>
-  <text x="30" y="270" fill="#FAFAFA" font-size="10" font-weight="600">ТЕЛО ДОКУМЕНТА</text>
-  <text x="30" y="285" fill="#71717A" font-size="10">DTL-шаблон + значения полей</text>
-
-  <line x1="280" y1="395" x2="540" y2="395" stroke="#52525B" stroke-dasharray="2 2"/>
-  <rect x="20" y="375" width="260" height="40" rx="4" fill="#09090B" stroke="#27272A"/>
-  <text x="30" y="395" fill="#FAFAFA" font-size="10" font-weight="600">CANVAS-ПОДПИСЬ</text>
-  <text x="30" y="410" fill="#71717A" font-size="10">data:image/png</text>
-
-  <line x1="780" y1="225" x2="850" y2="225" stroke="#52525B" stroke-dasharray="2 2"/>
-  <rect x="850" y="205" width="240" height="40" rx="4" fill="#09090B" stroke="#27272A"/>
-  <text x="860" y="225" fill="#FAFAFA" font-size="10" font-weight="600">КЕШ 7 ДНЕЙ</text>
-  <text x="860" y="240" fill="#71717A" font-size="10">регенерация при изменениях</text>
-</svg>
+</div>
 
 ---
 
@@ -1130,48 +1498,58 @@ Celery Beat (1h cron) фиксирует
 
 ---
 
-<!-- _class: compact -->
+<!-- _class: audit -->
 
 ## Audit и снепшоты
 
-<svg viewBox="0 0 1100 320" xmlns="http://www.w3.org/2000/svg">
-  <rect x="40" y="40" width="280" height="240" rx="8" fill="#09090B" stroke="#3F3F46" stroke-width="1"/>
-  <text x="60" y="75" fill="#71717A" font-size="11" font-weight="600" letter-spacing="1">МОМЕНТ SUBMIT</text>
-  <text x="60" y="105" fill="#FAFAFA" font-size="18" font-weight="600">Снепшоты в БД</text>
+<div class="audit-grid">
 
-  <text x="60" y="145" fill="#D4D4D8" font-size="13" font-weight="600">chain_snapshot</text>
-  <text x="60" y="163" fill="#71717A" font-size="12">JSON цепочки на момент</text>
+<div class="audit-col">
+  <div class="audit-head">МОМЕНТ SUBMIT</div>
+  <div class="audit-title">Снепшоты в БД</div>
+  <div class="audit-item">
+    <code>chain_snapshot</code>
+    <span>JSON цепочки на момент отправки</span>
+  </div>
+  <div class="audit-item">
+    <code>body_rendered</code>
+    <span>Отрендеренный текст документа</span>
+  </div>
+  <div class="audit-item">
+    <code>header_snapshot</code>
+    <span>Название компании + директор</span>
+  </div>
+</div>
 
-  <text x="60" y="195" fill="#D4D4D8" font-size="13" font-weight="600">body_rendered</text>
-  <text x="60" y="213" fill="#71717A" font-size="12">Отрендеренный текст</text>
+<div class="audit-col">
+  <div class="audit-head">ПОСЛЕДСТВИЯ</div>
+  <div class="audit-row">
+    <div class="audit-row-title">Смена типа документа</div>
+    <div class="audit-row-desc">Старые идут по своей цепочке</div>
+  </div>
+  <div class="audit-row">
+    <div class="audit-row-title">Смена директора</div>
+    <div class="audit-row-desc">PDF-архив сохраняет старого</div>
+  </div>
+  <div class="audit-row">
+    <div class="audit-row-title">Кадровые перестановки</div>
+    <div class="audit-row-desc">История решений нерушима</div>
+  </div>
+</div>
 
-  <text x="60" y="245" fill="#D4D4D8" font-size="13" font-weight="600">header_snapshot</text>
-  <text x="60" y="263" fill="#71717A" font-size="12">Компания + директор</text>
+<div class="audit-col audit-result">
+  <div class="audit-head accent">РЕЗУЛЬТАТ</div>
+  <div class="audit-title">Audit-grade архив</div>
+  <ul class="audit-checks">
+    <li>Каждое решение фиксировано</li>
+    <li>Кто, когда, какой комментарий</li>
+    <li><code>simple_history</code> на всех моделях</li>
+    <li><code>original_approver</code> при делегировании</li>
+    <li>PDF-копия с подписями</li>
+  </ul>
+</div>
 
-  <text x="490" y="70" fill="#71717A" font-size="12" font-weight="600" letter-spacing="1">ПОСЛЕДСТВИЯ</text>
-
-  <rect x="370" y="90" width="280" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="385" y="115" fill="#D4D4D8" font-size="13" font-weight="600">Смена типа документа</text>
-  <text x="385" y="132" fill="#71717A" font-size="11">Старые идут по своей цепочке</text>
-
-  <rect x="370" y="155" width="280" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="385" y="180" fill="#D4D4D8" font-size="13" font-weight="600">Смена директора</text>
-  <text x="385" y="197" fill="#71717A" font-size="11">PDF-архив сохраняет старого</text>
-
-  <rect x="370" y="220" width="280" height="50" rx="6" fill="#09090B" stroke="#27272A"/>
-  <text x="385" y="245" fill="#D4D4D8" font-size="13" font-weight="600">Кадровые перестановки</text>
-  <text x="385" y="262" fill="#71717A" font-size="11">История решений нерушима</text>
-
-  <rect x="700" y="40" width="360" height="240" rx="8" fill="#111113" stroke="#3F3F46" stroke-width="1"/>
-  <text x="720" y="75" fill="#A1A1AA" font-size="11" font-weight="600" letter-spacing="1">РЕЗУЛЬТАТ</text>
-  <text x="720" y="105" fill="#FAFAFA" font-size="18" font-weight="600">Audit-grade архив</text>
-
-  <text x="720" y="142" fill="#D4D4D8" font-size="13">✓ Каждое решение фиксировано</text>
-  <text x="720" y="166" fill="#D4D4D8" font-size="13">✓ Кто, когда, какой комментарий</text>
-  <text x="720" y="190" fill="#D4D4D8" font-size="13">✓ simple_history на всех моделях</text>
-  <text x="720" y="214" fill="#D4D4D8" font-size="13">✓ original_approver при делегировании</text>
-  <text x="720" y="238" fill="#D4D4D8" font-size="13">✓ PDF-копия с подписями</text>
-</svg>
+</div>
 
 ---
 
