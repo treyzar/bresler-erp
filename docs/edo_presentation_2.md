@@ -4,8 +4,8 @@ theme: default
 paginate: true
 size: 16:9
 html: true
-backgroundColor: '#000000'
-color: '#A1A1AA'
+backgroundColor: '#1A1A1F'
+color: '#A8A8B0'
 header: ''
 footer: 'Bresler ERP · ЭДО · 2026'
 style: |
@@ -14,20 +14,20 @@ style: |
   /* ============== БАЗОВАЯ ТИПОГРАФИКА ============== */
   section {
     font-family: 'Inter', -apple-system, "SF Pro Display", sans-serif;
-    padding: 64px 80px;
+    padding: 56px 72px;
     font-size: 22px;
     line-height: 1.6;
-    background: #000000;
-    color: #A1A1AA;
+    background: #1A1A1F;          /* graphite, soft on eyes */
+    color: #A8A8B0;
     position: relative;
   }
   section::after {
-    color: #52525B;
+    color: #5C5C66;
     font-size: 13px;
     font-weight: 500;
   }
   header, footer {
-    color: #52525B;
+    color: #5C5C66;
     font-size: 12px;
     letter-spacing: 0.05em;
     font-weight: 500;
@@ -38,85 +38,113 @@ style: |
     font-size: 56px;
     font-weight: 700;
     letter-spacing: -0.04em;
-    color: #FAFAFA;
+    color: #F4F4F6;
     margin: 0 0 0.2em;
     line-height: 1.1;
   }
   h2 {
-    font-size: 36px;
+    font-size: 34px;
     font-weight: 600;
     letter-spacing: -0.03em;
-    color: #FAFAFA;
-    margin: 0 0 1em;
-    padding-bottom: 24px;
+    color: #F4F4F6;
+    margin: 0 0 0.7em;
+    padding-bottom: 18px;
     line-height: 1.2;
-    border-bottom: 1px solid #27272A;
+    border-bottom: 1px solid #2E2E36;
+    position: relative;
+  }
+  /* orange accent under h2 */
+  h2::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: -1px;
+    width: 64px; height: 2px;
+    background: #E73F0C;
   }
   h3 {
     font-size: 20px;
     font-weight: 600;
-    color: #E4E4E7;
+    color: #DEDEE2;
     letter-spacing: -0.01em;
     margin-top: 0.2em;
   }
 
   /* ============== ТЕКСТ ============== */
-  strong { color: #FAFAFA; font-weight: 600; }
-  em { color: #71717A; font-style: normal; }
+  strong { color: #F4F4F6; font-weight: 600; }
+  em { color: #7C7C84; font-style: normal; }
   code {
-    background: #18181B;
-    color: #D4D4D8;
+    background: #24242C;
+    color: #DEDEE2;
     padding: 4px 8px;
-    border: 1px solid #27272A;
+    border: 1px solid #36363F;
     border-radius: 6px;
     font-size: 0.85em;
     font-family: "JetBrains Mono", "SF Mono", monospace;
   }
   pre {
-    background: #09090B;
-    border: 1px solid #27272A;
+    background: #14141A;
+    border: 1px solid #2E2E36;
     border-radius: 8px;
     padding: 20px 24px;
     font-size: 16px;
     line-height: 1.6;
-    color: #A1A1AA;
+    color: #B8B8C0;
   }
   ul, ol { padding-left: 1.2em; }
   li { margin: 0.4em 0; }
   blockquote {
-    border-left: 2px solid #3F3F46;
+    border-left: 2px solid #E73F0C;
     padding: 8px 24px;
     margin: 1.5em 0;
-    color: #D4D4D8;
+    color: #DEDEE2;
     font-size: 20px;
+    background: rgba(231, 63, 12, 0.04);
   }
+
+  /* ============== ТАБЛИЦЫ — card-style ============== */
   table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0 6px;
     font-size: 18px;
-    margin: 1em 0;
+    margin: 0.8em 0;
   }
   th {
-    color: #71717A;
-    padding: 16px 20px;
+    color: #7C7C84;
+    padding: 12px 20px;
     text-align: left;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid #3F3F46;
+    letter-spacing: 0.06em;
+    border-bottom: none;
   }
   td {
-    padding: 16px 20px;
-    border-bottom: 1px solid #27272A;
-    color: #D4D4D8;
+    padding: 14px 20px;
+    background: #232329;
+    border-top: 1px solid #2E2E36;
+    border-bottom: 1px solid #2E2E36;
+    color: #DEDEE2;
   }
-  tr:hover td { background: #09090B; }
+  td:first-child {
+    border-left: 1px solid #2E2E36;
+    border-radius: 8px 0 0 8px;
+    color: #F4F4F6;
+    font-weight: 500;
+  }
+  td:last-child {
+    border-right: 1px solid #2E2E36;
+    border-radius: 0 8px 8px 0;
+    color: #F4F4F6;
+    font-weight: 500;
+  }
 
   /* ============== TITLE / SECTION SLIDES ============== */
   section.title {
-    background: #000000;
-    background-image: radial-gradient(circle at 50% 0%, #18181B 0%, transparent 70%);
+    background: #1A1A1F;
+    background-image:
+      radial-gradient(circle at 80% 20%, rgba(231, 63, 12, 0.10) 0%, transparent 40%),
+      radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
     padding: 100px;
     display: flex;
     flex-direction: column;
@@ -124,44 +152,44 @@ style: |
   }
   section.title h1 {
     font-size: 72px;
-    color: #FAFAFA;
+    color: #F4F4F6;
     margin-bottom: 24px;
   }
   section.title .tagline {
     font-size: 24px;
-    color: #A1A1AA;
+    color: #B8B8C0;
     font-weight: 400;
     max-width: 800px;
     line-height: 1.5;
   }
   section.title .meta {
     margin-top: 80px;
-    color: #52525B;
+    color: #E73F0C;
     font-size: 14px;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     font-weight: 600;
   }
 
   section.section {
-    background: #000000;
+    background: #14141A;
     text-align: left;
     display: flex;
     flex-direction: column;
     justify-content: center;
   }
   section.section .num {
-    color: #52525B;
+    color: #E73F0C;
     font-size: 20px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
+    font-weight: 700;
+    letter-spacing: 0.15em;
     margin-bottom: 20px;
   }
   section.section h1 {
     font-size: 64px;
   }
   section.section .lead {
-    color: #A1A1AA;
+    color: #B8B8C0;
     font-size: 22px;
     max-width: 800px;
     margin-top: 24px;
@@ -172,28 +200,29 @@ style: |
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    margin-top: 40px;
+    gap: 18px;
+    margin-top: 32px;
   }
   .stat-card {
-    background: #09090B;
-    border: 1px solid #27272A;
-    border-radius: 8px;
-    padding: 32px 24px;
+    background: #232329;
+    border: 1px solid #2E2E36;
+    border-radius: 10px;
+    padding: 28px 22px;
     text-align: left;
   }
   .stat-num {
     display: block;
     font-size: 48px;
     font-weight: 700;
-    color: #FAFAFA;
+    color: #F4F4F6;
     line-height: 1;
     margin-bottom: 12px;
     letter-spacing: -0.04em;
   }
+  .stat-card.accent .stat-num { color: #E73F0C; }
   .stat-label {
     font-size: 14px;
-    color: #71717A;
+    color: #7C7C84;
     line-height: 1.4;
     font-weight: 500;
   }
@@ -202,32 +231,95 @@ style: |
   .grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-top: 24px;
+    gap: 22px;
+    margin-top: 16px;
   }
   .grid-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-top: 24px;
+    gap: 18px;
+    margin-top: 16px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 12px;
   }
   .card {
-    background: #09090B;
-    border: 1px solid #27272A;
+    background: #232329;
+    border: 1px solid #2E2E36;
     border-radius: 12px;
-    padding: 24px;
+    padding: 22px 24px;
+  }
+  .card.accent {
+    border-color: #E73F0C;
+    background: linear-gradient(180deg, rgba(231, 63, 12, 0.06) 0%, #232329 100%);
   }
   .card .icon {
     font-size: 24px;
-    margin-bottom: 16px;
-    opacity: 0.8;
+    margin-bottom: 14px;
+    opacity: 0.9;
   }
   .card p, .card ul {
-    color: #A1A1AA;
+    color: #B8B8C0;
     font-size: 16px;
     margin: 0;
   }
   .card ul li { margin: 0.4em 0; }
+
+  /* ============== COMPARISON CARDS (вместо таблицы) ============== */
+  .compare {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+    gap: 0;
+    margin-top: 8px;
+  }
+  .compare-head {
+    padding: 10px 16px;
+    color: #7C7C84;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .compare-head.brand { color: #E73F0C; }
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+    gap: 0;
+    background: #232329;
+    border: 1px solid #2E2E36;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+  .compare-row.highlight {
+    border-color: #E73F0C;
+    background: linear-gradient(90deg, #232329 0%, rgba(231, 63, 12, 0.05) 100%);
+  }
+  .compare-cell {
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #DEDEE2;
+    border-right: 1px solid #2E2E36;
+    display: flex;
+    align-items: center;
+  }
+  .compare-cell:first-child {
+    color: #F4F4F6;
+    font-weight: 500;
+    background: rgba(255,255,255,0.02);
+  }
+  .compare-cell:last-child {
+    border-right: none;
+    color: #F4F4F6;
+    font-weight: 600;
+    background: rgba(231, 63, 12, 0.05);
+  }
+  .compare-cell .y { color: #6EE7B7; margin-right: 6px; }
+  .compare-cell .n { color: #FCA5A5; margin-right: 6px; }
+  .compare-cell .muted { color: #7C7C84; font-size: 13px; }
 
   /* ============== PILLS / BADGES ============== */
   .pill {
@@ -240,24 +332,37 @@ style: |
     text-transform: uppercase;
     margin-right: 8px;
     margin-top: 16px;
-    background: #18181B;
-    color: #D4D4D8;
-    border: 1px solid #27272A;
+    background: #24242C;
+    color: #DEDEE2;
+    border: 1px solid #36363F;
   }
-  .pill-accent { color: #FAFAFA; border-color: #52525B; }
+  .pill-accent {
+    color: #FFFFFF;
+    background: rgba(231, 63, 12, 0.15);
+    border-color: #E73F0C;
+  }
 
-  /* ============== SVG UTILS ============== */
-  svg { display: block; margin: 20px auto; }
+  /* ============== SVG ============== */
+  /* Ограничиваем максимальный размер SVG — иначе они растягиваются по
+     intrinsic dimensions из viewBox и выходят за слайд. */
+  svg {
+    display: block;
+    margin: 8px auto;
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 380px;
+  }
 
   /* ============== UTILS ============== */
   .center { text-align: center; }
-  .muted { color: #52525B; }
+  .muted { color: #5C5C66; }
   .small { font-size: 16px; }
 
   /* ============== COMPACT-режим для плотных слайдов ============== */
   section.compact { padding: 40px 60px; font-size: 18px; }
-  section.compact h2 { font-size: 30px; margin-bottom: 0.3em; }
-  section.compact .grid-3 { gap: 14px; }
+  section.compact h2 { font-size: 28px; margin-bottom: 0.3em; padding-bottom: 12px; }
+  section.compact .grid-3 { gap: 12px; margin-top: 8px; }
   section.compact .card { padding: 14px 18px; }
   section.compact .card .icon { font-size: 24px; margin-bottom: 6px; }
   section.compact .card h3 { font-size: 16px; margin: 0 0 6px; }
@@ -265,6 +370,8 @@ style: |
   section.compact .card ul { margin: 4px 0; padding-left: 1.1em; }
   section.compact .card ul li { margin: 2px 0; }
   section.compact .pill { font-size: 10px; padding: 2px 8px; margin-top: 6px; }
+  /* SVG в compact-режиме ещё меньше */
+  section.compact svg { max-height: 320px; }
 ---
 
 # Bresler ЭДО
@@ -704,6 +811,8 @@ Sequential, parallel, AND/OR — всё через UI.
 
 ---
 
+<!-- _class: compact -->
+
 ## Резолверы — формулы вместо имён
 
 <svg viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg">
@@ -889,6 +998,8 @@ Celery Beat (1h cron) фиксирует
 
 ---
 
+<!-- _class: compact -->
+
 ## Anatomy PDF-документа
 
 <svg viewBox="0 0 1100 480" xmlns="http://www.w3.org/2000/svg">
@@ -1019,6 +1130,8 @@ Celery Beat (1h cron) фиксирует
 
 ---
 
+<!-- _class: compact -->
+
 ## Audit и снепшоты
 
 <svg viewBox="0 0 1100 320" xmlns="http://www.w3.org/2000/svg">
@@ -1073,58 +1186,60 @@ Celery Beat (1h cron) фиксирует
 
 ---
 
+<!-- _class: compact -->
+
 ## Сравнение с рыночными СЭДО
 
-<table>
-<thead>
-<tr>
-<th>Возможность</th>
-<th>DIRECTUM / Tezis</th>
-<th>1С:ДО</th>
-<th>Bresler ЭДО</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Типизированные формы</td>
-<td>✅</td>
-<td>✅</td>
-<td><strong>✅</strong></td>
-</tr>
-<tr>
-<td>Конструктор типов UI</td>
-<td>BPMN-style сложный</td>
-<td>Конфигуратор</td>
-<td><strong>✅ Простой визуальный</strong></td>
-</tr>
-<tr>
-<td>КЭП через провайдеров</td>
-<td>✅ нативно</td>
-<td>✅</td>
-<td>В roadmap (Q3 2026)</td>
-</tr>
-<tr>
-<td>Интеграция с ERP</td>
-<td>Внешняя шина</td>
-<td>✅ часть платформы</td>
-<td><strong>✅ Общие модели</strong></td>
-</tr>
-<tr>
-<td>Контроль кода</td>
-<td>❌ Vendor lock-in</td>
-<td>❌ Vendor lock-in</td>
-<td><strong>✅ Наша разработка</strong></td>
-</tr>
-<tr>
-<td>Стоимость лицензии</td>
-<td>от 100 000 ₽ /юзер</td>
-<td>от 5 000 ₽ /юзер</td>
-<td><strong>0 ₽</strong></td>
-</tr>
-</tbody>
-</table>
+<div class="compare">
+  <div class="compare-head">Возможность</div>
+  <div class="compare-head">DIRECTUM / Tezis</div>
+  <div class="compare-head">1С:ДО</div>
+  <div class="compare-head brand">Bresler ЭДО</div>
+</div>
 
-<p class="small center">Закрываем 90% потребностей при нулевой лицензионной стоимости.</p>
+<div class="compare-row">
+  <div class="compare-cell">Типизированные формы</div>
+  <div class="compare-cell"><span class="y">✓</span> Да</div>
+  <div class="compare-cell"><span class="y">✓</span> Да</div>
+  <div class="compare-cell"><span class="y">✓</span> Да</div>
+</div>
+
+<div class="compare-row">
+  <div class="compare-cell">Конструктор типов UI</div>
+  <div class="compare-cell muted">BPMN-style сложный</div>
+  <div class="compare-cell muted">Конфигуратор 1С</div>
+  <div class="compare-cell"><span class="y">✓</span> Простой визуальный</div>
+</div>
+
+<div class="compare-row">
+  <div class="compare-cell">КЭП через провайдеров</div>
+  <div class="compare-cell"><span class="y">✓</span> Нативно</div>
+  <div class="compare-cell"><span class="y">✓</span> Да</div>
+  <div class="compare-cell muted">В roadmap (Q3 2026)</div>
+</div>
+
+<div class="compare-row">
+  <div class="compare-cell">Интеграция с ERP</div>
+  <div class="compare-cell muted">Внешняя шина</div>
+  <div class="compare-cell"><span class="y">✓</span> Часть платформы</div>
+  <div class="compare-cell"><span class="y">✓</span> Общие модели</div>
+</div>
+
+<div class="compare-row">
+  <div class="compare-cell">Контроль кода</div>
+  <div class="compare-cell"><span class="n">✗</span> Vendor lock-in</div>
+  <div class="compare-cell"><span class="n">✗</span> Vendor lock-in</div>
+  <div class="compare-cell"><span class="y">✓</span> Наша разработка</div>
+</div>
+
+<div class="compare-row highlight">
+  <div class="compare-cell">Стоимость лицензии</div>
+  <div class="compare-cell muted">от 100 000 ₽ / юзер</div>
+  <div class="compare-cell muted">от 5 000 ₽ / юзер</div>
+  <div class="compare-cell">0 ₽</div>
+</div>
+
+<p class="small center" style="margin-top:10px">Закрываем 90% потребностей при нулевой лицензионной стоимости.</p>
 
 ---
 
