@@ -3,6 +3,7 @@ marp: true
 theme: default
 paginate: true
 size: 16:9
+html: true
 backgroundColor: '#0F172A'
 color: '#E2E8F0'
 header: ''
@@ -274,6 +275,18 @@ style: |
     color: #CBD5E1;
     max-width: 900px;
   }
+
+  /* ============== COMPACT-режим для плотных слайдов ============== */
+  section.compact { padding: 40px 60px; font-size: 20px; }
+  section.compact h2 { font-size: 32px; margin-bottom: 0.3em; }
+  section.compact .grid-3 { gap: 14px; }
+  section.compact .card { padding: 14px 18px; }
+  section.compact .card .icon { font-size: 24px; margin-bottom: 6px; }
+  section.compact .card h3 { font-size: 17px; margin: 0 0 6px; }
+  section.compact .card p, section.compact .card ul { font-size: 14px; line-height: 1.4; }
+  section.compact .card ul { margin: 4px 0; padding-left: 1.2em; }
+  section.compact .card ul li { margin: 2px 0; }
+  section.compact .pill { font-size: 11px; padding: 2px 8px; margin-top: 6px; }
 ---
 
 <!-- _class: title -->
@@ -463,6 +476,8 @@ style: |
 </div>
 
 ---
+
+<!-- _class: compact -->
 
 ## Каталог
 
