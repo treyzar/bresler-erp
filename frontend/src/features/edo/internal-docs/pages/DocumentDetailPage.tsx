@@ -18,6 +18,7 @@ import { Timeline } from "@/components/shared/Timeline"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
 import { SignaturePad } from "@/components/shared/SignaturePad"
 import { LinkedDocuments } from "@/components/shared/LinkedDocuments"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -139,7 +140,10 @@ export function DocumentDetailPage() {
             <span>·</span>
             <span>{doc.type.name}</span>
           </div>
-          <h1 className="text-2xl font-semibold">{doc.title || "Без заголовка"}</h1>
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            {doc.title || "Без заголовка"}
+            <DocumentDetailHelp canAct={canAct} isAuthor={isAuthor} />
+          </h1>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Badge variant={STATUS_VARIANT[doc.status]}>{doc.status_display}</Badge>
             <span>Автор: {doc.author.full_name}</span>
@@ -655,4 +659,80 @@ function _userCanActOnStep(
   if (!rk.startsWith("group:")) return false
   const groupName = rk.slice("group:".length).split("@")[0]
   return (user.groups ?? []).includes(groupName)
+}
+
+
+function DocumentDetailHelp({ canAct, isAuthor }: { canAct: boolean; isAuthor: boolean }) {
+  return (
+    <HelpPanel
+      title="Страница документа"
+      description="Что здесь можно делать."
+    >
+      <h3>Что вы видите</h3>
+      <ul>
+        <li><strong>Слева:</strong> тело документа (отрендеренное), таблица полей,
+          вложения, связанные документы, таймлайн истории.</li>
+        <li><strong>Справа:</strong> цепочка согласования. Каждый шаг — иконка статуса
+          (часы=ждёт, галочка=одобрен, крест=отклонён) + аватар согласующего.</li>
+      </ul>
+
+      {canAct && (
+        <>
+          <h3>Ваш шаг — что нажимать</h3>
+          <ul>
+            <li><strong>Согласовать</strong> — комментарий опционален, переход к
+              следующему шагу автоматический.</li>
+            <li><strong>Запросить правки</strong> — комментарий обязателен. Документ
+              вернётся автору в <code>revision_requested</code>, тот поправит и
+              отправит заново.</li>
+            <li><strong>Отклонить</strong> — финальный статус. Комментарий обязателен.
+              Повторного согласования не будет — автор должен создать
+              новый документ.</li>
+            <li><strong>Делегировать</strong> — передать решение другому. Ваше имя
+              сохранится в <code>original_approver</code> для аудита.</li>
+          </ul>
+          <h3>Рисованная подпись</h3>
+          <p>
+            Если у документа стоит флаг <code>requires_drawn_signature</code> (командировки,
+            уведомления об отпуске) — над кнопками появится холст. Подпишите
+            мышью или пальцем; PDF получит подпись в подвале.
+          </p>
+        </>
+      )}
+
+      {isAuthor && (
+        <>
+          <h3>Что доступно автору</h3>
+          <ul>
+            <li>Если документ в <code>draft</code> или <code>revision_requested</code> —
+              можно редактировать поля (кнопка «Внести правки» в карточке полей).</li>
+            <li>Кнопка <strong>«Отменить»</strong> в шапке доступна, пока ни один шаг
+              не одобрен. После первого approve — только запрос правок.</li>
+            <li>Можно прикладывать файлы в любое время (карточка «Вложения»).</li>
+          </ul>
+        </>
+      )}
+
+      <h3>Связанные документы</h3>
+      <p>
+        Кнопкой <strong>«Связать»</strong> можно прикрепить другой документ ЭДО
+        (введите ≥2 символов от номера или заголовка). Связи отображаются
+        с двух сторон.
+      </p>
+
+      <h3>PDF и архив</h3>
+      <p>
+        Кнопка <strong>«PDF»</strong> в шапке возвращает PDF с шапкой компании,
+        директором (из справочника «Шапки организаций») и подписями. Кеш — 7 дней,
+        регенерируется при любом изменении.
+      </p>
+
+      <h3>Email-link approve</h3>
+      <p>
+        Если вам пришло письмо о новом шаге — там вшиты ссылки прямого
+        approve/reject. Можно кликнуть из почты без логина (TTL 14 дней).
+        Если шаг закрыт раньше — ссылка вернёт «Шаг уже закрыт».
+      </p>
+    </HelpPanel>
+  )
 }

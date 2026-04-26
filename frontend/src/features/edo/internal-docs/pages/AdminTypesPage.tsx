@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 import { adminApi, type AdminDocumentType } from "../api/admin"
 
 export function AdminTypesPage() {
@@ -35,11 +36,14 @@ export function AdminTypesPage() {
       </Button>
 
       <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Типы документов</h1>
-          <p className="text-muted-foreground mt-1">
-            Управление каталогом служебок, заявлений, уведомлений и смет.
-          </p>
+        <div className="flex items-start gap-2">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Типы документов</h1>
+            <p className="text-muted-foreground mt-1">
+              Управление каталогом служебок, заявлений, уведомлений и смет.
+            </p>
+          </div>
+          <AdminTypesHelp />
         </div>
         <Button asChild>
           <Link to="/edo/admin/types/new">
@@ -111,5 +115,40 @@ function TypeRow({
         </Button>
       </TableCell>
     </TableRow>
+  )
+}
+
+
+function AdminTypesHelp() {
+  return (
+    <HelpPanel
+      title="Типы документов (админ)"
+      description="Каталог: что есть и как создать новый."
+    >
+      <h3>Что показывает таблица</h3>
+      <ul>
+        <li><strong>Код</strong> — slug (snake_case), используется в URL и API.
+          После создания — нельзя менять.</li>
+        <li><strong>Категория</strong> — для группировки в каталоге пользователя.</li>
+        <li><strong>Кто создаёт</strong> — <code>author</code> (любой), <code>department_head</code>{" "}
+          (только руководитель), <code>group:NAME</code> (член группы).</li>
+        <li><strong>Статус</strong> — выключенный тип не появляется в каталоге, но
+          сохраняет историю старых документов.</li>
+      </ul>
+
+      <h3>Удаление</h3>
+      <p>
+        Кнопка <strong>«Корзина»</strong> удалит запись типа. <strong>ВНИМАНИЕ:</strong> если
+        у типа уже есть документы — удаление заблокируется (PROTECT FK).
+        В этом случае выключите тип флагом <code>is_active=False</code> вместо удаления.
+      </p>
+
+      <h3>Совет</h3>
+      <p>
+        После создания/правки типа изменения <strong>не повлияют</strong> на уже
+        отправленные документы — у них зафиксирован <code>chain_snapshot</code> на
+        момент submit. Только новые документы возьмут обновлённый шаблон.
+      </p>
+    </HelpPanel>
   )
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 import { DynamicField } from "../components/DynamicField"
 import { useAutoCompute } from "../hooks/useAutoCompute"
 import { internalDocsApi } from "../api/client"
@@ -78,9 +79,12 @@ export function CreateDocumentPage() {
         </Link>
       </Button>
 
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{type.name}</h1>
-        {type.description && <p className="text-muted-foreground mt-1">{type.description}</p>}
+      <div className="flex items-start gap-2">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{type.name}</h1>
+          {type.description && <p className="text-muted-foreground mt-1">{type.description}</p>}
+        </div>
+        <CreateHelp typeCode={code} typeName={type.name} description={type.description} />
       </div>
 
       <Card>
@@ -135,5 +139,129 @@ export function CreateDocumentPage() {
         </Button>
       </div>
     </div>
+  )
+}
+
+
+/** Per-type advice — словарь подсказок для специфичных типов. */
+const TYPE_TIPS: Record<string, React.ReactNode> = {
+  memo_overtime: (
+    <>
+      <p>
+        В <strong>списке сотрудников</strong> можно выбирать только тех, кто
+        находится в вашем подразделении или его подчинённых секторах. Если
+        нужного сотрудника нет — попросите администратора проверить его{" "}
+        <code>department_unit</code>.
+      </p>
+      <p>
+        Шаг <strong>«Бухгалтерия»</strong> в этой цепочке — на approve, не inform.
+        Это значит, бухгалтер реально просмотрит запись и одобрит (или
+        отклонит) — он не закроется автоматически.
+      </p>
+    </>
+  ),
+  memo_bonus_monthly: (
+    <>
+      <p>
+        В таблице «Список премий» нажимайте <strong>«Добавить строку»</strong> для
+        каждого сотрудника. Сумма прописывается вручную, обоснование
+        опционально. Поле <strong>«Итого»</strong> пересчитывается автоматически.
+      </p>
+      <p>Создавать может только руководитель подразделения.</p>
+    </>
+  ),
+  memo_bonus_quarterly: (
+    <p>
+      Поле <strong>«Период»</strong> — квартал (Q1–Q4) или «По итогам года».
+      Поле <strong>«Год»</strong> — четырёхзначное число. Остальное — как в
+      ежемесячном премировании.
+    </p>
+  ),
+  app_dayoff_workoff: (
+    <p>
+      Шаг <strong>«Бухгалтерия»</strong> в цепочке — <code>inform</code>: он закроется
+      автоматически после одобрения руководителя, отдельных действий
+      бухгалтерии не требует.
+    </p>
+  ),
+  app_dayoff_unpaid: (
+    <p>
+      Здесь шаг бухгалтерии — на <strong>approve</strong> (отгул за свой счёт
+      требует подтверждения от бухгалтерии). Указывайте период точно — на
+      эти дни не начислится зарплата.
+    </p>
+  ),
+  vacation_notification: (
+    <>
+      <p>
+        <strong>Обратный поток.</strong> Этот тип создаёт бухгалтер. Сценарий:
+      </p>
+      <ol>
+        <li>Бухгалтер заполняет форму, выбирает сотрудника, отправляет.</li>
+        <li>Бухгалтер первым подписывает (требуется рисованная подпись).</li>
+        <li>Сотрудник получает документ в <strong>«Ждут меня»</strong>, расписывается
+          в знак ознакомления (тоже рисованная подпись).</li>
+        <li>Руководителю сотрудника уходит копия «к сведению» —
+          закрывается автоматически.</li>
+      </ol>
+    </>
+  ),
+  travel_estimate: (
+    <>
+      <p>
+        Все денежные поля — в рублях, два знака после запятой. <strong>«Итого»</strong>
+        пересчитывается автоматически (транспорт + проживание + суточные).
+        Суточные — отдельной строкой, заполняется вручную (зависит от
+        политики компании и региона).
+      </p>
+      <p>
+        На последнем шаге (директор) понадобится <strong>рисованная подпись</strong>{" "}
+        — место для неё появится в панели одобрения.
+      </p>
+    </>
+  ),
+}
+
+
+function CreateHelp({
+  typeCode, typeName, description,
+}: { typeCode: string; typeName: string; description?: string }) {
+  const tips = TYPE_TIPS[typeCode]
+  return (
+    <HelpPanel
+      title={typeName}
+      description={description || "Заполнение и отправка документа"}
+    >
+      <h3>Общий порядок</h3>
+      <ol>
+        <li>Заполните все обязательные поля (помечены красной звёздочкой).</li>
+        <li>Проверьте preview цепочки согласования внизу страницы.</li>
+        <li>Нажмите <strong>«Отправить на согласование»</strong> — присвоится номер,
+          документ уйдёт первому в цепочке. Или <strong>«Сохранить черновик»</strong>{" "}
+          — останется без номера, можно будет вернуться позже.</li>
+      </ol>
+
+      <h3>Изменение после отправки</h3>
+      <p>
+        После submit редактирование заблокировано. Если нужно поправить
+        поля — попросите согласующего нажать <strong>«Запросить правки»</strong>:
+        документ вернётся к вам в статус <code>revision_requested</code>, поля
+        снова станут редактируемыми, и после правок отправите заново.
+      </p>
+
+      {tips && (
+        <>
+          <h3>Особенности «{typeName}»</h3>
+          {tips}
+        </>
+      )}
+
+      <h3>Дополнительно</h3>
+      <p>
+        Полное описание всех 9 типов — в файле <code>docs/edo_user_guide.md</code>{" "}
+        (раздел 3). Тест-сценарии для самопроверки —{" "}
+        <code>docs/edo_test_scenarios.md</code>.
+      </p>
+    </HelpPanel>
   )
 }

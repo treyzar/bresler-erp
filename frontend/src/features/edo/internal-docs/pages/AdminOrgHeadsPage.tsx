@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 
 interface OrgUnitHead {
   id: number
@@ -92,12 +93,15 @@ export function AdminOrgHeadsPage() {
       </Button>
 
       <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Шапки организаций</h1>
-          <p className="text-muted-foreground mt-1">
-            Руководители компаний для блока «Кому» в PDF. На момент создания
-            документа подставляется активный руководитель на эту дату.
-          </p>
+        <div className="flex items-start gap-2">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Шапки организаций</h1>
+            <p className="text-muted-foreground mt-1">
+              Руководители компаний для блока «Кому» в PDF. На момент создания
+              документа подставляется активный руководитель на эту дату.
+            </p>
+          </div>
+          <OrgHeadsHelp />
         </div>
         <Button onClick={() => setCreating({ ...EMPTY })}>
           <Plus className="mr-2 h-4 w-4" />Добавить
@@ -212,5 +216,47 @@ export function AdminOrgHeadsPage() {
         </Card>
       )}
     </div>
+  )
+}
+
+
+function OrgHeadsHelp() {
+  return (
+    <HelpPanel
+      title="Шапки организаций"
+      description="Кто фигурирует в блоке «Кому» PDF-документов."
+    >
+      <h3>Зачем это</h3>
+      <p>
+        Внутренние документы (служебки, заявления и т.п.) при формировании
+        PDF подставляют в шапку название компании автора + ФИО директора +
+        должность. Эти данные берутся отсюда — справочник руководителей по
+        датам действия.
+      </p>
+
+      <h3>Как добавить запись</h3>
+      <ol>
+        <li>Выберите организацию (компанию с <code>business_role=internal</code>).</li>
+        <li>Введите ФИО и должность («Директор», «Генеральный директор», …).</li>
+        <li>Укажите <strong>«Действует с»</strong> — обязательно.</li>
+        <li><strong>«Действует по»</strong> — оставьте пустым, если запись актуальна
+          по сей день.</li>
+      </ol>
+
+      <h3>Несколько руководителей</h3>
+      <p>
+        При смене директора создайте новую запись и закройте старую (поставьте
+        ей <code>to_date</code>). В архиве у каждого документа сохранится тот директор,
+        который был активным на дату отправки — смена «задним числом» не
+        ломает архив.
+      </p>
+
+      <h3>Активный руководитель на дату</h3>
+      <p>
+        Это запись, у которой <code>from_date ≤ дата ≤ to_date</code> (либо{" "}
+        <code>to_date IS NULL</code>). Если на нужную дату активной записи нет —
+        блок «Кому» в PDF будет пустым.
+      </p>
+    </HelpPanel>
   )
 }

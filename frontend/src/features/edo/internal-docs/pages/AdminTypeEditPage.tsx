@@ -18,6 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import api from "@/api/client"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 import { adminApi, type AdminChainStep, type AdminDocumentType } from "../api/admin"
 import { FieldSchemaEditor } from "../components/FieldSchemaEditor"
 import { ChainStepsEditor } from "../components/ChainStepsEditor"
@@ -157,10 +158,11 @@ export function AdminTypeEditPage() {
         </Link>
       </Button>
 
-      <header>
+      <header className="flex items-start gap-2">
         <h1 className="text-3xl font-bold tracking-tight">
           {isNew ? "Новый тип документа" : `Редактирование: ${type.name}`}
         </h1>
+        <AdminTypeEditHelp />
       </header>
 
       <Card>
@@ -340,5 +342,79 @@ export function AdminTypeEditPage() {
         </Button>
       </div>
     </div>
+  )
+}
+
+
+function AdminTypeEditHelp() {
+  return (
+    <HelpPanel
+      title="Редактор типа документа"
+      description="Поля, шаблоны, цепочка согласования."
+    >
+      <h3>Поля формы (field_schema)</h3>
+      <p>
+        Конструктор полей — список со стрелками ↑/↓ для перестановки. Для
+        каждого поля укажите <strong>имя</strong> (snake_case, используется в шаблонах
+        как <code>{`{{ name }}`}</code>), <strong>подпись</strong> для пользователя, <strong>тип</strong>{" "}
+        и <strong>обязательность</strong>.
+      </p>
+
+      <h3>Conditional подразделы</h3>
+      <ul>
+        <li><strong>type=choice</strong> — открывается редактор вариантов (код → подпись).
+          В шаблоне доступна также <code>{`{{ <name>_display }}`}</code> с человекочитаемой
+          меткой.</li>
+        <li><strong>type=table</strong> — открывается редактор колонок. Каждая колонка
+          имеет имя, подпись и тип. Внутри таблицы можно использовать любые
+          типы, кроме вложенных таблиц. В шаблоне:{" "}
+          <code>{`{% for row in rows %}{{ row.col_name }}{% endfor %}`}</code>.</li>
+      </ul>
+
+      <h3>Шаблоны (Django Template Language)</h3>
+      <p>
+        В <code>title_template</code> и <code>body_template</code> доступны:
+      </p>
+      <ul>
+        <li><code>author</code> — User: <code>author.full_name</code>, <code>author.position</code>,{" "}
+          <code>author.department_unit.name</code>.</li>
+        <li><code>today</code> — текущая дата (для <code>{`{{ today|date:"d.m.Y" }}`}</code>).</li>
+        <li><code>document</code> — после submit: <code>document.number</code>,{" "}
+          <code>document.created_at</code>.</li>
+        <li><code>fields</code> — dict со всеми гидрированными значениями.</li>
+        <li>Каждое поле — по имени, гидрированное (date → date-объект, user →
+          User-объект и т.п.).</li>
+      </ul>
+
+      <h3>Цепочка согласования</h3>
+      <p>
+        Список шагов с reorder. Для каждого выберите <strong>role_key</strong> (preset из
+        списка или ручной ввод). Полный список префиксов — в админ-гайде.
+      </p>
+      <p>
+        <strong>Параллельные ветки.</strong> Чтобы шаги шли одновременно — задайте им
+        одинаковый текстовый <code>parallel_group</code>. Режим:
+      </p>
+      <ul>
+        <li><code>AND</code> — нужны все одобрения; любой reject убивает документ.</li>
+        <li><code>OR</code> — достаточно одного approve, остальные → SKIPPED. Reject в
+          OR не блокирует, документ rejected только если все откажут.</li>
+      </ul>
+
+      <h3>Inform-шаги</h3>
+      <p>
+        Действие <code>inform</code> / <code>notify_only</code> — шаг закрывается автоматически,
+        как только активируется следующий active-шаг. Удобно для «Бухгалтерии
+        в копию» и подобного.
+      </p>
+
+      <h3>Что нельзя</h3>
+      <ul>
+        <li>Менять <code>code</code> после создания.</li>
+        <li>Удалять тип, у которого есть документы (PROTECT FK).</li>
+        <li>Изменения шаблона/цепочки <strong>не</strong> ретроактивны — старые
+          документы останутся со своим <code>chain_snapshot</code>.</li>
+      </ul>
+    </HelpPanel>
   )
 }

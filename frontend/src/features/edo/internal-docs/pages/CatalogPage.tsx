@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChevronLeft } from "lucide-react"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 import { internalDocsApi } from "../api/client"
 import type { DocumentType } from "../api/types"
 
@@ -46,11 +47,14 @@ export function CatalogPage() {
         </Link>
       </Button>
 
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Создать документ</h1>
-        <p className="text-muted-foreground mt-1">
-          Выберите тип документа, который хотите создать.
-        </p>
+      <div className="flex items-start gap-2">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Создать документ</h1>
+          <p className="text-muted-foreground mt-1">
+            Выберите тип документа, который хотите создать.
+          </p>
+        </div>
+        <CatalogHelp />
       </div>
 
       {isLoading ? (
@@ -97,5 +101,43 @@ function TypeCard({ type }: { type: DocumentType }) {
         )}
       </Link>
     </Card>
+  )
+}
+
+
+function CatalogHelp() {
+  return (
+    <HelpPanel
+      title="Каталог типов документов"
+      description="Что доступно создавать и в чём разница."
+    >
+      <h3>Категории</h3>
+      <ul>
+        <li><strong>Служебные записки</strong> — внутренние записки в подразделение
+          (свободная форма, переработка, премирование).</li>
+        <li><strong>Заявления</strong> — личные обращения (отгулы, перевод и т.п.).</li>
+        <li><strong>Уведомления</strong> — обратный поток: создаёт служба
+          (бухгалтерия), сотрудник подписывает в знак ознакомления.</li>
+        <li><strong>Командировки</strong> — сметы расходов с подписью директора.</li>
+        <li><strong>Премирование</strong> — табличные документы со списками
+          сотрудников и сумм.</li>
+      </ul>
+
+      <h3>Что вы можете создавать</h3>
+      <p>
+        Не все типы доступны всем. Например, премирование (
+        <code>memo_bonus_*</code>) — только руководителю подразделения. Уведомление
+        об отпуске — только бухгалтерии. Если в каталоге нет нужного типа —
+        либо у вас нет прав, либо его ещё не добавил администратор.
+      </p>
+
+      <h3>Wizard создания</h3>
+      <p>
+        Клик по карточке открывает форму с динамическими полями под выбранный
+        тип. Внизу страницы — preview цепочки согласования (кто за кем будет
+        одобрять). Можно сохранить как черновик, или сразу отправить на
+        согласование (тогда присвоится номер вида <code>СЗ-СВОБ-2026-0042</code>).
+      </p>
+    </HelpPanel>
   )
 }

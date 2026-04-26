@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 import api from "@/api/client"
 
 interface StuckDoc {
@@ -133,8 +134,9 @@ export function AdminReportsPage() {
         </Link>
       </Button>
 
-      <header>
+      <header className="flex items-start gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Отчёты ЭДО</h1>
+        <ReportsHelp />
       </header>
 
       <ArchiveExportCard />
@@ -434,5 +436,75 @@ function ArchiveExportCard() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+
+function ReportsHelp() {
+  return (
+    <HelpPanel
+      title="Отчёты и операции админа"
+      description="ZIP-архив, висящие документы, SLA, топ типов, bulk-операции."
+    >
+      <h3>Экспорт архива (ZIP)</h3>
+      <p>
+        Скачивание ZIP с PDF-копиями, метаданными и вложениями документов
+        за период. Документ попадает в архив, если его <code>submitted_at</code> или{" "}
+        <code>closed_at</code> внутри диапазона. В корне архива — <code>index.json</code>{" "}
+        со сводкой; по каждому документу — папка с <code>metadata.json</code>,{" "}
+        <code>document.pdf</code> и <code>attachments/</code>.
+      </p>
+      <p>
+        В response-заголовке <code>X-Archive-Summary</code> — счётчики (всего,
+        успешные/неудачные PDF, число вложений). Если PDF не сгенерится для
+        какого-то документа — он всё равно попадает в архив (только без
+        PDF), архив не падает целиком.
+      </p>
+
+      <h3>Висящие документы</h3>
+      <p>
+        Документы в <code>PENDING</code> дольше 3 дней. По строкам — чекбоксы:
+      </p>
+      <ul>
+        <li><strong>Напомнить</strong> — отправить bell-уведомление текущим активным
+          согласующим (для параллельных веток — всем участникам). Сообщение
+          опционально (по умолчанию — стандартный текст).</li>
+        <li><strong>Отменить</strong> — принудительно перевести документы в{" "}
+          <code>cancelled</code>. <strong>Причина обязательна</strong>, попадёт в комментарий
+          шага для аудита. Override обычного <code>cancel</code>: работает даже после
+          первого approve. Закрытые документы (approved/rejected/cancelled)
+          пропускаются.</li>
+      </ul>
+
+      <h3>Нарушения SLA</h3>
+      <p>
+        Шаги, у которых <code>sla_breached_at</code> зафиксирован Celery-задачей
+        (запускается раз в час). Каждый шаг помечается один раз — повторных
+        уведомлений не будет.
+      </p>
+      <p>
+        Эскалация: уведомления уходят автору, согласующему{" "}
+        <strong>и его непосредственному руководителю</strong> через{" "}
+        <code>resolve_supervisor()</code>.
+      </p>
+
+      <h3>Топ типов</h3>
+      <p>
+        За 30 дней по числу созданных документов. Колонки — total / approved /
+        rejected / pending. Это понимание нагрузки и того, какие типы реально
+        используются.
+      </p>
+
+      <h3>Параметризация</h3>
+      <p>
+        Все три отчёта принимают <code>?days=N</code> в URL. Задизайнить
+        custom-период через UI пока нельзя, но можно открыть API напрямую:
+      </p>
+      <ul>
+        <li><code>GET /api/edo/internal/admin/reports/stuck-documents/?days=7</code></li>
+        <li><code>GET /api/edo/internal/admin/reports/sla-breaches/?days=90</code></li>
+        <li><code>GET /api/edo/internal/admin/reports/top-by-type/?days=30&limit=10</code></li>
+      </ul>
+    </HelpPanel>
   )
 }

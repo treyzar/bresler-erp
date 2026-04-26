@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { HelpPanel } from "@/components/shared/HelpPanel"
 import { internalDocsApi } from "../api/client"
 import type { DocumentListItem, DocumentStatus, ListParams } from "../api/types"
 
@@ -34,11 +35,14 @@ export function MyDocumentsPage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Документооборот</h1>
-          <p className="text-muted-foreground mt-1">
-            Ваши служебки, заявления и уведомления.
-          </p>
+        <div className="flex items-start gap-2">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Документооборот</h1>
+            <p className="text-muted-foreground mt-1">
+              Ваши служебки, заявления и уведомления.
+            </p>
+          </div>
+          <MyDocumentsHelp />
         </div>
         <Button asChild size="lg">
           <Link to="/edo/new">
@@ -157,6 +161,55 @@ function DocumentRow({ doc, tab }: { doc: DocumentListItem; tab: Tab }) {
     </TableRow>
   )
 }
+
+function MyDocumentsHelp() {
+  return (
+    <HelpPanel
+      title="Мои документы"
+      description="Ваш личный кабинет внутреннего документооборота."
+    >
+      <h3>Четыре вкладки</h3>
+      <ul>
+        <li><strong>Ждут меня</strong> — документы, по которым требуется ваше решение
+          (как согласующего или подписанта). Цифра в красной плашке —
+          сколько активных. Обновляется раз в минуту.</li>
+        <li><strong>Мои в работе</strong> — отправленные вами документы, ещё не
+          закрытые цепочкой. Включает статусы <code>pending</code> и
+          <code>revision_requested</code>.</li>
+        <li><strong>Черновики</strong> — заполненные, но не отправленные документы.
+          Номер не присваивается до submit; черновик можно редактировать
+          сколько угодно.</li>
+        <li><strong>Архив</strong> — закрытые документы (согласованные, отклонённые,
+          отменённые) — ваши и где вы участвовали как согласующий.</li>
+      </ul>
+
+      <h3>Создание документа</h3>
+      <p>
+        Кнопка <strong>Создать</strong> открывает каталог типов, сгруппированный по
+        категориям (служебки, заявления, командировки, премирование,
+        уведомления). Какие типы вы видите — зависит от ваших прав
+        (некоторые доступны только руководителю подразделения или
+        бухгалтерии).
+      </p>
+
+      <h3>Email-link согласование</h3>
+      <p>
+        В каждое уведомление о новом шаге зашиты прямые ссылки
+        «Согласовать» / «Отклонить». Кликнуть можно даже без логина — TTL 14
+        дней. Подробности — в полном гайде <code>docs/edo_user_guide.md</code> §6.
+      </p>
+
+      <h3>Подсказка</h3>
+      <p>
+        Если у вас включено <strong>замещение</strong> на время отпуска — все новые
+        шаги, которые должны были прийти к вам, автоматически переходят
+        к замещающему. Уже открытые шаги не перерезолвятся (это by design,
+        для целостности аудита).
+      </p>
+    </HelpPanel>
+  )
+}
+
 
 function DocumentsListSkeleton() {
   return (
