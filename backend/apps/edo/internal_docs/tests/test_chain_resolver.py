@@ -203,6 +203,62 @@ def test_company_head_primary_wins_over_fallback(tree):
 
 
 @pytest.mark.django_db
+def test_dept_head_type_finds_nearest_ancestor_of_type(tree):
+    """dept_head_type:service ищет ближайший вверх узел типа service.
+
+    Дерево: service (depth=1) → dept1 (depth=2) → sector_a (depth=3).
+    """
+    head_service = UserFactory(
+        last_name="ГлаваСлужбы",
+        department_unit=tree["service"], is_department_head=True,
+    )
+    emp = UserFactory(department_unit=tree["sector_a"])
+    assert resolve("dept_head_type:service", emp).pk == head_service.pk
+
+
+@pytest.mark.django_db
+def test_dept_head_type_picks_closest_when_multiple(tree):
+    """Если в дереве несколько узлов одного unit_type — берётся ближайший вверх."""
+    # Дерево tree: service(service) → dept1(department) → sector_a(sector).
+    # Добавим ещё один уровень "department" под sector_a (искусственно).
+    sub_dept = tree["sector_a"].add_child(
+        name="Подотдел", unit_type="department", company=tree["company"],
+    )
+    head_close = UserFactory(
+        last_name="Близкий",
+        department_unit=sub_dept, is_department_head=True,
+    )
+    UserFactory(  # head того же типа на dept1, но он дальше — не должен быть выбран
+        last_name="Дальний",
+        department_unit=tree["dept1"], is_department_head=True,
+    )
+    emp = UserFactory(department_unit=sub_dept)
+    # emp в подотделе с unit_type=department; ищем dept_head_type:department —
+    # ближайший = sub_dept сам, head = head_close.
+    assert resolve("dept_head_type:department", emp).pk == head_close.pk
+
+
+@pytest.mark.django_db
+def test_dept_head_type_none_if_no_match(tree):
+    emp = UserFactory(department_unit=tree["sector_a"])
+    # В дереве нет ни одного управления (unit_type=management).
+    assert resolve("dept_head_type:management", emp) is None
+
+
+@pytest.mark.django_db
+def test_dept_head_type_no_args_raises(tree):
+    emp = UserFactory(department_unit=tree["sector_a"])
+    with pytest.raises(ResolveError):
+        resolve("dept_head_type:", emp)
+
+
+@pytest.mark.django_db
+def test_dept_head_type_no_department_returns_none():
+    emp = UserFactory(department_unit=None)
+    assert resolve("dept_head_type:service", emp) is None
+
+
+@pytest.mark.django_db
 def test_unresolved_step_error_message_has_hint(tree):
     """Сообщение об ошибке должно содержать подсказку для админа: что настроить."""
     from apps.edo.internal_docs.services.chain_resolver import build_approval_steps

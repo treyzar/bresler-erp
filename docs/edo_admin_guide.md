@@ -55,8 +55,9 @@ Conditional подразделы:
   | Синтаксис | Что |
   |---|---|
   | `supervisor` | Руководитель автора (по `User.supervisor` или дереву Department) |
-  | `dept_head:self` / `dept_head:parent` / `dept_head:up(N)` | Head of dept-узла относительно автора |
-  | `company_head` | Head компании автора (`is_department_head=True, department_unit=NULL`) |
+  | `dept_head:self` / `dept_head:parent` / `dept_head:up(N)` | Head of dept-узла относительно автора. Зависит от глубины автора. |
+  | `dept_head_type:<unit_type>` | Head ближайшего вверх Department с заданным `unit_type` (`management` / `division` / `service` / `department` / `bureau` / `sector` / `group` / `site` / `laboratory` / `branch` / `other`). **Надёжнее** `dept_head:up(N)` — не зависит от глубины автора. Пример: `dept_head_type:division` для «Директора управления». |
+  | `company_head` | Head компании автора. Primary: `is_department_head=True, department_unit=NULL`. Fallback: head корневого Department в этой компании. |
   | `group:NAME` / `group:NAME@company` | Любой активный участник группы (с/без скоупа компании) |
   | `group_head:NAME` | Участник группы с `is_department_head=True` |
   | `fixed_user:42` | Конкретный User по pk |

@@ -255,6 +255,45 @@ def _field_user(ctx: ResolveContext, args: str):
     return User.objects.filter(pk=pk, is_active=True).first()
 
 
+@register("dept_head_type")
+def _dept_head_type(ctx: ResolveContext, args: str):
+    """Head ближайшего Department с заданным `unit_type`, поднимаясь от
+    `author.department_unit` вверх по дереву.
+
+    args — это значение `Department.UnitType` (management / division / service /
+    department / sector / bureau / group / site / laboratory / branch / other).
+
+    В отличие от `dept_head:up(N)`, не зависит от глубины автора: всегда
+    находит «ближайший вверх» узел нужного типа. Удобно для цепочек уровня
+    «директор управления / дирекции / службы», которые могут быть на разной
+    высоте у разных авторов.
+
+    Если в дереве нет узла нужного типа или у него нет head'а — None.
+    """
+    if not args:
+        raise ResolveError("dept_head_type requires unit_type argument")
+    if not ctx.author.department_unit_id:
+        return None
+
+    node = ctx.author.department_unit
+    while node is not None:
+        if node.unit_type == args:
+            head = (
+                User.objects.filter(
+                    department_unit=node,
+                    is_department_head=True,
+                    is_active=True,
+                )
+                .exclude(pk=ctx.author.pk)
+                .order_by("last_name", "first_name", "pk")
+                .first()
+            )
+            if head is not None:
+                return head
+        node = node.get_parent()
+    return None
+
+
 @register("field_user_supervisor")
 def _field_user_supervisor(ctx: ResolveContext, args: str):
     """Непосредственный руководитель пользователя, на которого указывает FK-поле `args`.
@@ -335,6 +374,10 @@ _RESOLVE_HINTS: dict[str, str] = {
     "dept_head": (
         "В дереве Department автора нет ни одного пользователя с is_department_head=True. "
         "Проставьте флаг руководителю подразделения через Django admin."
+    ),
+    "dept_head_type": (
+        "В дереве Department автора нет узла указанного unit_type, либо у этого узла нет "
+        "head-пользователя. Проверьте дерево подразделений и проставьте is_department_head."
     ),
 }
 

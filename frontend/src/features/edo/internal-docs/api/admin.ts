@@ -115,18 +115,42 @@ export const FIELD_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
 
 export const COLUMN_TYPE_OPTIONS = FIELD_TYPE_OPTIONS.filter((o) => o.value !== "table")
 
+/** Пресеты role_key, сгруппированные по семантике для удобства выбора в UI.
+ *  ⚠ Должны коррелировать с Department.UnitType на бэкенде:
+ *  apps/directory/models/department.py — class UnitType. */
 export const ROLE_KEY_PRESETS: { value: string; label: string }[] = [
-  { value: "supervisor", label: "Непосредственный руководитель" },
+  // Прямые отношения автора
+  { value: "supervisor", label: "Непосредственный руководитель автора" },
+  { value: "author", label: "Автор документа (для обратных потоков)" },
+
+  // Поиск по типу подразделения (надёжно: не зависит от глубины автора)
+  { value: "dept_head_type:management", label: "Руководитель управляющей компании" },
+  { value: "dept_head_type:division", label: "Руководитель дирекции / управления" },
+  { value: "dept_head_type:service", label: "Руководитель службы" },
+  { value: "dept_head_type:department", label: "Руководитель отдела" },
+  { value: "dept_head_type:bureau", label: "Руководитель бюро" },
+  { value: "dept_head_type:sector", label: "Руководитель сектора" },
+  { value: "dept_head_type:group", label: "Руководитель группы" },
+  { value: "dept_head_type:site", label: "Руководитель участка" },
+  { value: "dept_head_type:laboratory", label: "Руководитель лаборатории" },
+  { value: "dept_head_type:branch", label: "Руководитель филиала" },
+
+  // Относительный walk-up по дереву (зависит от глубины автора)
   { value: "dept_head:self", label: "Руководитель моего подразделения" },
   { value: "dept_head:parent", label: "Руководитель родительского подразделения" },
   { value: "dept_head:up(2)", label: "Руководитель на 2 уровня выше (up(2))" },
   { value: "dept_head:up(3)", label: "Руководитель на 3 уровня выше (up(3))" },
-  { value: "company_head", label: "Директор компании (верхний уровень)" },
+
+  // Topmost фолбэк
+  { value: "company_head", label: "Директор компании (самый верхний уровень)" },
+
+  // Функциональные группы
   { value: "group:accounting@company", label: "Бухгалтерия (моей компании)" },
   { value: "group:hr@company", label: "Отдел кадров (моей компании)" },
   { value: "group:admin", label: "Администраторы" },
-  { value: "author", label: "Автор документа (для обратных потоков)" },
-  { value: "fixed_user:", label: "Конкретный сотрудник (нужно дописать ID после двоеточия)" },
+
+  // Прибито к конкретному человеку
+  { value: "fixed_user:", label: "Конкретный сотрудник (дописать ID после двоеточия)" },
 ]
 
 export const ACTION_OPTIONS = [
