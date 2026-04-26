@@ -83,7 +83,9 @@ export type DocumentStatus =
   | "revision_requested" | "cancelled"
 
 export type ApprovalStepStatus =
-  | "pending" | "approved" | "rejected" | "revision_requested" | "skipped" | "delegated"
+  | "waiting"          // batch ещё не активирован (последующий sequential / другой parallel)
+  | "pending"          // активный, ждёт решения
+  | "approved" | "rejected" | "revision_requested" | "skipped" | "delegated"
 
 export interface ApprovalStep {
   id: number

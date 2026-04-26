@@ -5,6 +5,7 @@ import {
   ChevronLeft, CheckCircle, XCircle, RotateCcw, FileText,
   Clock, CheckCheck, AlertCircle, Loader2, Trash2, Send, Download,
   Paperclip, Upload, UserPlus, Pencil, Save, X,
+  Hourglass,
 } from "lucide-react"
 import { toast } from "sonner"
 import api from "@/api/client"
@@ -43,6 +44,7 @@ const STATUS_VARIANT: Record<DocumentStatus, "default" | "secondary" | "destruct
 }
 
 const STEP_ICON: Record<ApprovalStep["status"], React.ElementType> = {
+  waiting: Hourglass,
   pending: Clock,
   approved: CheckCircle,
   rejected: XCircle,
@@ -318,7 +320,9 @@ export function DocumentDetailPage() {
 }
 
 function StepRow({ step }: { step: ApprovalStep }) {
-  const Icon = STEP_ICON[step.status]
+  // Защитный fallback: если бэкенд добавит новый status и фронт ещё не
+  // подхватил его — рендерим Clock, а не падаем с undefined-Component.
+  const Icon = STEP_ICON[step.status] ?? Clock
   const color =
     step.status === "approved" ? "text-green-600" :
     step.status === "rejected" ? "text-destructive" :
