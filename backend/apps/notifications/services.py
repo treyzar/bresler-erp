@@ -163,10 +163,19 @@ def get_unread_count(user) -> int:
 
 
 def mark_read(notification_id: int, user) -> bool:
-    """Mark a single notification as read."""
-    return Notification.objects.filter(
-        pk=notification_id, recipient=user, is_read=False
-    ).update(is_read=True) > 0
+    """Mark a single notification as read. Идемпотентно.
+
+    Возвращает False, только если уведомление не существует или принадлежит
+    другому пользователю — это «настоящий» 404. Если уведомление уже прочитано —
+    возвращает True без обновления (no-op success), чтобы повторные клики/race
+    из двух вкладок не сыпали в консоль 404.
+    """
+    notif = Notification.objects.filter(pk=notification_id, recipient=user).first()
+    if notif is None:
+        return False
+    if not notif.is_read:
+        Notification.objects.filter(pk=notification_id).update(is_read=True)
+    return True
 
 
 def mark_all_read(user) -> int:

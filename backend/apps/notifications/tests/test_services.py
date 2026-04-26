@@ -121,6 +121,20 @@ class TestNotificationQueries:
         # user2 should not be able to mark user1's notification
         assert mark_read(notification_id, user2) is False
 
+    def test_mark_read_idempotent(self):
+        """Повторный mark_read на уже прочитанном уведомлении — успех (no-op),
+        не 404. Раньше второй клик возвращал False → 404 в API."""
+        user = UserFactory()
+        notifications = create_notification(recipients=user, title="Test")
+        notification_id = notifications[0].id
+
+        assert mark_read(notification_id, user) is True
+        assert mark_read(notification_id, user) is True  # уже прочитано — всё равно True
+
+    def test_mark_read_nonexistent_returns_false(self):
+        user = UserFactory()
+        assert mark_read(99999999, user) is False
+
     def test_mark_all_read(self):
         user = UserFactory()
         create_notification(recipients=user, title="N1")
