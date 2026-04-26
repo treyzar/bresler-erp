@@ -15,7 +15,10 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
-import { HelpPanel } from "@/components/shared/HelpPanel"
+import {
+  HelpPanel, HelpSection, HelpSteps, HelpStep, HelpCallout,
+} from "@/components/shared/HelpPanel"
+import { Building2, CalendarDays, Users2 } from "lucide-react"
 
 interface OrgUnitHead {
   id: number
@@ -226,37 +229,47 @@ function OrgHeadsHelp() {
       title="Шапки организаций"
       description="Кто фигурирует в блоке «Кому» PDF-документов."
     >
-      <h3>Зачем это</h3>
-      <p>
-        Внутренние документы (служебки, заявления и т.п.) при формировании
-        PDF подставляют в шапку название компании автора + ФИО директора +
-        должность. Эти данные берутся отсюда — справочник руководителей по
-        датам действия.
-      </p>
+      <HelpSection icon={Building2} title="Зачем это" tone="primary">
+        <p>
+          Внутренние документы при формировании PDF подставляют в шапку
+          название компании автора + ФИО директора + должность. Эти данные
+          берутся отсюда — справочник руководителей по датам действия.
+        </p>
+      </HelpSection>
 
-      <h3>Как добавить запись</h3>
-      <ol>
-        <li>Выберите организацию (компанию с <code>business_role=internal</code>).</li>
-        <li>Введите ФИО и должность («Директор», «Генеральный директор», …).</li>
-        <li>Укажите <strong>«Действует с»</strong> — обязательно.</li>
-        <li><strong>«Действует по»</strong> — оставьте пустым, если запись актуальна
-          по сей день.</li>
-      </ol>
+      <HelpSection icon={CalendarDays} title="Как добавить запись" tone="primary">
+        <HelpSteps>
+          <HelpStep n={1}>
+            Выберите организацию (компанию с{" "}
+            <code>business_role=internal</code>).
+          </HelpStep>
+          <HelpStep n={2}>
+            Введите ФИО и должность («Директор», «Генеральный директор», …).
+          </HelpStep>
+          <HelpStep n={3}>
+            Укажите <strong>«Действует с»</strong> — обязательно.
+          </HelpStep>
+          <HelpStep n={4}>
+            <strong>«Действует по»</strong> — оставьте пустым, если запись
+            актуальна по сей день.
+          </HelpStep>
+        </HelpSteps>
+      </HelpSection>
 
-      <h3>Несколько руководителей</h3>
-      <p>
-        При смене директора создайте новую запись и закройте старую (поставьте
-        ей <code>to_date</code>). В архиве у каждого документа сохранится тот директор,
-        который был активным на дату отправки — смена «задним числом» не
-        ломает архив.
-      </p>
+      <HelpSection icon={Users2} title="Несколько руководителей" tone="default">
+        <p>
+          При смене директора создайте новую запись и закройте старую (поставьте
+          ей <code>to_date</code>). В архиве у каждого документа сохранится
+          тот директор, который был активным на дату отправки — смена{" "}
+          «задним числом» не ломает архив.
+        </p>
+      </HelpSection>
 
-      <h3>Активный руководитель на дату</h3>
-      <p>
+      <HelpCallout variant="info" title="Активный руководитель на дату">
         Это запись, у которой <code>from_date ≤ дата ≤ to_date</code> (либо{" "}
         <code>to_date IS NULL</code>). Если на нужную дату активной записи нет —
         блок «Кому» в PDF будет пустым.
-      </p>
+      </HelpCallout>
     </HelpPanel>
   )
 }

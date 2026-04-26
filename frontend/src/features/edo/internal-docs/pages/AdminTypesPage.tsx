@@ -8,7 +8,10 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { HelpPanel } from "@/components/shared/HelpPanel"
+import {
+  HelpPanel, HelpSection, HelpItem, HelpCallout,
+} from "@/components/shared/HelpPanel"
+import { ListTree, ToggleLeft, History } from "lucide-react"
 import { adminApi, type AdminDocumentType } from "../api/admin"
 
 export function AdminTypesPage() {
@@ -125,30 +128,48 @@ function AdminTypesHelp() {
       title="Типы документов (админ)"
       description="Каталог: что есть и как создать новый."
     >
-      <h3>Что показывает таблица</h3>
-      <ul>
-        <li><strong>Код</strong> — slug (snake_case), используется в URL и API.
-          После создания — нельзя менять.</li>
-        <li><strong>Категория</strong> — для группировки в каталоге пользователя.</li>
-        <li><strong>Кто создаёт</strong> — <code>author</code> (любой), <code>department_head</code>{" "}
-          (только руководитель), <code>group:NAME</code> (член группы).</li>
-        <li><strong>Статус</strong> — выключенный тип не появляется в каталоге, но
-          сохраняет историю старых документов.</li>
-      </ul>
+      <HelpSection icon={ListTree} title="Что показывает таблица" tone="primary">
+        <HelpItem label="Код">
+          Slug (snake_case), используется в URL и API. После создания —{" "}
+          <strong>нельзя менять</strong>.
+        </HelpItem>
+        <HelpItem label="Категория">
+          Для группировки в пользовательском каталоге.
+        </HelpItem>
+        <HelpItem label="Кто создаёт">
+          <code>author</code> (любой), <code>department_head</code> (только
+          руководитель), <code>group:NAME</code> (член группы).
+        </HelpItem>
+        <HelpItem label="Статус">
+          Выключенный тип не появляется в каталоге, но сохраняет историю
+          старых документов.
+        </HelpItem>
+      </HelpSection>
 
-      <h3>Удаление</h3>
-      <p>
-        Кнопка <strong>«Корзина»</strong> удалит запись типа. <strong>ВНИМАНИЕ:</strong> если
-        у типа уже есть документы — удаление заблокируется (PROTECT FK).
-        В этом случае выключите тип флагом <code>is_active=False</code> вместо удаления.
-      </p>
+      <HelpSection icon={ToggleLeft} title="Удаление" tone="red">
+        <p>
+          Кнопка <strong>«Корзина»</strong> удалит запись типа.
+        </p>
+        <HelpCallout variant="danger" title="PROTECT FK">
+          Если у типа уже есть документы — удаление заблокируется. Выключите
+          тип флагом <code>is_active=False</code> вместо удаления — старые
+          документы при этом останутся живы и читаемы.
+        </HelpCallout>
+      </HelpSection>
 
-      <h3>Совет</h3>
-      <p>
-        После создания/правки типа изменения <strong>не повлияют</strong> на уже
-        отправленные документы — у них зафиксирован <code>chain_snapshot</code> на
-        момент submit. Только новые документы возьмут обновлённый шаблон.
-      </p>
+      <HelpCallout variant="tip" title="Изменения не ретроактивны">
+        После создания или правки типа изменения <strong>не повлияют</strong> на
+        уже отправленные документы — у них зафиксирован{" "}
+        <code>chain_snapshot</code> на момент submit. Только новые документы
+        возьмут обновлённый шаблон.
+      </HelpCallout>
+
+      <HelpSection icon={History} title="История" tone="default">
+        <p>
+          Все изменения типов фиксируются в Django simple_history. Если нужно
+          откатиться — откройте Django admin → History.
+        </p>
+      </HelpSection>
     </HelpPanel>
   )
 }

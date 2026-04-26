@@ -18,7 +18,13 @@ import { Timeline } from "@/components/shared/Timeline"
 import { SearchableSelect } from "@/components/shared/SearchableSelect"
 import { SignaturePad } from "@/components/shared/SignaturePad"
 import { LinkedDocuments } from "@/components/shared/LinkedDocuments"
-import { HelpPanel } from "@/components/shared/HelpPanel"
+import {
+  HelpPanel, HelpSection, HelpItem, HelpCallout,
+} from "@/components/shared/HelpPanel"
+import {
+  LayoutDashboard, MousePointerClick, PenLine, FilePenLine,
+  Link2 as Link2Icon, FileDown,
+} from "lucide-react"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -668,71 +674,85 @@ function DocumentDetailHelp({ canAct, isAuthor }: { canAct: boolean; isAuthor: b
       title="Страница документа"
       description="Что здесь можно делать."
     >
-      <h3>Что вы видите</h3>
-      <ul>
-        <li><strong>Слева:</strong> тело документа (отрендеренное), таблица полей,
-          вложения, связанные документы, таймлайн истории.</li>
-        <li><strong>Справа:</strong> цепочка согласования. Каждый шаг — иконка статуса
-          (часы=ждёт, галочка=одобрен, крест=отклонён) + аватар согласующего.</li>
-      </ul>
+      <HelpSection icon={LayoutDashboard} title="Что вы видите" tone="primary">
+        <HelpItem label="Слева">
+          Тело документа (отрендеренное), таблица полей, вложения, связанные
+          документы, таймлайн истории.
+        </HelpItem>
+        <HelpItem label="Справа">
+          Цепочка согласования. Каждый шаг — иконка статуса (часы = ждёт,
+          галочка = одобрен, крест = отклонён) + аватар согласующего.
+        </HelpItem>
+      </HelpSection>
 
       {canAct && (
         <>
-          <h3>Ваш шаг — что нажимать</h3>
-          <ul>
-            <li><strong>Согласовать</strong> — комментарий опционален, переход к
-              следующему шагу автоматический.</li>
-            <li><strong>Запросить правки</strong> — комментарий обязателен. Документ
-              вернётся автору в <code>revision_requested</code>, тот поправит и
-              отправит заново.</li>
-            <li><strong>Отклонить</strong> — финальный статус. Комментарий обязателен.
-              Повторного согласования не будет — автор должен создать
-              новый документ.</li>
-            <li><strong>Делегировать</strong> — передать решение другому. Ваше имя
-              сохранится в <code>original_approver</code> для аудита.</li>
-          </ul>
-          <h3>Рисованная подпись</h3>
-          <p>
-            Если у документа стоит флаг <code>requires_drawn_signature</code> (командировки,
-            уведомления об отпуске) — над кнопками появится холст. Подпишите
-            мышью или пальцем; PDF получит подпись в подвале.
-          </p>
+          <HelpSection icon={MousePointerClick} title="Ваш шаг — что нажимать" tone="primary">
+            <HelpItem label="Согласовать">
+              Комментарий опционален, переход к следующему шагу автоматический.
+            </HelpItem>
+            <HelpItem label="Запросить правки">
+              Комментарий обязателен. Документ вернётся автору в{" "}
+              <code>revision_requested</code>, тот поправит и отправит заново.
+            </HelpItem>
+            <HelpItem label="Отклонить">
+              Финальный статус. Комментарий обязателен. Повторного согласования
+              не будет — автор должен создать новый документ.
+            </HelpItem>
+            <HelpItem label="Делегировать">
+              Передать решение другому. Ваше имя сохранится в{" "}
+              <code>original_approver</code> для аудита.
+            </HelpItem>
+          </HelpSection>
+
+          <HelpSection icon={PenLine} title="Рисованная подпись" tone="amber">
+            <p>
+              Если у документа стоит флаг{" "}
+              <code>requires_drawn_signature</code> (командировки, уведомления
+              об отпуске) — над кнопками появится холст. Подпишите мышью или
+              пальцем; PDF получит подпись в подвале.
+            </p>
+          </HelpSection>
         </>
       )}
 
       {isAuthor && (
-        <>
-          <h3>Что доступно автору</h3>
-          <ul>
-            <li>Если документ в <code>draft</code> или <code>revision_requested</code> —
-              можно редактировать поля (кнопка «Внести правки» в карточке полей).</li>
-            <li>Кнопка <strong>«Отменить»</strong> в шапке доступна, пока ни один шаг
-              не одобрен. После первого approve — только запрос правок.</li>
-            <li>Можно прикладывать файлы в любое время (карточка «Вложения»).</li>
-          </ul>
-        </>
+        <HelpSection icon={FilePenLine} title="Что доступно автору" tone="default">
+          <HelpItem label="Редактирование">
+            Если документ в <code>draft</code> или <code>revision_requested</code> —
+            можно править поля (кнопка «Внести правки» в карточке полей).
+          </HelpItem>
+          <HelpItem label="Отмена">
+            Кнопка <strong>«Отменить»</strong> в шапке доступна, пока ни один
+            шаг не одобрен. После первого approve — только запрос правок.
+          </HelpItem>
+          <HelpItem label="Вложения">
+            Можно прикладывать файлы в любое время (карточка «Вложения»).
+          </HelpItem>
+        </HelpSection>
       )}
 
-      <h3>Связанные документы</h3>
-      <p>
-        Кнопкой <strong>«Связать»</strong> можно прикрепить другой документ ЭДО
-        (введите ≥2 символов от номера или заголовка). Связи отображаются
-        с двух сторон.
-      </p>
+      <HelpSection icon={Link2Icon} title="Связанные документы" tone="default">
+        <p>
+          Кнопкой <strong>«Связать»</strong> можно прикрепить другой документ
+          ЭДО (введите ≥2 символов от номера или заголовка). Связи отображаются
+          с двух сторон.
+        </p>
+      </HelpSection>
 
-      <h3>PDF и архив</h3>
-      <p>
-        Кнопка <strong>«PDF»</strong> в шапке возвращает PDF с шапкой компании,
-        директором (из справочника «Шапки организаций») и подписями. Кеш — 7 дней,
-        регенерируется при любом изменении.
-      </p>
+      <HelpSection icon={FileDown} title="PDF и архив" tone="default">
+        <p>
+          Кнопка <strong>«PDF»</strong> в шапке возвращает PDF с шапкой компании,
+          директором (из справочника «Шапки организаций») и подписями. Кеш —
+          7 дней, регенерируется при любом изменении.
+        </p>
+      </HelpSection>
 
-      <h3>Email-link approve</h3>
-      <p>
+      <HelpCallout variant="tip" title="Email-link approve">
         Если вам пришло письмо о новом шаге — там вшиты ссылки прямого
-        approve/reject. Можно кликнуть из почты без логина (TTL 14 дней).
+        approve/reject. Кликнуть из почты можно без логина (TTL 14 дней).
         Если шаг закрыт раньше — ссылка вернёт «Шаг уже закрыт».
-      </p>
+      </HelpCallout>
     </HelpPanel>
   )
 }

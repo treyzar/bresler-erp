@@ -18,7 +18,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import api from "@/api/client"
-import { HelpPanel } from "@/components/shared/HelpPanel"
+import {
+  HelpPanel, HelpSection, HelpItem, HelpCallout,
+} from "@/components/shared/HelpPanel"
+import {
+  FormInput, GitBranch, Bell as BellIcon, Ban, Code2,
+} from "lucide-react"
 import { adminApi, type AdminChainStep, type AdminDocumentType } from "../api/admin"
 import { FieldSchemaEditor } from "../components/FieldSchemaEditor"
 import { ChainStepsEditor } from "../components/ChainStepsEditor"
@@ -352,69 +357,87 @@ function AdminTypeEditHelp() {
       title="Редактор типа документа"
       description="Поля, шаблоны, цепочка согласования."
     >
-      <h3>Поля формы (field_schema)</h3>
-      <p>
-        Конструктор полей — список со стрелками ↑/↓ для перестановки. Для
-        каждого поля укажите <strong>имя</strong> (snake_case, используется в шаблонах
-        как <code>{`{{ name }}`}</code>), <strong>подпись</strong> для пользователя, <strong>тип</strong>{" "}
-        и <strong>обязательность</strong>.
-      </p>
+      <HelpSection icon={FormInput} title="Поля формы (field_schema)" tone="primary">
+        <p>
+          Конструктор полей — список со стрелками ↑/↓ для перестановки. Для
+          каждого поля укажите имя (snake_case, в шаблонах как{" "}
+          <code>{`{{ name }}`}</code>), подпись для пользователя, тип и
+          обязательность.
+        </p>
+        <HelpItem label="type=choice">
+          Открывается редактор вариантов (код → подпись). В шаблоне доступна
+          также <code>{`{{ <name>_display }}`}</code> с человекочитаемой меткой.
+        </HelpItem>
+        <HelpItem label="type=table">
+          Открывается редактор колонок. Каждая колонка имеет имя, подпись
+          и тип. Внутри таблицы можно использовать любые типы, кроме
+          вложенных таблиц. В шаблоне:{" "}
+          <code>{`{% for row in rows %}{{ row.col_name }}{% endfor %}`}</code>.
+        </HelpItem>
+      </HelpSection>
 
-      <h3>Conditional подразделы</h3>
-      <ul>
-        <li><strong>type=choice</strong> — открывается редактор вариантов (код → подпись).
-          В шаблоне доступна также <code>{`{{ <name>_display }}`}</code> с человекочитаемой
-          меткой.</li>
-        <li><strong>type=table</strong> — открывается редактор колонок. Каждая колонка
-          имеет имя, подпись и тип. Внутри таблицы можно использовать любые
-          типы, кроме вложенных таблиц. В шаблоне:{" "}
-          <code>{`{% for row in rows %}{{ row.col_name }}{% endfor %}`}</code>.</li>
-      </ul>
+      <HelpSection icon={Code2} title="Переменные шаблонов (DTL)" tone="default">
+        <p>
+          В <code>title_template</code> и <code>body_template</code> доступны:
+        </p>
+        <HelpItem label="author">
+          User: <code>author.full_name</code>, <code>author.position</code>,{" "}
+          <code>author.department_unit.name</code>.
+        </HelpItem>
+        <HelpItem label="today">
+          Текущая дата (для <code>{`{{ today|date:"d.m.Y" }}`}</code>).
+        </HelpItem>
+        <HelpItem label="document">
+          После submit: <code>document.number</code>,{" "}
+          <code>document.created_at</code>.
+        </HelpItem>
+        <HelpItem label="fields и поля по имени">
+          <code>fields</code> — dict со всеми гидрированными значениями. Также
+          каждое поле доступно по имени напрямую (date → date-объект, user →
+          User-объект).
+        </HelpItem>
+      </HelpSection>
 
-      <h3>Шаблоны (Django Template Language)</h3>
-      <p>
-        В <code>title_template</code> и <code>body_template</code> доступны:
-      </p>
-      <ul>
-        <li><code>author</code> — User: <code>author.full_name</code>, <code>author.position</code>,{" "}
-          <code>author.department_unit.name</code>.</li>
-        <li><code>today</code> — текущая дата (для <code>{`{{ today|date:"d.m.Y" }}`}</code>).</li>
-        <li><code>document</code> — после submit: <code>document.number</code>,{" "}
-          <code>document.created_at</code>.</li>
-        <li><code>fields</code> — dict со всеми гидрированными значениями.</li>
-        <li>Каждое поле — по имени, гидрированное (date → date-объект, user →
-          User-объект и т.п.).</li>
-      </ul>
+      <HelpSection icon={GitBranch} title="Цепочка согласования" tone="primary">
+        <p>
+          Список шагов с reorder. Для каждого выберите{" "}
+          <strong>role_key</strong> (preset из списка или ручной ввод).
+          Полный список префиксов — в админ-гайде.
+        </p>
+        <HelpItem label="Параллельные ветки">
+          Задайте шагам одинаковый текстовый <code>parallel_group</code>, и они
+          будут активны одновременно.
+        </HelpItem>
+        <HelpItem label="AND">
+          Нужны все одобрения; любой reject убивает документ.
+        </HelpItem>
+        <HelpItem label="OR">
+          Достаточно одного approve, остальные → SKIPPED. Reject в OR не
+          блокирует — документ rejected, только если все откажут.
+        </HelpItem>
+      </HelpSection>
 
-      <h3>Цепочка согласования</h3>
-      <p>
-        Список шагов с reorder. Для каждого выберите <strong>role_key</strong> (preset из
-        списка или ручной ввод). Полный список префиксов — в админ-гайде.
-      </p>
-      <p>
-        <strong>Параллельные ветки.</strong> Чтобы шаги шли одновременно — задайте им
-        одинаковый текстовый <code>parallel_group</code>. Режим:
-      </p>
-      <ul>
-        <li><code>AND</code> — нужны все одобрения; любой reject убивает документ.</li>
-        <li><code>OR</code> — достаточно одного approve, остальные → SKIPPED. Reject в
-          OR не блокирует, документ rejected только если все откажут.</li>
-      </ul>
+      <HelpSection icon={BellIcon} title="Inform-шаги" tone="default">
+        <p>
+          Действие <code>inform</code> / <code>notify_only</code> — шаг закрывается
+          автоматически, как только активируется следующий active-шаг.
+          Удобно для «Бухгалтерии в копию» и подобного.
+        </p>
+      </HelpSection>
 
-      <h3>Inform-шаги</h3>
-      <p>
-        Действие <code>inform</code> / <code>notify_only</code> — шаг закрывается автоматически,
-        как только активируется следующий active-шаг. Удобно для «Бухгалтерии
-        в копию» и подобного.
-      </p>
-
-      <h3>Что нельзя</h3>
-      <ul>
-        <li>Менять <code>code</code> после создания.</li>
-        <li>Удалять тип, у которого есть документы (PROTECT FK).</li>
-        <li>Изменения шаблона/цепочки <strong>не</strong> ретроактивны — старые
-          документы останутся со своим <code>chain_snapshot</code>.</li>
-      </ul>
+      <HelpSection icon={Ban} title="Чего нельзя" tone="red">
+        <HelpItem label="Менять code">
+          После первого сохранения — поле заблокировано.
+        </HelpItem>
+        <HelpItem label="Удалять с документами">
+          Тип, у которого есть документы — PROTECT FK заблокирует удаление.
+          Выключайте через <code>is_active=False</code>.
+        </HelpItem>
+        <HelpItem label="Ретроактивные правки">
+          Изменения шаблона или цепочки <strong>не</strong> применятся к старым
+          документам — у них зафиксирован <code>chain_snapshot</code>.
+        </HelpItem>
+      </HelpSection>
     </HelpPanel>
   )
 }
