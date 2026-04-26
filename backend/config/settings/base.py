@@ -52,7 +52,6 @@ LOCAL_APPS = [
     "apps.importer",
     "apps.reports",
     "apps.specs",
-    "apps.edo.doc_builder",
     "apps.edo.parser_app",
     "apps.edo.templates_app",
     "apps.edo.registry",

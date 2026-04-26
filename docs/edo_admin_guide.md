@@ -175,22 +175,6 @@ admin (`/admin/internal_docs/internaldocflowconfig/`):
 - `default_sla_hours` — fallback SLA для шагов без явного значения (default 48).
 - `pdf_cache_ttl_hours` — TTL on-demand PDF-кеша (default 168 = 7 дней).
 
-## Removal procedure: deprecated `apps/edo/doc_builder`
-
-App-дублёр `templates_app` (Tiptap-редактор, plan §11 Фаза 4). API уже
-закрыт (route убран), сам код и таблицы остаются до подтверждения, что в
-prod-БД нет ценных данных.
-
-Для финального удаления (отдельный релиз):
-1. Сделать дамп таблиц `doc_builder_documentproject` и
-   `doc_builder_documentfile`, проверить наличие данных.
-2. Сгенерировать миграцию: `manage.py makemigrations doc_builder --empty`,
-   добавить `migrations.DeleteModel("DocumentProject")` +
-   `migrations.DeleteModel("DocumentFile")`.
-3. Деплой → `manage.py migrate doc_builder`.
-4. Следующим релизом удалить `"apps.edo.doc_builder"` из `INSTALLED_APPS`
-   и удалить папку `apps/edo/doc_builder/`.
-
 ## Troubleshooting
 
 | Симптом | Причина | Решение |
