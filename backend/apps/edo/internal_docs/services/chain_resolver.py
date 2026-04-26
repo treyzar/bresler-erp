@@ -86,12 +86,49 @@ def _author(ctx: ResolveContext, _args: str):
 
 @register("company_head")
 def _company_head(ctx: ResolveContext, _args: str):
+    """Директор компании автора. Двухступенчатый резолв:
+
+    1. Primary: `User.is_department_head=True` + `department_unit IS NULL`
+       — пользователь, явно сидящий «на уровне компании», без подразделения.
+    2. Fallback: head корневого Department в этой компании. Это покрывает
+       типовую org-структуру, где директор сидит в Department «Руководство»
+       (или равнозначном) на верхушке дерева, а не вне дерева вовсе.
+
+    Если ни первый, ни второй вариант не дают результата — возвращает None,
+    и шаг с `action=approve/sign` упадёт с ResolveError при submit'е.
+    """
     if not ctx.author.company_unit_id:
+        return None
+
+    # 1) Primary: company-level head (department_unit=NULL).
+    head = (
+        User.objects.filter(
+            company_unit_id=ctx.author.company_unit_id,
+            department_unit__isnull=True,
+            is_department_head=True,
+            is_active=True,
+        )
+        .exclude(pk=ctx.author.pk)
+        .order_by("last_name", "first_name", "pk")
+        .first()
+    )
+    if head is not None:
+        return head
+
+    # 2) Fallback: head корневого (depth=1) Department в этой компании.
+    # MP_Node treebeard: roots имеют depth=1.
+    from apps.directory.models import Department
+    root_dept_ids = list(
+        Department.objects
+        .filter(company_id=ctx.author.company_unit_id, depth=1, is_active=True)
+        .values_list("pk", flat=True)
+    )
+    if not root_dept_ids:
         return None
     return (
         User.objects.filter(
             company_unit_id=ctx.author.company_unit_id,
-            department_unit__isnull=True,
+            department_unit_id__in=root_dept_ids,
             is_department_head=True,
             is_active=True,
         )
@@ -280,6 +317,40 @@ def _field_dept_head(ctx: ResolveContext, args: str):
 NON_BLOCKING_ACTIONS = {"inform", "notify_only"}
 
 
+# Объяснения для админа: что нужно настроить, чтобы конкретный role_key начал
+# резолвиться. Сообщения добавляются к ResolveError при submit'е документа.
+_RESOLVE_HINTS: dict[str, str] = {
+    "supervisor": (
+        "Назначьте автору непосредственного руководителя: либо явно через "
+        "User.supervisor (Django admin), либо проставьте кому-то в его "
+        "department_unit (или родительском) флаг is_department_head=True."
+    ),
+    "company_head": (
+        "Не найден директор компании. Варианты: "
+        "(а) создать пользователя с company_unit=<компания>, department_unit=NULL, "
+        "is_department_head=True; "
+        "(б) проставить is_department_head=True пользователю в корневом Department "
+        "компании (например, в «Руководство»)."
+    ),
+    "dept_head": (
+        "В дереве Department автора нет ни одного пользователя с is_department_head=True. "
+        "Проставьте флаг руководителю подразделения через Django admin."
+    ),
+}
+
+
+def _format_unresolved(role_key: str, label: str, order: int, author) -> str:
+    prefix = role_key.partition(":")[0]
+    hint = _RESOLVE_HINTS.get(prefix, "")
+    msg = (
+        f"Шаг #{order} «{label}» (role_key={role_key}) не удалось резолвить "
+        f"для автора {author.get_full_name() or author.pk}."
+    )
+    if hint:
+        msg += " " + hint
+    return msg
+
+
 @dataclass
 class ResolvedStep:
     order: int
@@ -339,10 +410,7 @@ def build_approval_steps(
                     order, role_key,
                 )
                 continue
-            raise ResolveError(
-                f"Required step order={order} role={role_key!r} could not be resolved "
-                f"for author {author.pk}"
-            )
+            raise ResolveError(_format_unresolved(role_key, label, order, author))
 
         if dedupe and not parallel_group and user.pk in seen_approvers:
             logger.info(

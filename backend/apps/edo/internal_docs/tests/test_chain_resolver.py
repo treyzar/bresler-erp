@@ -162,13 +162,65 @@ def test_company_head(tree):
 
 @pytest.mark.django_db
 def test_company_head_ignores_heads_of_subdepartments(tree):
-    """Director with department_unit=NULL is the real company head.
-    Heads of sub-departments should NOT be picked."""
-    dept_head = UserFactory(
+    """Heads сабдепартментов (depth >= 2) НЕ должны подбираться как company_head —
+    fallback идёт только на корневые (depth=1) Department."""
+    UserFactory(
         company_unit=tree["company"], department_unit=tree["dept1"], is_department_head=True,
     )
     emp = UserFactory(company_unit=tree["company"], department_unit=tree["sector_a"])
     assert resolve("company_head", emp) is None
+
+
+@pytest.mark.django_db
+def test_company_head_fallback_to_root_department_head(tree):
+    """Если нет department_unit=NULL директора, но есть head корневого Department
+    (например, "Руководство" / "Служба РЗА") — резолвер находит его."""
+    # `tree["service"]` — это root Department (depth=1).
+    director_in_root = UserFactory(
+        last_name="Директоров",
+        company_unit=tree["company"], department_unit=tree["service"],
+        is_department_head=True,
+    )
+    emp = UserFactory(company_unit=tree["company"], department_unit=tree["sector_a"])
+    assert resolve("company_head", emp).pk == director_in_root.pk
+
+
+@pytest.mark.django_db
+def test_company_head_primary_wins_over_fallback(tree):
+    """Если есть и department_unit=NULL директор, и head корневого Department —
+    выбирается тот, что без department_unit (primary)."""
+    primary = UserFactory(
+        last_name="Главный",
+        company_unit=tree["company"], department_unit=None, is_department_head=True,
+    )
+    UserFactory(
+        last_name="ГлаваСлужбы",
+        company_unit=tree["company"], department_unit=tree["service"],
+        is_department_head=True,
+    )
+    emp = UserFactory(company_unit=tree["company"], department_unit=tree["sector_a"])
+    assert resolve("company_head", emp).pk == primary.pk
+
+
+@pytest.mark.django_db
+def test_unresolved_step_error_message_has_hint(tree):
+    """Сообщение об ошибке должно содержать подсказку для админа: что настроить."""
+    from apps.edo.internal_docs.services.chain_resolver import build_approval_steps
+
+    # Нет ни одного company_head в этом дереве → step упадёт с подсказкой.
+    emp = UserFactory(
+        last_name="Тестов",
+        company_unit=tree["company"], department_unit=tree["sector_a"],
+    )
+    chain_steps = [
+        {"order": 1, "role_key": "company_head", "label": "Директор", "action": "approve"},
+    ]
+    with pytest.raises(ResolveError) as exc:
+        build_approval_steps(chain_steps, emp)
+    msg = str(exc.value)
+    assert "Шаг #1 «Директор»" in msg
+    assert "Не найден директор компании" in msg
+    assert "is_department_head=True" in msg
 
 
 # ---------- group / group_head ----------
