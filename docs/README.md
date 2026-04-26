@@ -7,7 +7,9 @@
 | [edo_user_guide.md](edo_user_guide.md) | Сотрудники | 13 разделов: создание документа, согласование, замещения, FAQ, troubleshooting |
 | [edo_admin_guide.md](edo_admin_guide.md) | Администраторы | Конструктор типов, шаблоны цепочек, отчёты, bulk-операции, диагностика |
 | [edo_test_scenarios.md](edo_test_scenarios.md) | QA / regression | 50+ сценариев по 11 ролевым группам + минимальный чек-лист релиза |
-| [edo_presentation.md](edo_presentation.md) | Заказчики, ознакомление | Marp-презентация (~22 слайда) — обзор возможностей, цифры, сравнение с рынком |
+| [edo_presentation.md](edo_presentation.md) | Заказчики, ознакомление | Marp-презентация (23 слайда) с SVG-диаграммами архитектуры, lifecycle, цепочек, email-flow |
+| [edo_presentation.pdf](edo_presentation.pdf) | — | Готовый PDF (1.1 MB, 23 страницы 16:9) — открывается без любых инструментов |
+| [edo_presentation.html](edo_presentation.html) | — | Standalone HTML-версия — открывается в браузере, переключение слайдов стрелками |
 
 ## Как открыть презентацию
 
