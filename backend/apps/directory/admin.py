@@ -12,6 +12,7 @@ from .models import (
     Equipment,
     Facility,
     OrgUnit,
+    OrgUnitHead,
     TypeOfWork,
 )
 
@@ -134,3 +135,12 @@ class FacilityAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("name", "address")
     raw_id_fields = ("org_unit",)
+
+
+@admin.register(OrgUnitHead)
+class OrgUnitHeadAdmin(admin.ModelAdmin):
+    list_display = ("org_unit", "head_name", "head_position", "from_date", "to_date")
+    list_filter = ("org_unit",)
+    search_fields = ("head_name", "head_position", "org_unit__name")
+    raw_id_fields = ("org_unit",)
+    date_hierarchy = "from_date"

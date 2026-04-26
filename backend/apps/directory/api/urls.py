@@ -10,6 +10,7 @@ from .views import (
     DepartmentViewSet,
     EquipmentViewSet,
     FacilityViewSet,
+    OrgUnitHeadViewSet,
     OrgUnitViewSet,
     TypeOfWorkViewSet,
 )
@@ -27,6 +28,7 @@ router.register("works", TypeOfWorkViewSet, basename="work")
 router.register("delivery-types", DeliveryTypeViewSet, basename="delivery-type")
 router.register("facilities", FacilityViewSet, basename="facility")
 router.register("departments", DepartmentViewSet, basename="department")
+router.register("orgunit-heads", OrgUnitHeadViewSet, basename="orgunit-head")
 
 urlpatterns = [
     path("", include(router.urls)),

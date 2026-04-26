@@ -30,6 +30,8 @@ from .chain_resolver import ResolveError, build_approval_steps
 
 logger = logging.getLogger(__name__)
 
+_UNSET = object()
+
 
 class DocumentServiceError(Exception):
     """Любая ошибка бизнес-логики документа (нельзя перейти, нет прав и т.п.)."""
@@ -78,19 +80,27 @@ def create_draft(
     return doc
 
 
-def update_draft(document: Document, *, field_values=None, title=None, addressee=None) -> Document:
-    """Обновляет поля черновика. Разрешено только в draft/revision_requested."""
+def update_draft(document: Document, *, field_values=None, title=None, addressee=_UNSET) -> Document:
+    """Обновляет поля черновика. Разрешено только в draft/revision_requested.
+
+    Передача `addressee=None` явно очищает поле; по умолчанию (sentinel) — не трогает.
+    """
     if document.status not in (Document.Status.DRAFT, Document.Status.REVISION_REQUESTED):
         raise DocumentServiceError(
             f"Cannot edit document in status {document.status!r}"
         )
+    update_fields: list[str] = []
     if field_values is not None:
         document.field_values = field_values
+        update_fields.append("field_values")
     if title is not None:
         document.title = title
-    if addressee is not None or addressee is None and "addressee" in locals():
+        update_fields.append("title")
+    if addressee is not _UNSET:
         document.addressee = addressee
-    document.save(update_fields=["field_values", "title", "addressee", "updated_at"] if hasattr(document, "updated_at") else None)
+        update_fields.append("addressee")
+    if update_fields:
+        document.save(update_fields=update_fields)
     return document
 
 
@@ -98,16 +108,23 @@ def update_draft(document: Document, *, field_values=None, title=None, addressee
 
 
 def _build_header_snapshot(author) -> dict:
-    """Снимает «шапку» документа: компания + директор (если есть)."""
+    """Снимает «шапку» документа: компания + директор на момент submit.
+
+    Директор берётся из OrgUnitHead-справочника по active_for(today). Если
+    запись не найдена — оставляем пустые строки; PDF в таком случае не
+    показывает блок «Кому».
+    """
+    from apps.directory.models import OrgUnitHead
+
     company = author.company_unit or (author.department_unit.company if author.department_unit_id else None)
     if company is None:
         return {}
+    head = OrgUnitHead.active_for(company)
     return {
         "company_name": company.name,
         "company_full_name": getattr(company, "full_name", "") or company.name,
-        # Директор и его должность — в Фазе 3 из OrgUnitHead-справочника. Пока пусто.
-        "head_name": "",
-        "head_position": "",
+        "head_name": head.head_name if head else "",
+        "head_position": head.head_position if head else "",
     }
 
 
@@ -194,7 +211,7 @@ def submit(document: Document, user) -> Document:
     document.status = Document.Status.PENDING
     document.save()
 
-    # 7. Создаём ApprovalStep'ы. Удаляем любые старые, если это re-submit.
+    # 7. Создаём ApprovalStep'ы — все в WAITING. Удаляем любые старые, если это re-submit.
     document.steps.all().delete()
     config = InternalDocFlowConfig.get_solo()
     default_sla = config.default_sla_hours
@@ -205,29 +222,21 @@ def submit(document: Document, user) -> Document:
             document=document,
             order=r.order,
             parallel_group=r.parallel_group or "",
+            parallel_mode=(r.parallel_mode or ApprovalStep.ParallelMode.AND),
             role_key=r.role_key,
             role_label=r.role_label,
             action=r.action,
             approver=r.approver,
-            status=ApprovalStep.Status.PENDING,
+            status=ApprovalStep.Status.WAITING,
             sla_due_at=_sla_due_at(now, r.sla_hours, default_sla),
         )
         created_steps.append(step)
 
-    # current_step = первый pending из active-action шагов.
-    first_active = next(
-        (s for s in created_steps if s.action in (ApprovalStep.Action.APPROVE, ApprovalStep.Action.SIGN)),
-        None,
-    )
-    document.current_step = first_active
-    document.save(update_fields=["current_step"])
-
+    # 8. Активируем первый batch (переводит первую пачку WAITING → PENDING,
+    # auto-завершает inform-шаги перед ней; событие approval_requested
+    # генерируется внутри).
     trigger_event("document.submitted", instance=document, user=user)
-    if first_active:
-        trigger_event(
-            "document.approval_requested",
-            instance=document, step=first_active, user=user,
-        )
+    _activate_next_batch(document, after_order=-1)
 
     logger.info("Submitted document %s (number %s)", document.pk, document.number)
     return document
@@ -235,9 +244,48 @@ def submit(document: Document, user) -> Document:
 
 # ========== approve / reject / request_revision ==========
 
+ACTIVE_ACTIONS = (ApprovalStep.Action.APPROVE, ApprovalStep.Action.SIGN)
+INFORM_ACTIONS = (ApprovalStep.Action.INFORM, ApprovalStep.Action.NOTIFY_ONLY)
 
-def _get_current_active_step(document: Document, user) -> ApprovalStep:
-    """Возвращает шаг, которого ждёт user'а или группа, в которой состоит user.
+
+def _get_step_batch(step: ApprovalStep) -> list[ApprovalStep]:
+    """Все шаги, относящиеся к тому же batch'у согласования, что и `step`.
+
+    Batch = набор шагов одного `parallel_group` (если он непустой).
+    Sequential-шаг — batch из самого себя.
+    Возвращаются ВСЕ шаги batch'а (включая уже закрытые), для проверки
+    AND/OR-условий завершения.
+    """
+    if not step.parallel_group:
+        return [step]
+    return list(
+        step.document.steps.filter(parallel_group=step.parallel_group).order_by("order", "pk")
+    )
+
+
+def _is_batch_complete(batch: list[ApprovalStep]) -> bool:
+    """`True`, если batch достиг условия завершения по своему `parallel_mode`.
+
+    AND: все участники в финальном статусе approve/skipped.
+    OR: хотя бы один approve. (Reject в OR режиме НЕ останавливает batch —
+    остальные могут согласовать; целиком rejected считается, когда ВСЕ rejected.)
+    """
+    if not batch:
+        return True
+    mode = batch[0].parallel_mode or ApprovalStep.ParallelMode.AND
+    if mode == ApprovalStep.ParallelMode.OR:
+        return any(s.status == ApprovalStep.Status.APPROVED for s in batch)
+    final = (ApprovalStep.Status.APPROVED, ApprovalStep.Status.SKIPPED)
+    return all(s.status in final for s in batch)
+
+
+def _is_batch_all_rejected(batch: list[ApprovalStep]) -> bool:
+    """В OR-режиме: все участники отклонили → документ отклонён."""
+    return bool(batch) and all(s.status == ApprovalStep.Status.REJECTED for s in batch)
+
+
+def _get_user_pending_step(document: Document, user) -> ApprovalStep:
+    """Возвращает PENDING active-шаг, назначенный пользователю (или его группе).
 
     Поддерживает два режима:
     - персональный: step.approver == user
@@ -245,15 +293,20 @@ def _get_current_active_step(document: Document, user) -> ApprovalStep:
 
     При групповом resolution-е переназначаем step.approver = user (silent
     pickup), чтобы в истории зафиксировалось, кто конкретно принял решение.
+
+    Только PENDING-шаги, поэтому WAITING (ещё не активные параллельные
+    или последующие шаги) автоматически отфильтровываются.
     """
-    pending = document.steps.filter(status=ApprovalStep.Status.PENDING).order_by("order")
+    pending = (
+        document.steps
+        .filter(status=ApprovalStep.Status.PENDING, action__in=ACTIVE_ACTIONS)
+        .order_by("order", "pk")
+    )
 
-    # Персональный inbox.
-    step = pending.filter(approver=user).first()
-    if step is not None:
-        return step
+    direct = pending.filter(approver=user).first()
+    if direct is not None:
+        return direct
 
-    # Групповой inbox: проверяем все pending шаги.
     user_groups = set(user.groups.values_list("name", flat=True))
     for s in pending:
         rk = s.role_key or ""
@@ -265,7 +318,6 @@ def _get_current_active_step(document: Document, user) -> ApprovalStep:
         if scope == "company":
             if not user.company_unit_id or document.author_company_unit_id != user.company_unit_id:
                 continue
-        # Silent pickup: фиксируем фактического исполнителя.
         if s.approver_id != user.pk:
             s.original_approver = s.original_approver or s.approver
             s.approver = user
@@ -277,32 +329,79 @@ def _get_current_active_step(document: Document, user) -> ApprovalStep:
     )
 
 
-def _advance_to_next_step(document: Document) -> None:
-    """Продвигает document.current_step на следующий активный шаг или закрывает документ."""
-    active_actions = (ApprovalStep.Action.APPROVE, ApprovalStep.Action.SIGN)
-    next_step = (
+def _activate_next_batch(document: Document, *, after_order: int) -> None:
+    """Активирует следующий batch WAITING-шагов (после `after_order`).
+
+    1. Auto-completes inform/notify_only шаги перед следующим active-шагом
+       (мгновенно ставит APPROVED).
+    2. Если active-шагов больше нет — закрывает документ как APPROVED.
+    3. Иначе переводит весь batch следующего active-шага (по `parallel_group`
+       или одиночный sequential-шаг) из WAITING в PENDING, ставит
+       `current_step`, генерирует `document.approval_requested` для каждого.
+
+    Используется и при первичном submit (`after_order=-1`), и после успешного
+    закрытия предыдущего batch'а.
+    """
+    waiting = (
         document.steps
-        .filter(
-            status=ApprovalStep.Status.PENDING,
-            action__in=active_actions,
-        )
-        .order_by("order")
-        .first()
+        .filter(status=ApprovalStep.Status.WAITING, order__gt=after_order)
+        .order_by("order", "pk")
     )
-    if next_step is not None:
-        document.current_step = next_step
-        document.save(update_fields=["current_step"])
-        trigger_event(
-            "document.approval_requested",
-            instance=document, step=next_step,
-        )
-    else:
-        # Не осталось активных шагов → документ согласован.
+
+    # 1. Находим первый active-WAITING шаг.
+    next_active = waiting.filter(action__in=ACTIVE_ACTIONS).first()
+    now = timezone.now()
+
+    # 2. Auto-завершаем все inform-шаги ПЕРЕД ним (или все, если active больше нет).
+    informs_qs = waiting.filter(action__in=INFORM_ACTIONS)
+    if next_active is not None:
+        informs_qs = informs_qs.filter(order__lt=next_active.order)
+    informs_qs.update(status=ApprovalStep.Status.APPROVED, decided_at=now)
+
+    if next_active is None:
+        # Активных больше нет → документ согласован.
         document.current_step = None
         document.status = Document.Status.APPROVED
-        document.closed_at = timezone.now()
+        document.closed_at = now
         document.save(update_fields=["current_step", "status", "closed_at"])
         trigger_event("document.approved", instance=document)
+        return
+
+    # 3. Активируем batch следующего active-шага.
+    if next_active.parallel_group:
+        batch = list(
+            waiting
+            .filter(parallel_group=next_active.parallel_group, action__in=ACTIVE_ACTIONS)
+            .order_by("order", "pk")
+        )
+    else:
+        batch = [next_active]
+
+    for s in batch:
+        # Если у назначенного approver'а активен замещающий — переводим шаг
+        # на него, фиксируя original_approver. Делаем именно при активации,
+        # а не при submit'е: в момент создания черновика отпуск approver'а
+        # может ещё не наступить.
+        _maybe_apply_substitute(s)
+        s.status = ApprovalStep.Status.PENDING
+        s.save(update_fields=["status", "approver", "original_approver", "updated_at"])
+
+    document.current_step = batch[0]
+    document.save(update_fields=["current_step"])
+
+    for s in batch:
+        trigger_event("document.approval_requested", instance=document, step=s)
+
+
+def _maybe_apply_substitute(step: ApprovalStep) -> None:
+    """In-place: если approver в отпуске → переводит шаг на substitute_user."""
+    if not step.approver_id:
+        return
+    sub = step.approver.get_active_substitute()
+    if sub is None or sub.pk == step.approver_id:
+        return
+    step.original_approver = step.original_approver or step.approver
+    step.approver = sub
 
 
 @transaction.atomic
@@ -313,11 +412,17 @@ def approve(
     comment: str = "",
     signature_image: str = "",
 ) -> ApprovalStep:
-    """Одобрить текущий шаг согласования."""
+    """Одобрить активный шаг (или личный, или коллективный групповой).
+
+    Логика для batch'а:
+    - AND: ждём, пока все остальные шаги batch'а завершатся → переходим дальше.
+    - OR: первый approve гасит остальных в batch'е (их статус → SKIPPED) и
+      продвигает документ.
+    """
     if document.status != Document.Status.PENDING:
         raise DocumentServiceError(f"Cannot approve from status {document.status!r}")
 
-    step = _get_current_active_step(document, user)
+    step = _get_user_pending_step(document, user)
 
     step.status = ApprovalStep.Status.APPROVED
     step.decided_at = timezone.now()
@@ -326,56 +431,60 @@ def approve(
         step.signature_image = signature_image
     step.save()
 
-    # Для inform/notify_only шагов — автопометка approved, но без блокировки.
-    # Они идут по порядку: если между этим approve и next active шагом есть
-    # inform-шаги, отмечаем их сразу.
-    _auto_complete_intermediate_informs(document, after_order=step.order)
+    batch = _get_step_batch(step)
 
-    _advance_to_next_step(document)
+    # OR-batch: первый approve пропускает остальных в batch'е.
+    if (
+        step.parallel_group
+        and step.parallel_mode == ApprovalStep.ParallelMode.OR
+    ):
+        for sib in batch:
+            if sib.pk != step.pk and sib.status == ApprovalStep.Status.PENDING:
+                sib.status = ApprovalStep.Status.SKIPPED
+                sib.decided_at = step.decided_at
+                sib.save(update_fields=["status", "decided_at"])
+
+    # Если batch ещё не завершён (AND и кто-то pending) — ждём остальных.
+    batch = _get_step_batch(step)  # перечитываем после возможного skip
+    if not _is_batch_complete(batch):
+        return step
+
+    # Batch завершён → активируем следующий.
+    last_order = max(s.order for s in batch)
+    _activate_next_batch(document, after_order=last_order)
     return step
-
-
-def _auto_complete_intermediate_informs(document: Document, after_order: int) -> None:
-    """Между active-шагами ставим inform-шаги как 'approved' автоматически."""
-    informs = document.steps.filter(
-        status=ApprovalStep.Status.PENDING,
-        action__in=(ApprovalStep.Action.INFORM, ApprovalStep.Action.NOTIFY_ONLY),
-        order__gt=after_order,
-    ).order_by("order")
-    # Берём только те, которые идут ПЕРЕД следующим active-шагом.
-    next_active_order = (
-        document.steps
-        .filter(
-            status=ApprovalStep.Status.PENDING,
-            action__in=(ApprovalStep.Action.APPROVE, ApprovalStep.Action.SIGN),
-            order__gt=after_order,
-        )
-        .order_by("order")
-        .values_list("order", flat=True)
-        .first()
-    )
-    now = timezone.now()
-    for info in informs:
-        if next_active_order is not None and info.order > next_active_order:
-            break
-        info.status = ApprovalStep.Status.APPROVED
-        info.decided_at = now
-        info.save(update_fields=["status", "decided_at"])
 
 
 @transaction.atomic
 def reject(document: Document, user, *, comment: str) -> ApprovalStep:
-    """Отклонить документ — финальный статус."""
+    """Отклонить активный шаг.
+
+    Логика для batch'а:
+    - AND (или sequential): любой reject → документ сразу REJECTED.
+    - OR: reject отмечает только этого согласующего; остальные в batch'е
+      продолжают работать. Документ становится REJECTED, только когда
+      ВСЕ участники OR-batch'а отклонили.
+    """
     if document.status != Document.Status.PENDING:
         raise DocumentServiceError(f"Cannot reject from status {document.status!r}")
     if not comment:
         raise ValidationError("Комментарий обязателен при отклонении")
 
-    step = _get_current_active_step(document, user)
+    step = _get_user_pending_step(document, user)
     step.status = ApprovalStep.Status.REJECTED
     step.decided_at = timezone.now()
     step.comment = comment
     step.save()
+
+    is_or_batch = (
+        step.parallel_group
+        and step.parallel_mode == ApprovalStep.ParallelMode.OR
+    )
+    batch = _get_step_batch(step)
+
+    # OR-batch: reject не убивает документ, пока не все отклонили.
+    if is_or_batch and not _is_batch_all_rejected(batch):
+        return step
 
     document.status = Document.Status.REJECTED
     document.closed_at = timezone.now()
@@ -393,7 +502,7 @@ def request_revision(document: Document, user, *, comment: str) -> ApprovalStep:
     if not comment:
         raise ValidationError("Комментарий обязателен при запросе правок")
 
-    step = _get_current_active_step(document, user)
+    step = _get_user_pending_step(document, user)
     step.status = ApprovalStep.Status.REVISION_REQUESTED
     step.decided_at = timezone.now()
     step.comment = comment
@@ -454,8 +563,10 @@ def cancel(document: Document, user) -> Document:
     document.closed_at = timezone.now()
     document.current_step = None
     document.save(update_fields=["status", "closed_at", "current_step"])
-    # Все pending-шаги помечаем skipped.
-    document.steps.filter(status=ApprovalStep.Status.PENDING).update(
+    # Все незакрытые шаги (pending + waiting) помечаем skipped.
+    document.steps.filter(
+        status__in=(ApprovalStep.Status.PENDING, ApprovalStep.Status.WAITING),
+    ).update(
         status=ApprovalStep.Status.SKIPPED,
         decided_at=timezone.now(),
     )

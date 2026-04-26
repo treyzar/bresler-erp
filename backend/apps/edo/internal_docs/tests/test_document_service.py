@@ -95,6 +95,32 @@ def test_update_draft(memo_type, author):
 
 
 @pytest.mark.django_db
+def test_update_draft_preserves_addressee(memo_type, author):
+    """addressee не сбрасывается, если его не передали в update_draft."""
+    addressee = UserFactory(last_name="Адресатов")
+    doc = svc.create_draft(
+        author=author, doc_type=memo_type,
+        field_values={"subject": "A"}, addressee=addressee,
+    )
+    svc.update_draft(doc, title="Новое")
+    doc.refresh_from_db()
+    assert doc.addressee_id == addressee.pk
+
+
+@pytest.mark.django_db
+def test_update_draft_can_clear_addressee(memo_type, author):
+    """Явная передача addressee=None очищает поле."""
+    addressee = UserFactory(last_name="Адресатов")
+    doc = svc.create_draft(
+        author=author, doc_type=memo_type,
+        field_values={"subject": "A"}, addressee=addressee,
+    )
+    svc.update_draft(doc, addressee=None)
+    doc.refresh_from_db()
+    assert doc.addressee_id is None
+
+
+@pytest.mark.django_db
 def test_cannot_update_non_draft(memo_type, author, supervisor):
     doc = svc.create_draft(author=author, doc_type=memo_type, field_values={"subject": "A"})
     svc.submit(doc, author)

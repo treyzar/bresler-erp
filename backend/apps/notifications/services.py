@@ -48,6 +48,7 @@ def create_notification(
     link: str = "",
     deduplicate_key: str = "",
     deduplicate_hours: int = 24,
+    send_email: bool = True,
 ) -> list[Notification]:
     """
     Create notifications for one or more recipients.
@@ -139,8 +140,10 @@ def create_notification(
         # Send real-time via WebSocket
         _send_websocket(notification)
 
-        # Send email if user preference allows it
-        if pref_field:
+        # Send email if user preference allows it.
+        # Caller can pass send_email=False, чтобы потом отправить кастомное
+        # письмо (например, EDO approval-link с подписанными URL'ами).
+        if send_email and pref_field:
             pref = _get_preference(user)
             if pref.is_email_enabled(pref_field) and user.email:
                 _send_email(notification)

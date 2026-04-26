@@ -102,6 +102,23 @@ class User(AbstractUser):
         verbose_name="Непосредственный руководитель",
         help_text="Явный override. Если не задан — определяется по дереву department_unit",
     )
+    substitute_user = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="substituted_for",
+        verbose_name="Замещающий",
+        help_text="Кто принимает решения вместо меня в период отсутствия",
+    )
+    substitute_from = models.DateField(
+        "Замещение с", null=True, blank=True,
+        help_text="Дата начала отсутствия (включительно)",
+    )
+    substitute_until = models.DateField(
+        "Замещение до", null=True, blank=True,
+        help_text="Дата окончания отсутствия (включительно)",
+    )
     my_customers = models.ManyToManyField(
         "directory.OrgUnit",
         blank=True,
@@ -175,3 +192,24 @@ class User(AbstractUser):
                 return head
 
         return None
+
+    def get_active_substitute(self, on_date=None):
+        """Возвращает активного замещающего на указанную дату (по умолчанию — сегодня).
+
+        Активность: substitute_user задан + today ∈ [substitute_from, substitute_until].
+        Любая из границ может быть NULL (открытый интервал). Возвращает None, если
+        замещение не настроено, не активно или замещающий неактивен.
+        """
+        if not self.substitute_user_id:
+            return None
+        if on_date is None:
+            from django.utils import timezone
+            on_date = timezone.localdate()
+        if self.substitute_from and on_date < self.substitute_from:
+            return None
+        if self.substitute_until and on_date > self.substitute_until:
+            return None
+        sub = self.substitute_user
+        if not sub or not sub.is_active:
+            return None
+        return sub

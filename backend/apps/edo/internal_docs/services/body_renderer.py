@@ -115,6 +115,51 @@ def _resolve_department(val: Any):
     return Department.objects.filter(pk=pk).first()
 
 
+def _hydrate_table_rows(columns: list[dict], raw: Any) -> list[dict]:
+    """Гидрирует строки таблицы по описанию колонок (см. schema.ALLOWED_COLUMN_TYPES).
+
+    Каждая строка — dict с теми же ключами, что у колонок. Значения колонок
+    типа user/orgunit/department/date/time подгружаются как объекты, чтобы
+    в шаблоне можно было писать `{{ row.employee.full_name }}` и т.п.
+    """
+    if not isinstance(raw, list):
+        return []
+    rows: list[dict] = []
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        hydrated_row: dict[str, Any] = {}
+        for col in columns:
+            if not isinstance(col, dict):
+                continue
+            cname = col.get("name")
+            if not cname:
+                continue
+            ctype = col.get("type", "text")
+            cval = row.get(cname)
+            if ctype == "user":
+                hydrated_row[cname] = _resolve_user(cval)
+            elif ctype == "user_multi":
+                hydrated_row[cname] = _resolve_users(cval)
+            elif ctype == "orgunit":
+                hydrated_row[cname] = _resolve_orgunit(cval)
+            elif ctype == "department":
+                hydrated_row[cname] = _resolve_department(cval)
+            elif ctype == "date":
+                hydrated_row[cname] = _parse_date(cval)
+            elif ctype == "time":
+                hydrated_row[cname] = _parse_time(cval)
+            elif ctype == "date_range" and isinstance(cval, dict):
+                hydrated_row[cname] = {
+                    "from": _parse_date(cval.get("from")),
+                    "to": _parse_date(cval.get("to")),
+                }
+            else:
+                hydrated_row[cname] = cval
+        rows.append(hydrated_row)
+    return rows
+
+
 def _build_context(
     field_schema: list[dict],
     field_values: dict,
@@ -165,6 +210,8 @@ def _build_context(
             hydrated[name] = _resolve_orgunit(raw)
         elif ftype == "department":
             hydrated[name] = _resolve_department(raw)
+        elif ftype == "table":
+            hydrated[name] = _hydrate_table_rows(spec.get("columns") or [], raw)
         else:
             hydrated[name] = raw
 

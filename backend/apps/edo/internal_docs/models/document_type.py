@@ -3,6 +3,8 @@
 from django.db import models
 from simple_history.models import HistoricalRecords
 
+from ..services.schema import validate_field_schema
+
 
 class ApprovalChainTemplate(models.Model):
     """Типовая цепочка согласования: список шагов со строками-резолверами.
@@ -104,6 +106,7 @@ class DocumentType(models.Model):
         "Схема полей",
         default=list,
         help_text="Список полей формы; см. ТЗ §4.2 + §15.0",
+        validators=[validate_field_schema],
     )
     body_template = models.TextField(
         "Шаблон тела",

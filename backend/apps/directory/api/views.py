@@ -297,3 +297,23 @@ class FacilityViewSet(viewsets.ModelViewSet):
         ids = request.data.get("ids", [])
         deleted, _ = Facility.objects.filter(id__in=ids).delete()
         return Response({"deleted": deleted})
+
+
+class OrgUnitHeadViewSet(viewsets.ModelViewSet):
+    """Шапки организаций — руководители для PDF-блоков «Кому».
+
+    GET ?org_unit=<id> — фильтрует по компании.
+    """
+    from apps.directory.models import OrgUnitHead
+    from apps.directory.api.serializers import OrgUnitHeadSerializer
+
+    serializer_class = OrgUnitHeadSerializer
+    queryset = OrgUnitHead.objects.select_related("org_unit").all()
+    search_fields = ["head_name", "head_position", "org_unit__name"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        org_unit_id = self.request.query_params.get("org_unit")
+        if org_unit_id:
+            qs = qs.filter(org_unit_id=org_unit_id)
+        return qs.order_by("org_unit", "-from_date")

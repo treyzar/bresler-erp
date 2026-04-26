@@ -84,46 +84,47 @@ class DocumentQuerySet(models.QuerySet):
     def inbox_for(self, user) -> "DocumentQuerySet":
         """Документы, ожидающие решения от `user`.
 
+        В отличие от прежней реализации (через `current_step`), смотрим прямо
+        на ApprovalStep'ы со статусом PENDING — это нужно для параллельных
+        веток, где в одном batch'е сразу несколько активных согласующих и
+        указывать «текущим» можно только одного.
+
         Включает:
-        - где user — current_step.approver (стандартный персональный inbox);
-        - где current_step.role_key вида `group:NAME[@company]` и user в этой
-          группе (опционально с проверкой company_unit). Это даёт «общий
-          inbox для функциональной группы»: бухгалтер видит все документы,
-          адресованные бухгалтерии, а не только тот, что попал к коллеге.
+        - персональный inbox: PENDING active-шаг с `approver=user`;
+        - групповой inbox: PENDING active-шаг с `role_key='group:NAME[@company]'`
+          и user в группе NAME (опционально с проверкой company_unit).
+
+        WAITING-шаги (ещё не активный batch) и закрытые шаги не показываются —
+        пользователь увидит документ ровно тогда, когда от него действительно
+        ждут решения.
         """
         from django.db.models import Q
 
+        active_actions = ["approve", "sign"]
+        direct_q = Q(
+            steps__status="pending",
+            steps__action__in=active_actions,
+            steps__approver=user,
+        )
+
         user_groups = set(user.groups.values_list("name", flat=True))
-        # Все role_key, для которых user в нужной группе.
-        # Поскольку role_key хранится строкой, фильтруем на стороне Python:
-        # группы — небольшое множество, current step один.
-        group_role_patterns: list[str] = []
-        for g in user_groups:
-            group_role_patterns.append(f"group:{g}")
-            group_role_patterns.append(f"group:{g}@company")
-
-        if not group_role_patterns:
-            # Нет групп → только персональный inbox.
-            return self.filter(
-                current_step__approver=user, status="pending",
-            ).distinct()
-
-        # group:NAME без @company — без скоупа компании.
-        # group:NAME@company — фильтруем по author_company_unit = user.company_unit.
         group_q = Q()
-        for p in group_role_patterns:
-            if p.endswith("@company"):
-                if not user.company_unit_id:
-                    continue
+        for g in user_groups:
+            group_q |= Q(
+                steps__status="pending",
+                steps__action__in=active_actions,
+                steps__role_key=f"group:{g}",
+            )
+            if user.company_unit_id:
                 group_q |= Q(
-                    current_step__role_key=p,
+                    steps__status="pending",
+                    steps__action__in=active_actions,
+                    steps__role_key=f"group:{g}@company",
                     author_company_unit=user.company_unit_id,
                 )
-            else:
-                group_q |= Q(current_step__role_key=p)
 
         return self.filter(
-            Q(status="pending") & (Q(current_step__approver=user) | group_q)
+            Q(status="pending") & (direct_q | group_q)
         ).distinct()
 
     def drafts_of(self, user) -> "DocumentQuerySet":

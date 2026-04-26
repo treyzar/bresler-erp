@@ -122,6 +122,54 @@ def _prune_expired_cache(document: Document, ttl_hours: int) -> None:
                 pass
 
 
+def prune_all_expired_cache(ttl_hours: int | None = None) -> dict[str, int]:
+    """Глобальная чистка PDF-кеша по всем документам.
+
+    Удаляет файлы старше TTL и пустые подпапки (по одной на документ).
+    Вызывается периодически Celery Beat'ом — поточечный prune в `export_pdf`
+    срабатывает только когда кто-то открывает документ, а старые архивные
+    документы могут накапливаться без перепросмотра.
+    """
+    if ttl_hours is None:
+        ttl_hours = InternalDocFlowConfig.get_solo().pdf_cache_ttl_hours
+    ttl_hours = max(1, int(ttl_hours))
+    ttl_seconds = ttl_hours * 3600
+    now = time.time()
+
+    root = _cache_root()
+    files_removed = 0
+    bytes_freed = 0
+    dirs_removed = 0
+
+    for doc_dir in root.iterdir():
+        if not doc_dir.is_dir():
+            continue
+        for p in doc_dir.iterdir():
+            try:
+                if p.is_file() and (now - p.stat().st_mtime) > ttl_seconds:
+                    bytes_freed += p.stat().st_size
+                    p.unlink()
+                    files_removed += 1
+            except OSError:
+                logger.warning("Failed to remove cached PDF %s", p, exc_info=True)
+        try:
+            if not any(doc_dir.iterdir()):
+                doc_dir.rmdir()
+                dirs_removed += 1
+        except OSError:
+            pass
+
+    logger.info(
+        "PDF cache pruned: files=%s dirs=%s bytes=%s ttl_hours=%s",
+        files_removed, dirs_removed, bytes_freed, ttl_hours,
+    )
+    return {
+        "files_removed": files_removed,
+        "dirs_removed": dirs_removed,
+        "bytes_freed": bytes_freed,
+    }
+
+
 def _build_html(document: Document) -> str:
     """Собирает HTML документа с шапкой/подвалом."""
     author = document.author

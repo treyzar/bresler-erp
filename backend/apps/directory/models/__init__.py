@@ -3,6 +3,7 @@ from .department import Department
 from .facility import Facility
 from .geography import City, Country
 from .orgunit import OrgUnit
+from .orgunit_head import OrgUnitHead
 from .references import (
     DeliveryType,
     Equipment,
@@ -13,6 +14,7 @@ __all__ = [
     "Country",
     "City",
     "OrgUnit",
+    "OrgUnitHead",
     "Department",
     "Contact",
     "ContactEmployment",

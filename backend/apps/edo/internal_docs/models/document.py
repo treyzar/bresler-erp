@@ -137,7 +137,8 @@ class ApprovalStep(models.Model):
     """
 
     class Status(models.TextChoices):
-        PENDING = "pending", "Ожидает"
+        WAITING = "waiting", "Ожидает активации"  # ещё не активный (параллельный/последующий шаг)
+        PENDING = "pending", "Ожидает решения"   # активный — текущий batch согласования
         APPROVED = "approved", "Согласовано"
         REJECTED = "rejected", "Отклонено"
         REVISION_REQUESTED = "revision_requested", "Запрошены правки"
@@ -149,6 +150,10 @@ class ApprovalStep(models.Model):
         SIGN = "sign", "Подписать"
         NOTIFY_ONLY = "notify_only", "Только уведомить"
         INFORM = "inform", "Ознакомить"
+
+    class ParallelMode(models.TextChoices):
+        AND = "and", "Все участники (AND)"
+        OR = "or", "Любой участник (OR)"
 
     document = models.ForeignKey(
         Document,
@@ -163,6 +168,13 @@ class ApprovalStep(models.Model):
         blank=True,
         default="",
         help_text="Одинаковое значение → шаги идут параллельно",
+    )
+    parallel_mode = models.CharField(
+        "Режим параллельного согласования",
+        max_length=10,
+        choices=ParallelMode.choices,
+        default=ParallelMode.AND,
+        help_text="AND — все должны согласовать; OR — достаточно одного",
     )
     role_key = models.CharField(
         "Ключ роли",
@@ -206,6 +218,11 @@ class ApprovalStep(models.Model):
         help_text="Опционально, если DocumentType.requires_drawn_signature=True",
     )
     sla_due_at = models.DateTimeField("SLA истекает", null=True, blank=True)
+    sla_breached_at = models.DateTimeField(
+        "SLA нарушен (зафиксировано)",
+        null=True, blank=True,
+        help_text="Заполняется Celery Beat-задачей check_sla_breaches при первом обнаружении просрочки",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

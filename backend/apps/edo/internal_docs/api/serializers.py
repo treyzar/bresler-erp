@@ -12,13 +12,40 @@ from ..models import (
 
 
 class ApprovalChainTemplateSerializer(serializers.ModelSerializer):
+    """Read-only — для встраивания в DocumentType-ответ."""
     class Meta:
         model = ApprovalChainTemplate
         fields = ["id", "name", "description", "steps", "is_default", "is_active"]
         read_only_fields = fields
 
 
+class ApprovalChainTemplateAdminSerializer(serializers.ModelSerializer):
+    """Полный CRUD для админки."""
+    class Meta:
+        model = ApprovalChainTemplate
+        fields = ["id", "name", "description", "steps", "is_default", "is_active",
+                  "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_steps(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("steps must be a list")
+        for i, step in enumerate(value):
+            if not isinstance(step, dict):
+                raise serializers.ValidationError(f"step[{i}] must be a dict")
+            if not step.get("role_key"):
+                raise serializers.ValidationError(f"step[{i}]: 'role_key' is required")
+            action = step.get("action") or "approve"
+            if action not in {"approve", "sign", "inform", "notify_only"}:
+                raise serializers.ValidationError(f"step[{i}]: invalid action {action!r}")
+            pmode = (step.get("parallel_mode") or "and").lower()
+            if pmode not in {"and", "or"}:
+                raise serializers.ValidationError(f"step[{i}]: invalid parallel_mode {pmode!r}")
+        return value
+
+
 class DocumentTypeSerializer(serializers.ModelSerializer):
+    """Read-only публичная версия — для каталога создания и страниц документа."""
     default_chain = ApprovalChainTemplateSerializer(read_only=True)
     category_display = serializers.CharField(source="get_category_display", read_only=True)
 
@@ -32,6 +59,35 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
             "initiator_resolver", "addressee_mode", "is_active",
         ]
         read_only_fields = fields
+
+
+class DocumentTypeAdminSerializer(serializers.ModelSerializer):
+    """Полный CRUD для админки — поля writeable, default_chain принимает PK
+    при write и полный объект при read."""
+    default_chain_detail = ApprovalChainTemplateSerializer(source="default_chain", read_only=True)
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
+
+    class Meta:
+        model = DocumentType
+        fields = [
+            "code", "name", "description", "category", "category_display",
+            "icon", "field_schema", "body_template", "title_template",
+            "default_chain", "default_chain_detail",
+            "numbering_sequence",
+            "requires_drawn_signature", "visibility", "tenancy_override",
+            "initiator_resolver", "addressee_mode", "is_active",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at", "default_chain_detail", "category_display"]
+
+    def validate_field_schema(self, value):
+        from ..services.schema import validate_field_schema as _validate
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            _validate(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.messages)
+        return value
 
 
 class UserLiteSerializer(serializers.Serializer):
@@ -178,6 +234,22 @@ def _format_field_values(schema: list, values: dict) -> dict:
             dept_ids.add(v)
         elif ftype == "orgunit" and isinstance(v, int):
             orgunit_ids.add(v)
+        elif ftype == "table" and isinstance(v, list):
+            for row in v:
+                if not isinstance(row, dict):
+                    continue
+                for col in (spec.get("columns") or []):
+                    if not isinstance(col, dict):
+                        continue
+                    cval = row.get(col.get("name"))
+                    if cval in (None, "", []):
+                        continue
+                    if col.get("type") == "user" and isinstance(cval, (int, str)) and str(cval).isdigit():
+                        user_ids.add(int(cval))
+                    elif col.get("type") == "department" and isinstance(cval, (int, str)) and str(cval).isdigit():
+                        dept_ids.add(int(cval))
+                    elif col.get("type") == "orgunit" and isinstance(cval, (int, str)) and str(cval).isdigit():
+                        orgunit_ids.add(int(cval))
 
     users_by_pk = {
         u.pk: u for u in User.objects.filter(pk__in=user_ids | user_multi_ids)
@@ -252,10 +324,71 @@ def _format_field_values(schema: list, values: dict) -> dict:
                 out[name] = o.name if o else ""
             except (TypeError, ValueError):
                 out[name] = ""
+        elif ftype == "table" and isinstance(v, list):
+            out[name] = _format_table_value(spec.get("columns") or [], v, users_by_pk, depts_by_pk, orgs_by_pk)
         else:
             out[name] = str(v)
 
     return out
+
+
+def _format_table_value(columns, rows, users_by_pk, depts_by_pk, orgs_by_pk) -> str:
+    """Многострочный текст для type=table: «N. col1: val1 | col2: val2 | …».
+
+    User/department/orgunit-колонки гидрируются по batch-словарям; date/time —
+    форматируются по локали; остальное — str().
+    """
+    from datetime import date
+
+    if not rows:
+        return ""
+
+    def render_cell(col, raw):
+        if raw in (None, "", []):
+            return ""
+        ctype = col.get("type")
+        if ctype == "user" and str(raw).isdigit():
+            u = users_by_pk.get(int(raw))
+            if u is None:
+                return ""
+            full = (u.get_full_name() or u.username).strip()
+            return f"{full} — {u.position}" if u.position else full
+        if ctype == "department" and str(raw).isdigit():
+            d = depts_by_pk.get(int(raw))
+            return d.name if d else ""
+        if ctype == "orgunit" and str(raw).isdigit():
+            o = orgs_by_pk.get(int(raw))
+            return o.name if o else ""
+        if ctype == "date":
+            try:
+                return date.fromisoformat(str(raw)[:10]).strftime("%d.%m.%Y")
+            except ValueError:
+                return str(raw)
+        if ctype == "boolean":
+            return "Да" if raw else "Нет"
+        if ctype == "money":
+            try:
+                return f"{float(raw):.2f}"
+            except (TypeError, ValueError):
+                return str(raw)
+        return str(raw)
+
+    lines: list[str] = []
+    for idx, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            continue
+        parts: list[str] = []
+        for col in columns:
+            if not isinstance(col, dict):
+                continue
+            cname = col.get("name")
+            label = col.get("label") or cname
+            cell = render_cell(col, row.get(cname))
+            if cell:
+                parts.append(f"{label}: {cell}")
+        if parts:
+            lines.append(f"{idx}. " + " | ".join(parts))
+    return "\n".join(lines)
 
 
 class DocumentCreateSerializer(serializers.ModelSerializer):

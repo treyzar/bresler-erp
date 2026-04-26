@@ -218,6 +218,29 @@ def _field_user(ctx: ResolveContext, args: str):
     return User.objects.filter(pk=pk, is_active=True).first()
 
 
+@register("field_user_supervisor")
+def _field_user_supervisor(ctx: ResolveContext, args: str):
+    """Непосредственный руководитель пользователя, на которого указывает FK-поле `args`.
+
+    Используется в обратных потоках (vacation_notification): автор —
+    бухгалтерия, employee — отдельное поле формы; нужно уведомить именно
+    руководителя сотрудника, а не автора.
+    """
+    if not args:
+        raise ResolveError("field_user_supervisor requires field name")
+    val = ctx.field_values.get(args)
+    if val in (None, "", []):
+        return None
+    try:
+        pk = int(val)
+    except (TypeError, ValueError):
+        return None
+    target = User.objects.filter(pk=pk, is_active=True).first()
+    if target is None:
+        return None
+    return target.resolve_supervisor()
+
+
 @register("field_dept_head")
 def _field_dept_head(ctx: ResolveContext, args: str):
     """Head of Department, на который ссылается field_values[field_name]."""
@@ -265,6 +288,7 @@ class ResolvedStep:
     action: str
     sla_hours: int | None
     parallel_group: str
+    parallel_mode: str  # "and" | "or" (игнорируется, если parallel_group=="")
     approver: Any | None  # User or None (for non-blocking unresolvable)
 
 
@@ -297,6 +321,11 @@ def build_approval_steps(
         order = int(raw.get("order") or 0)
         sla_hours = raw.get("sla_hours")
         parallel_group = str(raw.get("parallel_group") or "")
+        parallel_mode = str(raw.get("parallel_mode") or "and").lower()
+        if parallel_mode not in ("and", "or"):
+            raise ResolveError(
+                f"chain step {order} has invalid parallel_mode={parallel_mode!r} (must be 'and' or 'or')"
+            )
 
         if not role_key:
             raise ResolveError(f"chain step {order} is missing role_key")
@@ -330,6 +359,7 @@ def build_approval_steps(
             action=action,
             sla_hours=sla_hours,
             parallel_group=parallel_group,
+            parallel_mode=parallel_mode,
             approver=user,
         ))
 

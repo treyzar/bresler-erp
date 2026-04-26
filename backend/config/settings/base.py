@@ -216,6 +216,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.purchasing.tasks.check_payment_deadlines",
         "schedule": 86400.0,  # 24 hours
     },
+    "edo-cleanup-pdf-cache": {
+        "task": "apps.edo.internal_docs.tasks.cleanup_pdf_cache",
+        "schedule": 86400.0,  # 24 hours
+    },
+    "edo-check-sla-breaches": {
+        "task": "apps.edo.internal_docs.tasks.check_sla_breaches",
+        "schedule": 3600.0,  # 1 hour
+    },
 }
 
 # Email

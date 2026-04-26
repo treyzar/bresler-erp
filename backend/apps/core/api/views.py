@@ -1,10 +1,11 @@
 from django.contrib.contenttypes.models import ContentType
-from rest_framework import serializers, status
+from rest_framework import serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from apps.core.links import DocumentLink
+from apps.core.naming import NumberSequence
 
 MODEL_MAP = {
     "order": ("orders", "order"),
@@ -13,6 +14,9 @@ MODEL_MAP = {
     "contact": ("directory", "contact"),
     "letter": ("registry", "letter"),
     "facility": ("directory", "facility"),
+    # EDO internal_docs: служебки, заявления, командировочные сметы — всё это
+    # экземпляры одной модели Document, различаются по DocumentType.
+    "document": ("internal_docs", "document"),
 }
 
 
@@ -136,3 +140,16 @@ class DocumentLinkViewSet(ModelViewSet):
             DocumentLinkSerializer(link).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class NumberSequenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NumberSequence
+        fields = ["id", "name", "prefix", "pattern", "reset_period"]
+
+
+class NumberSequenceViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only список секвенций — для пикеров в админке EDO."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = NumberSequenceSerializer
+    queryset = NumberSequence.objects.order_by("name").all()

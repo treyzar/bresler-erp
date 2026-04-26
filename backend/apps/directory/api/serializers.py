@@ -149,3 +149,26 @@ class FacilitySerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("id", "created_at", "updated_at")
+
+
+from apps.directory.models import OrgUnitHead
+
+
+class OrgUnitHeadSerializer(serializers.ModelSerializer):
+    org_unit_name = serializers.CharField(source="org_unit.name", read_only=True, default="")
+
+    class Meta:
+        model = OrgUnitHead
+        fields = (
+            "id",
+            "org_unit",
+            "org_unit_name",
+            "head_name",
+            "head_position",
+            "from_date",
+            "to_date",
+            "note",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
