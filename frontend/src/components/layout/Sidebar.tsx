@@ -3,20 +3,16 @@ import { useUIStore } from "@/stores/useUIStore"
 import { cn } from "@/lib/utils"
 import { type NavItem, SidebarNavItem } from "./SidebarNavItem"
 
-type SubItem = NavItem & {
+/** Узел дерева меню с правами доступа (расширяет голый NavItem). */
+type NavNode = NavItem & {
   module?: string
-  /** Если задана, пункт виден только пользователям этой группы (или одной из, если массив). */
-  group?: string | string[]
-}
-
-type NavItemWithModule = NavItem & {
-  module?: string
+  /** Если задана, видно только пользователям этой группы (или одной из, если массив). */
   group?: string | string[]
   requireAccess?: "dashboard"
-  subItems?: SubItem[]
+  subItems?: NavNode[]
 }
 
-const navItems: NavItemWithModule[] = [
+const navItems: NavNode[] = [
   { to: "/dashboard", label: "Главная" },
   {
     to: "/orders",
@@ -69,10 +65,18 @@ const navItems: NavItemWithModule[] = [
       { to: "/edo/templates", label: "Шаблоны" },
       { to: "/edo/builder", label: "Конструктор" },
       { to: "/edo/parser", label: "Распознавание документов" },
-      // Admin-only пункты — отфильтруются ниже по `group`.
-      { to: "/edo/admin/types", label: "Админ: типы документов", group: "admin" },
-      { to: "/edo/admin/org-heads", label: "Админ: шапки организаций", group: "admin" },
-      { to: "/edo/admin/reports", label: "Админ: отчёты", group: "admin" },
+      // Вложенный admin-блок: видно только группе `admin`. Сворачивается отдельно
+      // от основного меню ЭДО, чтобы не мешал в обычной работе.
+      {
+        to: "/edo/admin",
+        label: "Администрирование",
+        group: "admin",
+        subItems: [
+          { to: "/edo/admin/types", label: "Типы документов" },
+          { to: "/edo/admin/org-heads", label: "Шапки организаций" },
+          { to: "/edo/admin/reports", label: "Отчёты" },
+        ],
+      },
     ],
   },
   {
@@ -94,7 +98,7 @@ const navItems: NavItemWithModule[] = [
   { to: "/manager-dashboard", label: "Руководитель", requireAccess: "dashboard" },
 ]
 
-/** Проверка одного group-выражения через состояние auth. */
+
 function checkGroup(
   hasGroup: (g: string) => boolean,
   group: string | string[] | undefined,
@@ -104,31 +108,54 @@ function checkGroup(
   return groups.some((g) => hasGroup(g))
 }
 
+/** Рекурсивно фильтрует дерево меню по правам доступа. Узел отфильтровывается,
+ *  если не подходит сам или (после фильтрации) у него остался subItems-массив,
+ *  но он стал пустым. Корневые узлы без subItems не зависят от детей. */
+function filterTree(
+  items: NavNode[],
+  hasModuleAccess: (m: string) => boolean,
+  hasGroup: (g: string) => boolean,
+  canAccessDashboard: () => boolean,
+): NavNode[] {
+  const result: NavNode[] = []
+  for (const item of items) {
+    const moduleOk = !item.module || hasModuleAccess(item.module)
+    const groupOk = checkGroup(hasGroup, item.group)
+    const accessOk =
+      !item.requireAccess ||
+      (item.requireAccess === "dashboard" && canAccessDashboard())
+    if (!moduleOk || !groupOk || !accessOk) continue
+
+    if (item.subItems && item.subItems.length) {
+      const filteredChildren = filterTree(
+        item.subItems,
+        hasModuleAccess,
+        hasGroup,
+        canAccessDashboard,
+      )
+      // Если у узла были дети, но все отфильтрованы — узел всё равно показываем,
+      // если он сам — кликабельная страница. Если же узел чисто-контейнер
+      // (исходно имел subItems, но все скрыты), скрываем целиком.
+      if (filteredChildren.length === 0 && item.subItems.length > 0) {
+        // Контейнер без детей — скрываем (например, «Администрирование»
+        // у не-админа: subItems задумывались, но все три скрыты группой).
+        continue
+      }
+      result.push({ ...item, subItems: filteredChildren })
+    } else {
+      result.push(item)
+    }
+  }
+  return result
+}
+
 export function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const hasModuleAccess = useAuthStore((s) => s.hasModuleAccess)
   const hasGroup = useAuthStore((s) => s.hasGroup)
   const canAccessDashboard = useAuthStore((s) => s.canAccessDashboard)
 
-  const visibleItems = navItems
-    .filter(
-      (item) =>
-        (!item.module || hasModuleAccess(item.module)) &&
-        checkGroup(hasGroup, item.group) &&
-        (!item.requireAccess || (item.requireAccess === "dashboard" && canAccessDashboard())),
-    )
-    .map((item) =>
-      item.subItems
-        ? {
-            ...item,
-            subItems: item.subItems.filter(
-              (sub) =>
-                (!sub.module || hasModuleAccess(sub.module)) &&
-                checkGroup(hasGroup, sub.group),
-            ),
-          }
-        : item,
-    )
+  const visibleItems = filterTree(navItems, hasModuleAccess, hasGroup, canAccessDashboard)
 
   return (
     <aside

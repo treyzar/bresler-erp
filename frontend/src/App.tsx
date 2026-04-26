@@ -123,6 +123,7 @@ function App() {
                 <Route path="new/:code" element={<CreateDocumentPage />} />
                 <Route path="documents/:id" element={<InternalDocDetail />} />
                 <Route path="admin" element={<GroupGuard group="admin" />}>
+                  <Route index element={<Navigate to="types" replace />} />
                   <Route path="types" element={<EdoAdminTypesPage />} />
                   <Route path="types/:code" element={<EdoAdminTypeEditPage />} />
                   <Route path="org-heads" element={<EdoAdminOrgHeadsPage />} />
