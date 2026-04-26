@@ -77,6 +77,23 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
         (
+            "Замещение",
+            {
+                "fields": (
+                    "substitute_user",
+                    "substitute_from",
+                    "substitute_until",
+                ),
+                "description": (
+                    "Когда сотрудник в отпуске — все его новые EDO-шаги (WAITING → "
+                    "PENDING) автоматически переадресуются substitute_user в окне "
+                    "[substitute_from, substitute_until]. Уже PENDING-шаги "
+                    "не перерезолвятся — для них нужна ручная «Делегировать» в UI. "
+                    "Любая граница может быть пустой (бессрочное замещение)."
+                ),
+            },
+        ),
+        (
             "Персональные данные",
             {
                 "fields": (

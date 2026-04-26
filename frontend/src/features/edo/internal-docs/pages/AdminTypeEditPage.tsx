@@ -400,21 +400,31 @@ function AdminTypeEditHelp() {
 
       <HelpSection icon={GitBranch} title="Цепочка согласования" tone="primary">
         <p>
-          Список шагов с reorder. Для каждого выберите{" "}
-          <strong>role_key</strong> (preset из списка или ручной ввод).
-          Полный список префиксов — в админ-гайде.
+          Список шагов с reorder ↑/↓. Для каждого шага role_key редактируется
+          в текстовом поле напрямую — это основной источник истины. Дропдаун
+          справа — shortcut с готовыми пресетами: выбираешь нужный → значение
+          попадает в поле, при необходимости можно дописать аргумент.
         </p>
+        <HelpItem label="dept_head_type:<unit_type>">
+          Самый универсальный резолвер для уровня в иерархии:{" "}
+          <code>division</code> (директор управления),{" "}
+          <code>service</code> (руководитель службы) и т.д. Поднимается от
+          автора по дереву до первого узла нужного типа. <strong>Не зависит
+          от глубины автора</strong> — рекомендуется вместо{" "}
+          <code>dept_head:up(N)</code>.
+        </HelpItem>
+        <HelpItem label="fixed_user:<id>">
+          Прибито к конкретному человеку. Хрупко при кадровых изменениях, но
+          самое предсказуемое.
+        </HelpItem>
         <HelpItem label="Параллельные ветки">
           Задайте шагам одинаковый текстовый <code>parallel_group</code>, и они
-          будут активны одновременно.
+          активизируются одновременно. AND — все должны одобрить;
+          OR — достаточно одного approve, остальные → SKIPPED.
         </HelpItem>
-        <HelpItem label="AND">
-          Нужны все одобрения; любой reject убивает документ.
-        </HelpItem>
-        <HelpItem label="OR">
-          Достаточно одного approve, остальные → SKIPPED. Reject в OR не
-          блокирует — документ rejected, только если все откажут.
-        </HelpItem>
+        <p className="text-xs">
+          Полный список форматов role_key — в <code>docs/edo_admin_guide.md</code>.
+        </p>
       </HelpSection>
 
       <HelpSection icon={BellIcon} title="Inform-шаги" tone="default">
