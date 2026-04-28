@@ -10,7 +10,7 @@ from django.db import migrations
 
 def forwards(apps, schema_editor):
     DocumentType = apps.get_model("internal_docs", "DocumentType")
-    ApprovalChainTemplate = apps.get_model("internal_docs", "ApprovalChainTemplate")
+    apps.get_model("internal_docs", "ApprovalChainTemplate")
 
     dt = DocumentType.objects.filter(code="memo_overtime").first()
     if dt is None:
@@ -34,6 +34,5 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("internal_docs", "0004_doctype_initiator_department_head")]
     operations = [migrations.RunPython(forwards, backwards)]

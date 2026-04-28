@@ -23,14 +23,19 @@ class OrderFilter(filters.FilterSet):
     class Meta:
         model = Order
         fields = [
-            "status", "customer", "country",
-            "tender_number", "branch", "division", "facility",
-            "equipment", "work", "participant",
+            "status",
+            "customer",
+            "country",
+            "tender_number",
+            "branch",
+            "division",
+            "facility",
+            "equipment",
+            "work",
+            "participant",
         ]
 
     def filter_org_unit_by_type(self, queryset, name, value):
         type_map = {"branch": "branch", "division": "division", "facility": "site"}
         unit_type = type_map.get(name)
-        return queryset.filter(
-            Q(org_units__id=value) & Q(org_units__unit_type=unit_type)
-        )
+        return queryset.filter(Q(org_units__id=value) & Q(org_units__unit_type=unit_type))

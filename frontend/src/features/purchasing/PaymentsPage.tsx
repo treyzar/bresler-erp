@@ -13,7 +13,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { purchasingApi } from "@/api/purchasingApi"
-import type { PurchasePaymentType } from "@/api/types"
 import { PAYMENT_STATUSES } from "@/api/types"
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {

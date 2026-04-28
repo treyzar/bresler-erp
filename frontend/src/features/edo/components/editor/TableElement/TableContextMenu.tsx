@@ -6,13 +6,12 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { 
-  Columns, 
-  Rows, 
-  Combine, 
-  PlusCircle, 
-  Trash2, 
-  Grid 
+import {
+  Columns,
+  Rows,
+  Combine,
+  Trash2,
+  Grid,
 } from "lucide-react";
 
 interface TableContextMenuProps {

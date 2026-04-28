@@ -1,5 +1,3 @@
-import os
-
 from django.db import models
 from simple_history.models import HistoricalRecords
 
@@ -9,9 +7,7 @@ from apps.core.models import BaseModel
 class ComponentType(BaseModel):
     """Тип компонента терминала."""
 
-    name = models.CharField(
-        max_length=350, unique=True, verbose_name="Название типа компонента"
-    )
+    name = models.CharField(max_length=350, unique=True, verbose_name="Название типа компонента")
 
     class Meta:
         ordering = ["name"]
@@ -32,12 +28,8 @@ class DeviceComponent(BaseModel):
     - additional_data: хранит import_params (analogCount, supplyVoltage, digitalInputVoltage)
     """
 
-    produx_id = models.IntegerField(
-        default=0, db_index=True, verbose_name="Идентификатор в БД ProdUX"
-    )
-    component_name = models.CharField(
-        max_length=500, verbose_name="Наименование компонента"
-    )
+    produx_id = models.IntegerField(default=0, db_index=True, verbose_name="Идентификатор в БД ProdUX")
+    component_name = models.CharField(max_length=500, verbose_name="Наименование компонента")
     component_type = models.ForeignKey(
         ComponentType,
         on_delete=models.CASCADE,
@@ -45,9 +37,7 @@ class DeviceComponent(BaseModel):
         verbose_name="Тип компонента",
     )
     is_active = models.BooleanField(default=True, verbose_name="Активен")
-    additional_data = models.JSONField(
-        blank=True, null=True, verbose_name="Дополнительные данные"
-    )
+    additional_data = models.JSONField(blank=True, null=True, verbose_name="Дополнительные данные")
 
     history = HistoricalRecords()
 
@@ -103,12 +93,8 @@ class ComponentVisual(BaseModel):
     )
     name = models.CharField(max_length=200, verbose_name="Название")
     description = models.TextField(blank=True, default="", verbose_name="Описание")
-    image_width = models.PositiveIntegerField(
-        null=True, blank=True, verbose_name="Ширина (px)"
-    )
-    image_height = models.PositiveIntegerField(
-        null=True, blank=True, verbose_name="Высота (px)"
-    )
+    image_width = models.PositiveIntegerField(null=True, blank=True, verbose_name="Ширина (px)")
+    image_height = models.PositiveIntegerField(null=True, blank=True, verbose_name="Высота (px)")
 
     class Meta:
         ordering = ["-is_primary", "created_at"]
@@ -153,9 +139,7 @@ class TerminalLayout(BaseModel):
         blank=True,
         verbose_name="Пользователь",
     )
-    layout_data = models.JSONField(
-        default=dict, verbose_name="Данные расстановки"
-    )
+    layout_data = models.JSONField(default=dict, verbose_name="Данные расстановки")
     is_auto_generated = models.BooleanField(
         default=True,
         verbose_name="Автоматически сгенерирована",

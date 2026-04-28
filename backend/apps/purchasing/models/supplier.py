@@ -16,13 +16,20 @@ class SupplierConditions(BaseModel):
         limit_choices_to={"business_role": "supplier"},
     )
     discount_percent = models.DecimalField(
-        "Скидка (%)", max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        "Скидка (%)",
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
     payment_terms = models.CharField(
-        "Условия оплаты", max_length=500, blank=True,
+        "Условия оплаты",
+        max_length=500,
+        blank=True,
     )
     delivery_terms = models.CharField(
-        "Условия доставки", max_length=500, blank=True,
+        "Условия доставки",
+        max_length=500,
+        blank=True,
     )
     notes = models.TextField("Примечания", blank=True)
 

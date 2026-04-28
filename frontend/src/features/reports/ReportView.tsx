@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Download } from "lucide-react"
 import {
@@ -30,9 +30,31 @@ import apiClient from "@/api/client"
 import { useDebounce } from "@/hooks/useDebounce"
 import type { PaginatedResponse } from "@/api/types"
 
+export interface ReportFilter {
+  name: string
+  label: string
+  type: string
+  choices?: [string, string][]
+}
+
+export interface ReportColumn {
+  name: string
+  label: string
+  type: string
+}
+
+export interface ReportChart {
+  chart_type: "pie" | "bar" | "line"
+  value_field: string
+  label_field: string
+  title: string
+}
+
+export type ReportRow = Record<string, string | number | null | undefined>
+
 interface ReportResponse {
-  meta: { title: string; filters: any[]; columns: any[]; chart: any }
-  data: Record<string, any>[]
+  meta: { title: string; filters: ReportFilter[]; columns: ReportColumn[]; chart: ReportChart | null }
+  data: ReportRow[]
   count: number
   page: number
   page_size: number
@@ -219,7 +241,7 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex flex-wrap items-end gap-4">
-              {meta.filters.map((f: any) => (
+              {meta.filters.map((f) => (
                 <div key={f.name} className="flex flex-col gap-1.5">
                   <label className="text-xs font-medium text-muted-foreground block">{f.label}</label>
                   {f.type === "select" && f.choices ? (
@@ -232,7 +254,7 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__all__">Все</SelectItem>
-                        {f.choices.map(([value, label]: [string, string]) => (
+                        {f.choices.map(([value, label]) => (
                           <SelectItem key={value} value={value}>{label}</SelectItem>
                         ))}
                       </SelectContent>
@@ -281,14 +303,14 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
                     outerRadius={80}
                     innerRadius={40}
                   >
-                    {rows.map((_: any, i: number) => (
+                    {rows.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
                   <ChartTooltip content={<ChartTooltipContent nameKey={chart.label_field} />} />
                   <Legend
                     verticalAlign="bottom"
-                    formatter={(value: string, entry: any) => {
+                    formatter={(value: string, entry: { payload?: Record<string, unknown> }) => {
                       const count = entry?.payload?.[chart.value_field] ?? entry?.payload?.value ?? ""
                       return (
                         <span className="text-xs text-muted-foreground">
@@ -353,15 +375,15 @@ export function ReportView({ reportName, onBack }: ReportViewProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {meta?.columns.map((col: any) => (
+                    {meta?.columns.map((col) => (
                       <TableHead key={col.name}>{col.label}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((row: any, i: number) => (
+                  {rows.map((row, i) => (
                     <TableRow key={i}>
-                      {meta?.columns.map((col: any) => (
+                      {meta?.columns.map((col) => (
                         <TableCell key={col.name}>
                           {col.type === "badge" ? (
                             <Badge variant="outline">{row[col.name]}</Badge>

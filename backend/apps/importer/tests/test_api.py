@@ -1,12 +1,10 @@
 """Tests for Import API."""
 
-import io
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
-from apps.directory.models import Equipment, OrgUnit
-from apps.importer.models import ImportSession
+from apps.directory.models import Equipment
 from apps.users.tests.factories import UserFactory
 
 
@@ -29,10 +27,14 @@ class TestImportAPI:
         client = self._auth(api_client)
         csv_file = _make_csv("Наименование,ИНН", "ООО Тест,1234567890")
 
-        response = client.post("/api/import/upload/", {
-            "file": csv_file,
-            "target_model": "orgunit",
-        }, format="multipart")
+        response = client.post(
+            "/api/import/upload/",
+            {
+                "file": csv_file,
+                "target_model": "orgunit",
+            },
+            format="multipart",
+        )
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["status"] == "mapping"
@@ -58,9 +60,13 @@ class TestImportAPI:
         session_id = resp.data["id"]
 
         # Update mapping
-        client.patch(f"/api/import/{session_id}/mapping/", {
-            "column_mapping": {"Наименование": "name"},
-        }, format="json")
+        client.patch(
+            f"/api/import/{session_id}/mapping/",
+            {
+                "column_mapping": {"Наименование": "name"},
+            },
+            format="json",
+        )
 
         # Validate
         resp = client.post(f"/api/import/{session_id}/validate/")
@@ -76,9 +82,13 @@ class TestImportAPI:
         resp = client.post("/api/import/upload/", {"file": csv_file, "target_model": "equipment"}, format="multipart")
         session_id = resp.data["id"]
 
-        client.patch(f"/api/import/{session_id}/mapping/", {
-            "column_mapping": {"Наименование": "name"},
-        }, format="json")
+        client.patch(
+            f"/api/import/{session_id}/mapping/",
+            {
+                "column_mapping": {"Наименование": "name"},
+            },
+            format="json",
+        )
 
         # Validate first
         client.post(f"/api/import/{session_id}/validate/")

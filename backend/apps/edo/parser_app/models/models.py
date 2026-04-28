@@ -11,7 +11,7 @@ class ParsedDocument(models.Model):
     editor_json = models.JSONField(default=dict, blank=True)  # структура для редактора
     extracted_text = models.TextField(blank=True)  # оставляем для обратной совместимости
 
-    original_file = models.FileField(upload_to='parsed_documents/')
+    original_file = models.FileField(upload_to="parsed_documents/")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

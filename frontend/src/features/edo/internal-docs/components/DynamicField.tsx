@@ -172,10 +172,19 @@ function FieldControl({ spec, value, onChange }: Omit<DynamicFieldProps, "error"
   }
 }
 
+interface UserRow {
+  id: number
+  first_name?: string
+  last_name?: string
+  patronymic?: string
+  username: string
+  position?: string
+}
+
 async function fetchUsers(params: Record<string, unknown>): Promise<UserOption[]> {
   const r = await api.get("/users/", { params: { page_size: 500, ...params } })
-  const raw = r.data?.results ?? r.data ?? []
-  return raw.map((u: any) => ({
+  const raw: UserRow[] = r.data?.results ?? r.data ?? []
+  return raw.map((u) => ({
     id: u.id,
     full_name: [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(" ") || u.username,
     position: u.position ?? "",

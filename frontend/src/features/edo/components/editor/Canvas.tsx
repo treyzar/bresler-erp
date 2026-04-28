@@ -1,7 +1,7 @@
 // src/components/editor/Canvas.tsx
 
 import React, { forwardRef, useEffect, useMemo, useRef } from "react";
-import type { IEditorElement } from "../../utils/types/editor.types";
+import type { IEditorElement, ITableProperties } from "../../utils/types/editor.types";
 import { GRID_SIZE } from "../../utils/constants/editor.constants";
 import { ElementRenderer } from "./ElementRenderer";
 import ResizeHandles from "./ResizeHandles";
@@ -15,7 +15,7 @@ interface CanvasProps {
   onSelect: (id: string | null) => void;
   onElementMoveStart: (id: string, offsetX: number, offsetY: number) => void;
   onElementResizeStart: (id: string, handle: string) => void;
-  onUpdateProp: (id: string, props: any) => void;
+  onUpdateProp: (id: string, props: Record<string, unknown>) => void;
   onImageUpload: (file: File) => void;
   onEditSignature?: (id: string) => void;
   currentPage?: number;
@@ -54,9 +54,9 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(function CanvasComponent(
     const maxX = Math.max(...elements.map((el) => {
       let w = el.width;
       if (el.type === "table") {
-         const props = el.properties as any;
+         const props = el.properties as ITableProperties;
          if (props.columns?.length) {
-           const columnsWidth = props.columns.reduce((acc: number, col: any) => {
+           const columnsWidth = props.columns.reduce((acc, col) => {
              const colWidth = Number(col?.width) || 0;
              return acc + Math.max(0, colWidth);
            }, 0);
@@ -77,7 +77,7 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(function CanvasComponent(
     const maxY = Math.max(...elements.map((el) => {
       let h = el.height;
       if (el.type === "table") {
-         const props = el.properties as any;
+         const props = el.properties as ITableProperties;
          const rows = props.rows || 1;
          h = Math.max(h, rows * 40);
       }

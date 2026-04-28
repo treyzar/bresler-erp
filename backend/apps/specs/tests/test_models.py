@@ -1,14 +1,16 @@
-import pytest
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
-from apps.specs.models import CommercialOffer, Specification, SpecificationLine
+import pytest
+
+from apps.specs.models import CommercialOffer
+
 from .factories import (
     CommercialOfferFactory,
     OfferWorkItemFactory,
+    ParticipantContactFactory,
     SpecificationFactory,
     SpecificationLineFactory,
-    ParticipantContactFactory,
 )
 
 

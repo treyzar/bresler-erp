@@ -25,12 +25,8 @@ class Parameter(MP_Node):
         default="select",
         verbose_name="Тип параметра",
     )
-    _is_leaf = models.BooleanField(
-        default=True, db_column="is_leaf", verbose_name="Листовой элемент"
-    )
-    can_add_multiple = models.BooleanField(
-        default=False, verbose_name="Можно добавлять несколько"
-    )
+    _is_leaf = models.BooleanField(default=True, db_column="is_leaf", verbose_name="Листовой элемент")
+    can_add_multiple = models.BooleanField(default=False, verbose_name="Можно добавлять несколько")
     comment = models.TextField(blank=True, default="", verbose_name="Примечание")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
@@ -74,9 +70,7 @@ class ParameterValue(models.Model):
         verbose_name="Параметр",
     )
     value = models.CharField(max_length=350, verbose_name="Значение")
-    is_custom_value = models.BooleanField(
-        default=False, verbose_name="Пользовательское значение"
-    )
+    is_custom_value = models.BooleanField(default=False, verbose_name="Пользовательское значение")
 
     class Meta:
         ordering = ["id"]

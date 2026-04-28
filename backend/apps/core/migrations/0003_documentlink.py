@@ -5,31 +5,47 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('contenttypes', '0002_remove_content_type_name'),
-        ('core', '0002_seed_sequences'),
+        ("contenttypes", "0002_remove_content_type_name"),
+        ("core", "0002_seed_sequences"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DocumentLink',
+            name="DocumentLink",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('source_id', models.PositiveIntegerField()),
-                ('target_id', models.PositiveIntegerField()),
-                ('link_type', models.CharField(blank=True, default='related', max_length=50, verbose_name='Тип связи')),
-                ('note', models.CharField(blank=True, max_length=255, verbose_name='Примечание')),
-                ('source_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='source_links', to='contenttypes.contenttype')),
-                ('target_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='target_links', to='contenttypes.contenttype')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("source_id", models.PositiveIntegerField()),
+                ("target_id", models.PositiveIntegerField()),
+                ("link_type", models.CharField(blank=True, default="related", max_length=50, verbose_name="Тип связи")),
+                ("note", models.CharField(blank=True, max_length=255, verbose_name="Примечание")),
+                (
+                    "source_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="source_links",
+                        to="contenttypes.contenttype",
+                    ),
+                ),
+                (
+                    "target_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="target_links",
+                        to="contenttypes.contenttype",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Связь документов',
-                'verbose_name_plural': 'Связи документов',
-                'indexes': [models.Index(fields=['source_type', 'source_id'], name='core_docume_source__e5460b_idx'), models.Index(fields=['target_type', 'target_id'], name='core_docume_target__f9e35e_idx')],
-                'unique_together': {('source_type', 'source_id', 'target_type', 'target_id')},
+                "verbose_name": "Связь документов",
+                "verbose_name_plural": "Связи документов",
+                "indexes": [
+                    models.Index(fields=["source_type", "source_id"], name="core_docume_source__e5460b_idx"),
+                    models.Index(fields=["target_type", "target_id"], name="core_docume_target__f9e35e_idx"),
+                ],
+                "unique_together": {("source_type", "source_id", "target_type", "target_id")},
             },
         ),
     ]

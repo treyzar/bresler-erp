@@ -35,7 +35,9 @@ def author(org):
 @pytest.fixture
 def supervisor(org):
     return UserFactory(
-        last_name="Петров", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Петров",
+        company_unit=org["company"],
+        department_unit=org["dept"],
         is_department_head=True,
     )
 
@@ -45,14 +47,17 @@ def memo_type(db):
     seq = NumberSequence.objects.create(name="sla", prefix="S", pattern="{prefix}-{####}")
     chain = ApprovalChainTemplate.objects.create(
         name="sla-chain",
-        steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve",
-                "sla_hours": 24}],
+        steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve", "sla_hours": 24}],
     )
     return DocumentType.objects.create(
-        code="sla_memo", name="SLA memo", category="memo",
+        code="sla_memo",
+        name="SLA memo",
+        category="memo",
         field_schema=[{"name": "subject", "type": "text"}],
-        title_template="{{ subject }}", body_template="{{ subject }}",
-        default_chain=chain, numbering_sequence=seq,
+        title_template="{{ subject }}",
+        body_template="{{ subject }}",
+        default_chain=chain,
+        numbering_sequence=seq,
     )
 
 
@@ -119,8 +124,7 @@ def test_skips_waiting_steps(memo_type, author, supervisor, org):
 
     memo_type.default_chain.steps = [
         {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve", "sla_hours": 24},
-        {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "approve",
-         "sla_hours": 24},
+        {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "approve", "sla_hours": 24},
     ]
     memo_type.default_chain.save()
 

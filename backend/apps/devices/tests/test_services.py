@@ -1,5 +1,4 @@
 import pytest
-from decimal import Decimal
 
 from apps.devices.models import (
     DeviceComponent,
@@ -11,7 +10,6 @@ from apps.devices.models import (
 from apps.devices.services.component_service import ComponentService
 from apps.devices.services.device_service import DeviceService
 from apps.devices.tests.factories import (
-    ComponentTypeFactory,
     DeviceComponentFactory,
     DeviceRZAFactory,
     ModRZAFactory,
@@ -220,6 +218,7 @@ class TestComponentServiceSync:
             component_type_name="Новый тип",
         )
         from apps.devices.models import ComponentType
+
         assert ComponentType.objects.filter(name="Новый тип").exists()
 
     def test_get_active_components(self):

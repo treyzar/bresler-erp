@@ -53,8 +53,11 @@ class UserAdmin(BaseUserAdmin):
         "is_active",
     )
     list_filter = (
-        "is_active", "is_staff", "is_department_head",
-        "company_unit", "department_unit",
+        "is_active",
+        "is_staff",
+        "is_department_head",
+        "company_unit",
+        "department_unit",
     )
     search_fields = ("username", "first_name", "last_name", "patronymic", "email")
 
@@ -123,15 +126,21 @@ class UserAdmin(BaseUserAdmin):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "company_unit":
             kwargs["queryset"] = OrgUnit.objects.filter(
-                business_role="internal", is_active=True,
+                business_role="internal",
+                is_active=True,
             ).order_by("name")
         elif db_field.name == "department_unit":
-            kwargs["queryset"] = Department.objects.filter(
-                is_active=True,
-            ).select_related("company").order_by("company__name", "name")
+            kwargs["queryset"] = (
+                Department.objects.filter(
+                    is_active=True,
+                )
+                .select_related("company")
+                .order_by("company__name", "name")
+            )
         elif db_field.name == "supervisor":
             kwargs["queryset"] = User.objects.filter(is_active=True).order_by(
-                "last_name", "first_name",
+                "last_name",
+                "first_name",
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 

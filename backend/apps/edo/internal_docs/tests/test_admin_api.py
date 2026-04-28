@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth.models import Group
-from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.core.naming import NumberSequence
@@ -34,7 +33,8 @@ def regular_user(db):
 @pytest.fixture
 def chain(db):
     return ApprovalChainTemplate.objects.create(
-        name="base", steps=[
+        name="base",
+        steps=[
             {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
         ],
     )
@@ -96,11 +96,17 @@ def test_admin_validates_field_schema(admin_user, chain, seq):
     client = APIClient()
     client.force_authenticate(admin_user)
     payload = {
-        "code": "bad", "name": "B", "category": "memo",
+        "code": "bad",
+        "name": "B",
+        "category": "memo",
         "field_schema": [{"name": "x", "type": "no_such_type"}],
-        "title_template": "x", "body_template": "x",
-        "default_chain": chain.pk, "numbering_sequence": seq.pk,
-        "visibility": "personal_only", "addressee_mode": "none", "initiator_resolver": "author",
+        "title_template": "x",
+        "body_template": "x",
+        "default_chain": chain.pk,
+        "numbering_sequence": seq.pk,
+        "visibility": "personal_only",
+        "addressee_mode": "none",
+        "initiator_resolver": "author",
     }
     r = client.post("/api/edo/internal/admin/types/", data=payload, format="json")
     assert r.status_code == 400

@@ -52,10 +52,14 @@ class OrderPresenceConsumer(AsyncWebsocketConsumer):
             seen.add(info["username"])
             roster.append(info)
 
-        await self.send(text_data=json.dumps({
-            "type": "roster",
-            "users": roster,
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "roster",
+                    "users": roster,
+                }
+            )
+        )
 
         # Broadcast the join only if this user wasn't already present;
         # additional tabs from the same user shouldn't emit duplicates.
@@ -85,13 +89,21 @@ class OrderPresenceConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(room_group_name, self.channel_name)
 
     async def user_joined(self, event):
-        await self.send(text_data=json.dumps({
-            "type": "user_joined",
-            "user": event["user"],
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "user_joined",
+                    "user": event["user"],
+                }
+            )
+        )
 
     async def user_left(self, event):
-        await self.send(text_data=json.dumps({
-            "type": "user_left",
-            "username": event["username"],
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "user_left",
+                    "username": event["username"],
+                }
+            )
+        )

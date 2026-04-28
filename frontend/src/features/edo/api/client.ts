@@ -20,10 +20,11 @@ export const templatesApi = {
   list: async (
     scope: "public" | "my" | "shared" | "all" = "all"
   ): Promise<TemplateListItem[]> => {
-    const response = await api.get<any>("/edo/templates/templates/", {
-      params: { scope },
-    });
-    return response.data.results || response.data;
+    const response = await api.get<TemplateListItem[] | { results: TemplateListItem[] }>(
+      "/edo/templates/templates/",
+      { params: { scope } },
+    );
+    return Array.isArray(response.data) ? response.data : response.data.results;
   },
 
   get: async (id: number): Promise<Template> => {
@@ -58,10 +59,10 @@ export const templatesApi = {
   },
 
   getVersions: async (id: number): Promise<TemplateVersion[]> => {
-    const response = await api.get<any>(
-      `/edo/templates/templates/${id}/versions/`
+    const response = await api.get<TemplateVersion[] | { results: TemplateVersion[] }>(
+      `/edo/templates/templates/${id}/versions/`,
     );
-    return response.data.results || response.data;
+    return Array.isArray(response.data) ? response.data : response.data.results;
   },
 
   restoreVersion: async (
@@ -139,10 +140,10 @@ export const parserApi = {
 
 export const docBuilderApi = {
   list: async (): Promise<DocumentProjectListItem[]> => {
-    const response = await api.get<any>(
-      "/edo/doc-builder/projects/"
-    );
-    return response.data.results || response.data;
+    const response = await api.get<
+      DocumentProjectListItem[] | { results: DocumentProjectListItem[] }
+    >("/edo/doc-builder/projects/");
+    return Array.isArray(response.data) ? response.data : response.data.results;
   },
 
   get: async (id: number): Promise<DocumentProject> => {

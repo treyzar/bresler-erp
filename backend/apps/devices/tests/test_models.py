@@ -1,26 +1,18 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from apps.devices.models import (
-    CatalogPlacement,
-    DeviceRZA,
     ModRZA,
     Parameter,
-    ParameterValue,
-    Product,
-    ProductAttribute,
-    ProductAttributeOption,
     ProductAttributeValue,
-    ProductBOMLine,
     ProductCategory,
     RZASpec,
-    VoltageClass,
 )
 from apps.devices.tests.factories import (
     CatalogPlacementFactory,
-    ComponentTypeFactory,
     DeviceComponentFactory,
     DeviceRZAComponentFactory,
     DeviceRZAFactory,
@@ -35,7 +27,6 @@ from apps.devices.tests.factories import (
     ProductBOMLineFactory,
     ProductCategoryFactory,
     ProductFactory,
-    ProductTypeFactory,
     RZASpecFactory,
     TypicalSchemeFactory,
     VoltageClassFactory,
@@ -157,6 +148,7 @@ class TestDeviceComponent:
     def test_produx_id_index(self):
         comp = DeviceComponentFactory(produx_id=12345)
         from apps.devices.models import DeviceComponent
+
         found = DeviceComponent.objects.filter(produx_id=12345).first()
         assert found == comp
 
@@ -173,9 +165,7 @@ class TestJunctions:
     def test_device_parameter_unique(self):
         dp = DeviceRZAParameterFactory()
         with pytest.raises(IntegrityError):
-            DeviceRZAParameterFactory(
-                device_rza=dp.device_rza, parameter=dp.parameter
-            )
+            DeviceRZAParameterFactory(device_rza=dp.device_rza, parameter=dp.parameter)
 
     def test_mod_parameter(self):
         mp = ModRZAParameterFactory()
@@ -194,6 +184,7 @@ class TestJunctions:
         device = dp.device_rza
         device.delete()
         from apps.devices.models import DeviceRZAParameter
+
         assert DeviceRZAParameter.objects.filter(pk=dp.pk).count() == 0
 
 
@@ -301,26 +292,20 @@ class TestProductAttribute:
     def test_attribute_value_string(self):
         attr = ProductAttributeFactory(value_type="string")
         product = ProductFactory()
-        val = ProductAttributeValue.objects.create(
-            product=product, attribute=attr, value_string="220V"
-        )
+        val = ProductAttributeValue.objects.create(product=product, attribute=attr, value_string="220V")
         assert val.display_value() == "220V"
 
     def test_attribute_value_decimal(self):
         attr = ProductAttributeFactory(value_type="decimal")
         product = ProductFactory()
-        val = ProductAttributeValue.objects.create(
-            product=product, attribute=attr, value_decimal=Decimal("220.5")
-        )
+        val = ProductAttributeValue.objects.create(product=product, attribute=attr, value_decimal=Decimal("220.5"))
         assert val.display_value() == Decimal("220.5")
 
     def test_attribute_value_choice(self):
         attr = ProductAttributeFactory(value_type="choice")
         opt = ProductAttributeOptionFactory(attribute=attr, code="ac220", label="~220 В")
         product = ProductFactory()
-        val = ProductAttributeValue.objects.create(
-            product=product, attribute=attr, option=opt
-        )
+        val = ProductAttributeValue.objects.create(product=product, attribute=attr, option=opt)
         assert val.display_value() == "~220 В"
 
     def test_set_value_string(self):

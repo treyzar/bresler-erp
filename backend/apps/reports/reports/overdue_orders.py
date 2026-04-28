@@ -1,8 +1,5 @@
 from datetime import date
 
-from django.db.models import F, Value
-from django.db.models.functions import Coalesce
-
 from apps.orders.models import Order
 from apps.reports.base import BaseReport, ColumnDef, FilterDef
 from apps.reports.registry import register
@@ -48,9 +45,7 @@ class OverdueOrdersReport(BaseReport):
             {
                 "order_number": order.order_number,
                 "customer": order.customer_org_unit.name if order.customer_org_unit else "—",
-                "manager": ", ".join(
-                    m.get_full_name() or m.username for m in order.managers.all()
-                ) or "—",
+                "manager": ", ".join(m.get_full_name() or m.username for m in order.managers.all()) or "—",
                 "ship_date": order.ship_date.strftime("%d.%m.%Y"),
                 "days_overdue": (today - order.ship_date).days,
                 "status_label": status_labels.get(order.status, order.status),

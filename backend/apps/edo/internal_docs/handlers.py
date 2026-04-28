@@ -41,6 +41,7 @@ def notify_approver(event_name, instance=None, step=None, user=None, **kwargs):
 
     # Email с action-ссылками — отдельным путём.
     from .services.email_approval import send_approval_request_email
+
     try:
         send_approval_request_email(step)
     except Exception:  # noqa: BLE001 — handler не должен падать
@@ -68,9 +69,7 @@ def notify_author_on_rejected(event_name, instance=None, step=None, user=None, *
     document = instance
     if not document:
         return
-    approver_name = (
-        step.approver.get_full_name() if step and step.approver else "Согласующий"
-    )
+    approver_name = step.approver.get_full_name() if step and step.approver else "Согласующий"
     comment = (step.comment if step else "").strip() or "без комментария"
     create_notification(
         recipients=document.author,
@@ -88,9 +87,7 @@ def notify_author_on_revision(event_name, instance=None, step=None, **kwargs):
     document = instance
     if not document:
         return
-    approver_name = (
-        step.approver.get_full_name() if step and step.approver else "Согласующий"
-    )
+    approver_name = step.approver.get_full_name() if step and step.approver else "Согласующий"
     comment = (step.comment if step else "").strip() or "без комментария"
     create_notification(
         recipients=document.author,
@@ -110,10 +107,7 @@ def notify_delegate(event_name, instance=None, step=None, from_user=None, to_use
     create_notification(
         recipients=to_user,
         title=f"Делегировано согласование: {instance.number}",
-        message=(
-            f"Вам делегирован шаг «{step.role_label if step else ''}». "
-            f"Откройте документ, чтобы принять решение."
-        ),
+        message=(f"Вам делегирован шаг «{step.role_label if step else ''}». Откройте документ, чтобы принять решение."),
         category="info",
         target=instance,
         link=_doc_link(instance),
@@ -175,10 +169,7 @@ def notify_sla_breach(event_name, instance=None, step=None, **kwargs):
             create_notification(
                 recipients=sup,
                 title=f"Эскалация SLA: {document.number}",
-                message=(
-                    f"У вашего сотрудника {step.approver.get_full_name()} просрочен "
-                    f"шаг «{step.role_label}»."
-                ),
+                message=(f"У вашего сотрудника {step.approver.get_full_name()} просрочен шаг «{step.role_label}»."),
                 category="warning",
                 target=document,
                 link=_doc_link(document),

@@ -48,8 +48,9 @@ class TestOrder:
             assert order.status == status_val
 
     def test_customer_protect(self):
+        from django.db.models.deletion import ProtectedError
         order = OrderFactory()
-        with pytest.raises(Exception):
+        with pytest.raises(ProtectedError):
             order.customer_org_unit.delete()
 
     def test_intermediary_set_null(self):
@@ -108,7 +109,7 @@ class TestOrder:
         order = OrderFactory()
         assert order.history.count() == 1
 
-        order.status = Order.Status.IN_PROGRESS
+        order.status = Order.Status.PRODUCTION
         order.save()
         assert order.history.count() == 2
 
@@ -157,9 +158,7 @@ class TestOrderOrgUnit:
         org2 = OrgUnitFactory()
         OrderOrgUnit.objects.create(order=order, org_unit=org1, role="a", order_index=2)
         OrderOrgUnit.objects.create(order=order, org_unit=org2, role="b", order_index=1)
-        indices = list(
-            OrderOrgUnit.objects.filter(order=order).values_list("order_index", flat=True)
-        )
+        indices = list(OrderOrgUnit.objects.filter(order=order).values_list("order_index", flat=True))
         assert indices == [1, 2]
 
 
@@ -184,9 +183,7 @@ class TestOrderParticipant:
         org2 = OrgUnitFactory()
         OrderParticipant.objects.create(order=order, org_unit=org1, order_index=2)
         OrderParticipant.objects.create(order=order, org_unit=org2, order_index=1)
-        indices = list(
-            OrderParticipant.objects.filter(order=order).values_list("order_index", flat=True)
-        )
+        indices = list(OrderParticipant.objects.filter(order=order).values_list("order_index", flat=True))
         assert indices == [1, 2]
 
 

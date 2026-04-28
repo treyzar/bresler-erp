@@ -16,12 +16,20 @@ def test_minimal_valid_schema():
 
 
 def test_full_valid_schema():
-    validate_field_schema([
-        {"name": "subject", "label": "Тема", "type": "text", "required": True,
-         "placeholder": "Кратко", "help_text": "Не более 80 символов"},
-        {"name": "kind", "type": "choice", "choices": [["a", "A"], ["b", "B"]]},
-        {"name": "responsible", "type": "user", "filter": {"is_department_head": True}},
-    ])
+    validate_field_schema(
+        [
+            {
+                "name": "subject",
+                "label": "Тема",
+                "type": "text",
+                "required": True,
+                "placeholder": "Кратко",
+                "help_text": "Не более 80 символов",
+            },
+            {"name": "kind", "type": "choice", "choices": [["a", "A"], ["b", "B"]]},
+            {"name": "responsible", "type": "user", "filter": {"is_department_head": True}},
+        ]
+    )
 
 
 def test_not_a_list():
@@ -46,10 +54,12 @@ def test_invalid_identifier():
 
 def test_duplicate_name():
     with pytest.raises(ValidationError):
-        validate_field_schema([
-            {"name": "x", "type": "text"},
-            {"name": "x", "type": "number"},
-        ])
+        validate_field_schema(
+            [
+                {"name": "x", "type": "text"},
+                {"name": "x", "type": "number"},
+            ]
+        )
 
 
 def test_unknown_type():
@@ -76,20 +86,26 @@ def test_choice_requires_choices():
 
 def test_choices_only_for_choice_type():
     with pytest.raises(ValidationError):
-        validate_field_schema([
-            {"name": "x", "type": "text", "choices": [["a", "A"]]},
-        ])
+        validate_field_schema(
+            [
+                {"name": "x", "type": "text", "choices": [["a", "A"]]},
+            ]
+        )
 
 
 def test_choice_pair_shape():
     with pytest.raises(ValidationError):
-        validate_field_schema([
-            {"name": "k", "type": "choice", "choices": [["only_code"]]},
-        ])
+        validate_field_schema(
+            [
+                {"name": "k", "type": "choice", "choices": [["only_code"]]},
+            ]
+        )
     with pytest.raises(ValidationError):
-        validate_field_schema([
-            {"name": "k", "type": "choice", "choices": [[1, "label"]]},
-        ])
+        validate_field_schema(
+            [
+                {"name": "k", "type": "choice", "choices": [[1, "label"]]},
+            ]
+        )
 
 
 def test_filter_must_be_dict():

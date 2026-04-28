@@ -31,6 +31,8 @@ import type {
   TiptapDocumentAttrs,
   TiptapMark,
   TiptapText,
+  TiptapTableRow,
+  TiptapTableCell,
   MigrationResult,
   MigrationError,
   MigrationWarning,
@@ -265,13 +267,13 @@ function convertCanvasTableToTiptapTable(element: IEditorElement): TiptapContent
   }
 
   // Convert 2D cells array to Tiptap table structure
-  const rows: any[] = [];
+  const rows: TiptapTableRow[] = [];
 
   for (let r = 0; r < props.cells.length; r++) {
     const row = props.cells[r];
     if (!row) continue;
 
-    const tiptapRow: any = {
+    const tiptapRow: TiptapTableRow = {
       type: 'tableRow',
       content: [],
     };
@@ -280,7 +282,7 @@ function convertCanvasTableToTiptapTable(element: IEditorElement): TiptapContent
       const cell = row[c];
       if (cell === null) continue; // Skip merged cells
 
-      const tiptapCell: any = {
+      const tiptapCell: TiptapTableCell = {
         type: cell.rowSpan === 1 && cell.colSpan === 1 ? 'tableCell' : 'tableCell',
         content: [
           {
@@ -448,7 +450,7 @@ export function migrateTiptapToCanvas(_document: TiptapDocument): IEditorElement
 /**
  * Validates Tiptap document structure
  */
-export function validateTiptapDocument(document: any): { valid: boolean; errors: string[] } {
+export function validateTiptapDocument(document: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   if (!document || typeof document !== 'object') {
@@ -456,17 +458,26 @@ export function validateTiptapDocument(document: any): { valid: boolean; errors:
     return { valid: false, errors };
   }
 
-  if (document.type !== 'doc') {
+  const doc = document as {
+    type?: string
+    content?: Array<{
+      type?: string
+      content?: unknown
+      attrs?: { src?: string } & Record<string, unknown>
+    }>
+  };
+
+  if (doc.type !== 'doc') {
     errors.push('Document root type must be "doc"');
   }
 
-  if (!Array.isArray(document.content)) {
+  if (!Array.isArray(doc.content)) {
     errors.push('Document content must be an array');
     return { valid: false, errors };
   }
 
   // Validate each content node
-  for (const node of document.content) {
+  for (const node of doc.content) {
     if (!node.type) {
       errors.push('Content node missing "type" property');
       continue;

@@ -4,11 +4,13 @@
 .canvas-print 794x1123 (A4 @ 96dpi). PDFExportService превращает этот HTML в PDF
 через Playwright. Фронт больше не шлёт html_content.
 """
+
 from __future__ import annotations
 
 import html as html_lib
 import re
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from .normalization import normalize_editor_content
 
@@ -73,8 +75,7 @@ def _substitute_element(element: dict[str, Any], values: dict[str, Any]) -> dict
         data = props.get("data")
         if isinstance(data, list):
             props["data"] = [
-                [_apply_placeholders(c or "", values) if isinstance(c, str) else c for c in (row or [])]
-                for row in data
+                [_apply_placeholders(c or "", values) if isinstance(c, str) else c for c in (row or [])] for row in data
             ]
 
     return {**element, "properties": props}
@@ -126,7 +127,7 @@ def _render_signature(el: dict[str, Any]) -> str:
         f'border-bottom:1px solid #000;">'
         f'<span style="font-size:{int(p.get("fontSize") or 14)}px;'
         f'color:{_esc(p.get("color") or "#000")};">{_esc(p.get("text") or "")}</span>'
-        f'</div>'
+        f"</div>"
     )
 
 
@@ -169,9 +170,7 @@ def _render_table(el: dict[str, Any]) -> str:
         total = sum(col_widths) or 1
         col_percents = [f"{(w / total) * 100:.4f}%" for w in col_widths]
 
-        table_html = [
-            f'<table style="border-collapse:collapse;width:100%;height:100%;table-layout:fixed;">'
-        ]
+        table_html = ['<table style="border-collapse:collapse;width:100%;height:100%;table-layout:fixed;">']
         table_html.append("<colgroup>")
         for pct in col_percents:
             table_html.append(f'<col style="width:{pct};" />')
@@ -200,9 +199,7 @@ def _render_table(el: dict[str, Any]) -> str:
                     span_attrs += f' rowspan="{rowspan}"'
                 if colspan > 1:
                     span_attrs += f' colspan="{colspan}"'
-                table_html.append(
-                    f'<td style="{cell_style}"{span_attrs}>{_esc(cell.get("content") or "")}</td>'
-                )
+                table_html.append(f'<td style="{cell_style}"{span_attrs}>{_esc(cell.get("content") or "")}</td>')
             table_html.append("</tr>")
         table_html.append("</table>")
         return f'<div style="{style}">{"".join(table_html)}</div>'
@@ -212,9 +209,7 @@ def _render_table(el: dict[str, Any]) -> str:
     data = p.get("data") if isinstance(p.get("data"), list) else []
     color_matrix = p.get("cellTextColors") if isinstance(p.get("cellTextColors"), list) else []
 
-    table_html = [
-        f'<table style="border-collapse:collapse;width:100%;height:100%;table-layout:fixed;">'
-    ]
+    table_html = ['<table style="border-collapse:collapse;width:100%;height:100%;table-layout:fixed;">']
     for r in range(rows):
         table_html.append("<tr>")
         for c in range(cols):

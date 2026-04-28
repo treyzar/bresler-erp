@@ -12,6 +12,7 @@
  */
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router"
+import type { AxiosError } from "axios"
 import {
   CheckCircle2, XCircle, AlertTriangle, Loader2, FileText, ArrowRight,
 } from "lucide-react"
@@ -58,11 +59,11 @@ export function EmailActionPage() {
       .then((r) => {
         if (!cancelled) setState({ phase: "ready", data: r.data })
       })
-      .catch((e: any) => {
+      .catch((e: AxiosError<{ detail?: string }>) => {
         if (cancelled) return
-        const status = e?.response?.status
+        const status = e.response?.status
         const detail =
-          e?.response?.data?.detail ??
+          e.response?.data?.detail ??
           (status === 404 ? "Шаг согласования не найден." : "Ссылка недействительна.")
         setState({ phase: "error", message: detail })
       })
@@ -86,8 +87,9 @@ export function EmailActionPage() {
         action: state.data.action,
         documentId: state.data.document.id,
       })
-    } catch (e: any) {
-      const detail = e?.response?.data?.detail ?? "Ошибка выполнения действия"
+    } catch (e) {
+      const err = e as AxiosError<{ detail?: string }>
+      const detail = err.response?.data?.detail ?? "Ошибка выполнения действия"
       setState({ phase: "error", message: detail })
     }
   }

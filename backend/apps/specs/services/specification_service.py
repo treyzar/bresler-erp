@@ -48,9 +48,7 @@ def fill_from_products(specification: Specification, product_ids: list[int]) -> 
     products = Product.objects.filter(id__in=product_ids, is_active=True)
 
     # Start numbering after existing lines
-    last_num = specification.lines.aggregate(
-        m=__import__("django").db.models.Max("line_number")
-    )["m"] or 0
+    last_num = specification.lines.aggregate(m=__import__("django").db.models.Max("line_number"))["m"] or 0
 
     for i, product in enumerate(products, start=1):
         SpecificationLine.objects.create(

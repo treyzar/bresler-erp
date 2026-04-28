@@ -6,7 +6,7 @@ from decimal import Decimal
 from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Cm, Pt
+from docx.shared import Pt
 
 from apps.specs.models import CommercialOffer, Specification
 
@@ -111,13 +111,10 @@ def generate_offer_docx(offer: CommercialOffer) -> io.BytesIO:
     style.font.size = Pt(12)
 
     # ── Header ──
-    _styled_paragraph(doc, offer.participant.org_unit.name,
-                      bold=True, alignment=WD_ALIGN_PARAGRAPH.RIGHT)
+    _styled_paragraph(doc, offer.participant.org_unit.name, bold=True, alignment=WD_ALIGN_PARAGRAPH.RIGHT)
     doc.add_paragraph()
-    _styled_paragraph(doc, "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ",
-                      bold=True, alignment=WD_ALIGN_PARAGRAPH.CENTER, size=14)
-    _styled_paragraph(doc, f"{offer.offer_number} от {offer.date:%d.%m.%Y}",
-                      alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    _styled_paragraph(doc, "КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ", bold=True, alignment=WD_ALIGN_PARAGRAPH.CENTER, size=14)
+    _styled_paragraph(doc, f"{offer.offer_number} от {offer.date:%d.%m.%Y}", alignment=WD_ALIGN_PARAGRAPH.CENTER)
     doc.add_paragraph()
 
     # ── Intro ──
@@ -164,10 +161,7 @@ def generate_offer_docx(offer: CommercialOffer) -> io.BytesIO:
         doc.add_paragraph()
         _styled_paragraph(doc, "Работы:", bold=True)
         for wi in included_works:
-            doc.add_paragraph(
-                f"— {wi.work_type.name}: {wi.days} дн., "
-                f"{wi.specialists} спец., {wi.trips} выезд(ов)"
-            )
+            doc.add_paragraph(f"— {wi.work_type.name}: {wi.days} дн., {wi.specialists} спец., {wi.trips} выезд(ов)")
 
     # ── Additional conditions ──
     if offer.additional_conditions:
@@ -178,9 +172,7 @@ def generate_offer_docx(offer: CommercialOffer) -> io.BytesIO:
     # ── Validity & contact ──
     doc.add_paragraph()
     valid_until = offer.valid_until.strftime("%d.%m.%Y") if offer.valid_until else "—"
-    doc.add_paragraph(
-        f"Срок действия предложения: {offer.valid_days} дней (до {valid_until})."
-    )
+    doc.add_paragraph(f"Срок действия предложения: {offer.valid_days} дней (до {valid_until}).")
     doc.add_paragraph()
     doc.add_paragraph("По вопросам обращаться:")
     manager_name = offer.manager.get_full_name() if offer.manager else "—"
@@ -202,10 +194,12 @@ def generate_specification_docx(offer: CommercialOffer) -> io.BytesIO:
     style.font.size = Pt(12)
 
     # Header
-    _styled_paragraph(doc, "СПЕЦИФИКАЦИЯ",
-                      bold=True, alignment=WD_ALIGN_PARAGRAPH.CENTER, size=14)
-    _styled_paragraph(doc, f"к коммерческому предложению {offer.offer_number} от {offer.date:%d.%m.%Y}",
-                      alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    _styled_paragraph(doc, "СПЕЦИФИКАЦИЯ", bold=True, alignment=WD_ALIGN_PARAGRAPH.CENTER, size=14)
+    _styled_paragraph(
+        doc,
+        f"к коммерческому предложению {offer.offer_number} от {offer.date:%d.%m.%Y}",
+        alignment=WD_ALIGN_PARAGRAPH.CENTER,
+    )
     doc.add_paragraph()
     doc.add_paragraph(f"Заказчик: {offer.participant.org_unit.name}")
     doc.add_paragraph()

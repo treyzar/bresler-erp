@@ -1,23 +1,21 @@
 import pytest
-from decimal import Decimal
 
+from apps.orders.tests.factories import OrderFactory
 from apps.purchasing.models import (
-    PurchaseOrder,
     PurchasePayment,
     PurchaseRequest,
     StockMovement,
 )
-from apps.purchasing.services import stock_service, purchasing_service
+from apps.purchasing.services import purchasing_service, stock_service
+from apps.users.tests.factories import UserFactory
+
 from .factories import (
-    PurchaseOrderFactory,
     PurchasePaymentFactory,
     PurchaseRequestFactory,
     PurchaseRequestLineFactory,
     StockItemFactory,
     SupplierFactory,
 )
-from apps.users.tests.factories import UserFactory
-from apps.orders.tests.factories import OrderFactory
 
 
 @pytest.mark.django_db

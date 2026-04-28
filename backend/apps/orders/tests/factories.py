@@ -2,14 +2,10 @@ import factory
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.directory.tests.factories import (
-    ContactFactory,
     CountryFactory,
-    EquipmentFactory,
     OrgUnitFactory,
-    TypeOfWorkFactory,
 )
 from apps.orders.models import Contract, Order, OrderFile, OrderOrgUnit, OrderParticipant
-from apps.users.tests.factories import UserFactory
 
 
 class OrderFactory(factory.django.DjangoModelFactory):
@@ -66,9 +62,7 @@ class OrderFileFactory(factory.django.DjangoModelFactory):
         model = OrderFile
 
     order = factory.SubFactory(OrderFactory)
-    file = factory.LazyFunction(
-        lambda: SimpleUploadedFile("test.pdf", b"file content", content_type="application/pdf")
-    )
+    file = factory.LazyFunction(lambda: SimpleUploadedFile("test.pdf", b"file content", content_type="application/pdf"))
     original_name = factory.Sequence(lambda n: f"document_{n}.pdf")
     file_size = 1024
 

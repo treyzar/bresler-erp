@@ -27,13 +27,15 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if hasattr(self, "group_name"):
-            await self.channel_layer.group_discard(
-                self.group_name, self.channel_name
-            )
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def notification_new(self, event):
         """Handle new notification pushed from services.py."""
-        await self.send(text_data=json.dumps({
-            "type": "notification",
-            "data": event["notification"],
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "notification",
+                    "data": event["notification"],
+                }
+            )
+        )

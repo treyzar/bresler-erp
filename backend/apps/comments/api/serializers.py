@@ -26,8 +26,13 @@ class CommentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = [
-            "id", "author", "author_name", "author_username",
-            "mentioned_users", "created_at", "updated_at",
+            "id",
+            "author",
+            "author_name",
+            "author_username",
+            "mentioned_users",
+            "created_at",
+            "updated_at",
         ]
 
     def get_mentioned_users(self, obj) -> dict[str, str]:
@@ -37,7 +42,10 @@ class CommentSerializer(serializers.ModelSerializer):
             return {}
         User = get_user_model()
         users = User.objects.filter(username__in=usernames).values(
-            "username", "first_name", "last_name", "patronymic",
+            "username",
+            "first_name",
+            "last_name",
+            "patronymic",
         )
         result = {}
         for u in users:
@@ -57,17 +65,16 @@ class CommentCreateSerializer(serializers.Serializer):
     def validate_target_model(self, value):
         """Resolve model name to ContentType (uses single MODEL_MAP from views)."""
         from .views import CommentViewSet
+
         model_map = CommentViewSet.MODEL_MAP
         key = value.lower()
         if key not in model_map:
-            raise serializers.ValidationError(
-                f"Unknown model '{value}'. Allowed: {', '.join(model_map.keys())}"
-            )
+            raise serializers.ValidationError(f"Unknown model '{value}'. Allowed: {', '.join(model_map.keys())}")
         app_label, model = model_map[key]
         try:
             return ContentType.objects.get(app_label=app_label, model=model)
-        except ContentType.DoesNotExist:
-            raise serializers.ValidationError(f"ContentType not found for {app_label}.{model}")
+        except ContentType.DoesNotExist as e:
+            raise serializers.ValidationError(f"ContentType not found for {app_label}.{model}") from e
 
     def validate(self, attrs):
         ct = attrs["target_model"]

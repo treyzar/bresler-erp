@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link as RouterLink } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
 import { toast } from "sonner"
 import { Link2, Plus, Trash2, FileText, Building2, User, Mail, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -213,7 +214,8 @@ function LinkPickerDialog({
       setQuery("")
       onCreated()
     },
-    onError: (e: any) => toast.error(e?.message ?? e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? e.message ?? "Ошибка"),
   })
 
   return (

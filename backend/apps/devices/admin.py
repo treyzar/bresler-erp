@@ -30,7 +30,6 @@ from apps.devices.models import (
     VoltageClass,
 )
 
-
 # ── RZA ──────────────────────────────────────────────────────────────
 
 
@@ -88,6 +87,7 @@ class ModRZAAdmin(admin.ModelAdmin):
 
     def full_code(self, obj):
         return obj.full_code
+
     full_code.short_description = "Полный код"
 
 
@@ -193,16 +193,23 @@ class ProductAttributeValueInline(admin.TabularInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = [
-        "internal_code", "name", "product_type", "base_price",
-        "currency", "is_active", "is_spare_part",
+        "internal_code",
+        "name",
+        "product_type",
+        "base_price",
+        "currency",
+        "is_active",
+        "is_spare_part",
     ]
     list_filter = ["is_active", "is_spare_part", "currency", "product_type"]
     search_fields = ["name", "internal_code", "slug"]
     autocomplete_fields = ["product_type"]
     readonly_fields = ["slug"]
     inlines = [
-        RZASpecInline, CatalogPlacementInline,
-        ProductBOMLineInline, ProductAttributeValueInline,
+        RZASpecInline,
+        CatalogPlacementInline,
+        ProductBOMLineInline,
+        ProductAttributeValueInline,
     ]
 
 

@@ -8,10 +8,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
-import os
 import time
 from pathlib import Path
 
@@ -116,10 +116,8 @@ def _prune_expired_cache(document: Document, ttl_hours: int) -> None:
     now = time.time()
     for p in doc_dir.iterdir():
         if p.is_file() and (now - p.stat().st_mtime) > ttl_seconds:
-            try:
+            with contextlib.suppress(OSError):
                 p.unlink()
-            except OSError:
-                pass
 
 
 def prune_all_expired_cache(ttl_hours: int | None = None) -> dict[str, int]:
@@ -161,7 +159,10 @@ def prune_all_expired_cache(ttl_hours: int | None = None) -> dict[str, int]:
 
     logger.info(
         "PDF cache pruned: files=%s dirs=%s bytes=%s ttl_hours=%s",
-        files_removed, dirs_removed, bytes_freed, ttl_hours,
+        files_removed,
+        dirs_removed,
+        bytes_freed,
+        ttl_hours,
     )
     return {
         "files_removed": files_removed,
@@ -184,6 +185,7 @@ def _build_html(document: Document) -> str:
         to_person_position = document.addressee.position or ""
     elif "addressee_department" in (document.field_values or {}):
         from apps.directory.models import Department
+
         dept = Department.objects.filter(pk=document.field_values["addressee_department"]).first()
         if dept:
             to_department = dept.name

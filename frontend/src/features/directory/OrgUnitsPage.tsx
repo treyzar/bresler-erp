@@ -211,7 +211,7 @@ export function OrgUnitsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Организации</h1>
         <div className="flex items-center gap-4">
-          <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+          <Tabs value={view} onValueChange={(v) => setView(v as "table" | "tree")}>
             <TabsList>
               <TabsTrigger value="table" className="flex items-center gap-2">
                 <LayoutList className="size-4" />

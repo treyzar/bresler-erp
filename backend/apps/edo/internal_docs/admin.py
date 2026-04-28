@@ -42,8 +42,14 @@ class ApprovalStepInline(admin.TabularInline):
     model = ApprovalStep
     extra = 0
     readonly_fields = (
-        "order", "role_key", "role_label", "action",
-        "approver", "original_approver", "decided_at", "sla_due_at",
+        "order",
+        "role_key",
+        "role_label",
+        "action",
+        "approver",
+        "original_approver",
+        "decided_at",
+        "sla_due_at",
     )
     fields = readonly_fields + ("status", "comment")
     can_delete = False
@@ -61,7 +67,15 @@ class DocumentAdmin(admin.ModelAdmin):
     list_filter = ("status", "type", "submitted_at")
     search_fields = ("number", "title", "author__username", "author__last_name")
     autocomplete_fields = ("type", "author", "addressee", "author_company_unit", "author_department_unit")
-    readonly_fields = ("number", "created_at", "submitted_at", "closed_at", "body_rendered", "chain_snapshot", "header_snapshot")
+    readonly_fields = (
+        "number",
+        "created_at",
+        "submitted_at",
+        "closed_at",
+        "body_rendered",
+        "chain_snapshot",
+        "header_snapshot",
+    )
     inlines = [ApprovalStepInline, DocumentAttachmentInline]
 
 

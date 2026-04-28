@@ -28,9 +28,15 @@ class ReferenceExportReport(BaseReport):
 
     def get_data(self, filters: dict) -> list[dict]:
         # S = Отгружен, A = Архив (прошли через отгрузку)
-        qs = Order.objects.filter(status__in=["S", "A"]).select_related(
-            "customer_org_unit", "country", "contract",
-        ).prefetch_related("equipments", "facilities")
+        qs = (
+            Order.objects.filter(status__in=["S", "A"])
+            .select_related(
+                "customer_org_unit",
+                "country",
+                "contract",
+            )
+            .prefetch_related("equipments", "facilities")
+        )
 
         if filters.get("ship_date_from"):
             qs = qs.filter(ship_date__gte=filters["ship_date_from"])

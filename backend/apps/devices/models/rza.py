@@ -7,12 +7,8 @@ from apps.core.models import BaseModel
 class VoltageClass(BaseModel):
     """Классификация сетей по напряжению."""
 
-    name = models.CharField(
-        max_length=350, verbose_name="Классификация сетей по напряжению"
-    )
-    description = models.CharField(
-        max_length=350, blank=True, default="", verbose_name="Название класса сети"
-    )
+    name = models.CharField(max_length=350, verbose_name="Классификация сетей по напряжению")
+    description = models.CharField(max_length=350, blank=True, default="", verbose_name="Название класса сети")
 
     class Meta:
         ordering = ["name"]
@@ -26,9 +22,7 @@ class VoltageClass(BaseModel):
 class DeviceRZA(BaseModel):
     """Серия устройств РЗА (функциональный код)."""
 
-    rza_name = models.CharField(
-        max_length=350, verbose_name="Наименование устройства"
-    )
+    rza_name = models.CharField(max_length=350, verbose_name="Наименование устройства")
     rza_name_rod = models.CharField(
         max_length=350,
         blank=True,
@@ -67,12 +61,8 @@ class ModRZA(BaseModel):
         related_name="modifications",
         verbose_name="Устройство РЗА",
     )
-    mod_name = models.CharField(
-        max_length=350, blank=True, default="", verbose_name="Наименование модификации"
-    )
-    mod_code = models.CharField(
-        max_length=350, verbose_name="Код модификации"
-    )
+    mod_name = models.CharField(max_length=350, blank=True, default="", verbose_name="Наименование модификации")
+    mod_code = models.CharField(max_length=350, verbose_name="Код модификации")
     alter_mod_code = models.CharField(
         max_length=1000,
         blank=True,

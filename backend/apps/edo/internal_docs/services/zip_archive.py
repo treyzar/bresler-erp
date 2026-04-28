@@ -19,8 +19,8 @@ import io
 import json
 import logging
 import zipfile
+from collections.abc import Iterable
 from datetime import date, datetime
-from typing import Iterable
 
 from django.utils import timezone
 
@@ -73,17 +73,12 @@ def _filter_documents(
 ):
     """Документы, у которых `submitted_at` или `closed_at` попадает в диапазон."""
     from django.db.models import Q
-    qs = (
-        Document.objects
-        .select_related("type", "author")
-        .prefetch_related("steps", "steps__approver", "attachments")
-    )
+
+    qs = Document.objects.select_related("type", "author").prefetch_related("steps", "steps__approver", "attachments")
     # Берём документы, у которых submitted_at∈[from, to] ИЛИ closed_at∈[from, to].
     start = datetime.combine(date_from, datetime.min.time(), tzinfo=timezone.get_current_timezone())
     end = datetime.combine(date_to, datetime.max.time(), tzinfo=timezone.get_current_timezone())
-    qs = qs.filter(
-        Q(submitted_at__range=(start, end)) | Q(closed_at__range=(start, end))
-    )
+    qs = qs.filter(Q(submitted_at__range=(start, end)) | Q(closed_at__range=(start, end)))
     if status_filter:
         qs = qs.filter(status__in=status_filter)
     return qs.order_by("submitted_at")
@@ -120,10 +115,7 @@ def build_archive(
                     "date_from": date_from.isoformat(),
                     "date_to": date_to.isoformat(),
                     "status_filter": status_filter or [],
-                    "documents": [
-                        {"id": d.pk, "number": d.number, "title": d.title, "status": d.status}
-                        for d in docs
-                    ],
+                    "documents": [{"id": d.pk, "number": d.number, "title": d.title, "status": d.status} for d in docs],
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -133,8 +125,7 @@ def build_archive(
         for doc in docs:
             folder = _safe_filename(doc.number or f"draft_{doc.pk}")
             # 1) metadata.json
-            zf.writestr(f"{folder}/metadata.json",
-                        json.dumps(_serialize_document(doc), ensure_ascii=False, indent=2))
+            zf.writestr(f"{folder}/metadata.json", json.dumps(_serialize_document(doc), ensure_ascii=False, indent=2))
             # 2) PDF
             if include_pdf and doc.body_rendered:
                 try:

@@ -5,7 +5,6 @@
 
 from django.db import migrations
 
-
 NEW_BODY_TEMPLATE = (
     "Прошу разрешить выход работников "
     "{{ author.department|default:author.company }} "
@@ -38,7 +37,6 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("internal_docs", "0002_seed_mvp_types")]
 
     operations = [migrations.RunPython(forwards, backwards)]

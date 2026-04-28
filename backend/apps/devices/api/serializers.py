@@ -28,8 +28,8 @@ from apps.devices.models import (
     VoltageClass,
 )
 
-
 # ── RZA ──────────────────────────────────────────────────────────────
+
 
 class VoltageClassSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,9 +45,16 @@ class DeviceRZAListSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceRZA
         fields = [
-            "id", "rza_name", "rza_name_rod", "rza_short_name", "rza_code",
-            "modifications_count", "parameters_count", "components_count",
-            "created_at", "updated_at",
+            "id",
+            "rza_name",
+            "rza_name_rod",
+            "rza_short_name",
+            "rza_code",
+            "modifications_count",
+            "parameters_count",
+            "components_count",
+            "created_at",
+            "updated_at",
         ]
 
 
@@ -55,15 +62,18 @@ class DeviceRZASerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceRZA
         fields = [
-            "id", "rza_name", "rza_name_rod", "rza_short_name", "rza_code",
-            "created_at", "updated_at",
+            "id",
+            "rza_name",
+            "rza_name_rod",
+            "rza_short_name",
+            "rza_code",
+            "created_at",
+            "updated_at",
         ]
 
 
 class ModRZAListSerializer(serializers.ModelSerializer):
-    device_rza_name = serializers.CharField(
-        source="device_rza.rza_name", read_only=True
-    )
+    device_rza_name = serializers.CharField(source="device_rza.rza_name", read_only=True)
     full_code = serializers.CharField(read_only=True)
     parameters_count = serializers.IntegerField(read_only=True, default=0)
     components_count = serializers.IntegerField(read_only=True, default=0)
@@ -71,10 +81,18 @@ class ModRZAListSerializer(serializers.ModelSerializer):
     class Meta:
         model = ModRZA
         fields = [
-            "id", "device_rza", "device_rza_name", "mod_name", "mod_code",
-            "alter_mod_code", "sec_mod_code", "full_code",
-            "parameters_count", "components_count",
-            "created_at", "updated_at",
+            "id",
+            "device_rza",
+            "device_rza_name",
+            "mod_name",
+            "mod_code",
+            "alter_mod_code",
+            "sec_mod_code",
+            "full_code",
+            "parameters_count",
+            "components_count",
+            "created_at",
+            "updated_at",
         ]
 
 
@@ -84,9 +102,15 @@ class ModRZASerializer(serializers.ModelSerializer):
     class Meta:
         model = ModRZA
         fields = [
-            "id", "device_rza", "mod_name", "mod_code",
-            "alter_mod_code", "sec_mod_code", "full_code",
-            "created_at", "updated_at",
+            "id",
+            "device_rza",
+            "mod_name",
+            "mod_code",
+            "alter_mod_code",
+            "sec_mod_code",
+            "full_code",
+            "created_at",
+            "updated_at",
         ]
 
     def validate(self, data):
@@ -96,13 +120,12 @@ class ModRZASerializer(serializers.ModelSerializer):
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise serializers.ValidationError(
-                {"mod_code": "Код модификации уже существует для этого устройства."}
-            )
+            raise serializers.ValidationError({"mod_code": "Код модификации уже существует для этого устройства."})
         return data
 
 
 # ── Parameters ───────────────────────────────────────────────────────
+
 
 class ParameterValueSerializer(serializers.ModelSerializer):
     class Meta:
@@ -118,8 +141,15 @@ class ParameterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Parameter
         fields = [
-            "id", "name", "parameter_type", "is_leaf", "can_add_multiple",
-            "comment", "created_at", "values", "children_count",
+            "id",
+            "name",
+            "parameter_type",
+            "is_leaf",
+            "can_add_multiple",
+            "comment",
+            "created_at",
+            "values",
+            "children_count",
         ]
 
     def get_children_count(self, obj):
@@ -128,6 +158,7 @@ class ParameterSerializer(serializers.ModelSerializer):
 
 class ParameterTreeSerializer(serializers.ModelSerializer):
     """Compact serializer for tree display."""
+
     is_leaf = serializers.BooleanField(source="_is_leaf", read_only=True)
 
     class Meta:
@@ -145,12 +176,17 @@ class CompositeParameterFieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompositeParameterField
         fields = [
-            "id", "composite_parameter", "name", "field_type",
-            "order", "select_parameter",
+            "id",
+            "composite_parameter",
+            "name",
+            "field_type",
+            "order",
+            "select_parameter",
         ]
 
 
 # ── Components ───────────────────────────────────────────────────────
+
 
 class ComponentTypeSerializer(serializers.ModelSerializer):
     components_count = serializers.SerializerMethodField()
@@ -164,16 +200,20 @@ class ComponentTypeSerializer(serializers.ModelSerializer):
 
 
 class DeviceComponentSerializer(serializers.ModelSerializer):
-    component_type_name = serializers.CharField(
-        source="component_type.name", read_only=True
-    )
+    component_type_name = serializers.CharField(source="component_type.name", read_only=True)
 
     class Meta:
         model = DeviceComponent
         fields = [
-            "id", "produx_id", "component_name", "component_type",
-            "component_type_name", "is_active", "additional_data",
-            "created_at", "updated_at",
+            "id",
+            "produx_id",
+            "component_name",
+            "component_type",
+            "component_type_name",
+            "is_active",
+            "additional_data",
+            "created_at",
+            "updated_at",
         ]
 
 
@@ -181,9 +221,16 @@ class ComponentVisualSerializer(serializers.ModelSerializer):
     class Meta:
         model = ComponentVisual
         fields = [
-            "id", "component", "visual_type", "is_primary",
-            "image_file", "name", "description",
-            "image_width", "image_height", "created_at",
+            "id",
+            "component",
+            "visual_type",
+            "is_primary",
+            "image_file",
+            "name",
+            "description",
+            "image_width",
+            "image_height",
+            "created_at",
         ]
 
 
@@ -191,12 +238,18 @@ class TerminalLayoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = TerminalLayout
         fields = [
-            "id", "mod_rza", "user", "layout_data",
-            "is_auto_generated", "created_at", "updated_at",
+            "id",
+            "mod_rza",
+            "user",
+            "layout_data",
+            "is_auto_generated",
+            "created_at",
+            "updated_at",
         ]
 
 
 # ── Junctions (Device/Mod ↔ Parameter/Component) ────────────────────
+
 
 class DeviceRZAParameterSerializer(serializers.ModelSerializer):
     parameter_name = serializers.CharField(source="parameter.name", read_only=True)
@@ -218,33 +271,38 @@ class ModRZAParameterSerializer(serializers.ModelSerializer):
 
 class DeviceRZAComponentSerializer(serializers.ModelSerializer):
     component_name = serializers.CharField(source="component.component_name", read_only=True)
-    component_type_name = serializers.CharField(
-        source="component.component_type.name", read_only=True
-    )
+    component_type_name = serializers.CharField(source="component.component_type.name", read_only=True)
 
     class Meta:
         model = DeviceRZAComponent
         fields = [
-            "id", "device_rza", "component", "component_name",
-            "component_type_name", "price",
+            "id",
+            "device_rza",
+            "component",
+            "component_name",
+            "component_type_name",
+            "price",
         ]
 
 
 class ModRZAComponentSerializer(serializers.ModelSerializer):
     component_name = serializers.CharField(source="component.component_name", read_only=True)
-    component_type_name = serializers.CharField(
-        source="component.component_type.name", read_only=True
-    )
+    component_type_name = serializers.CharField(source="component.component_type.name", read_only=True)
 
     class Meta:
         model = ModRZAComponent
         fields = [
-            "id", "mod_rza", "component", "component_name",
-            "component_type_name", "price",
+            "id",
+            "mod_rza",
+            "component",
+            "component_name",
+            "component_type_name",
+            "price",
         ]
 
 
 # ── Catalog ──────────────────────────────────────────────────────────
+
 
 class ProductCategorySerializer(serializers.ModelSerializer):
     level_name = serializers.CharField(read_only=True)
@@ -253,9 +311,17 @@ class ProductCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductCategory
         fields = [
-            "id", "name", "short_name", "slug", "description",
-            "is_active", "depth", "level_name", "full_path",
-            "created_at", "updated_at",
+            "id",
+            "name",
+            "short_name",
+            "slug",
+            "description",
+            "is_active",
+            "depth",
+            "level_name",
+            "full_path",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["slug", "depth"]
 
@@ -265,6 +331,7 @@ class ProductCategorySerializer(serializers.ModelSerializer):
 
 class ProductCategoryTreeSerializer(serializers.ModelSerializer):
     """Compact serializer for tree views."""
+
     children = serializers.SerializerMethodField()
 
     class Meta:
@@ -283,16 +350,22 @@ class ProductTypeSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    product_type_name = serializers.CharField(
-        source="product_type.name", read_only=True, default=None
-    )
+    product_type_name = serializers.CharField(source="product_type.name", read_only=True, default=None)
 
     class Meta:
         model = Product
         fields = [
-            "id", "name", "internal_code", "slug", "product_type",
-            "product_type_name", "base_price", "currency", "is_active",
-            "is_spare_part", "created_at",
+            "id",
+            "name",
+            "internal_code",
+            "slug",
+            "product_type",
+            "product_type_name",
+            "base_price",
+            "currency",
+            "is_active",
+            "is_spare_part",
+            "created_at",
         ]
 
 
@@ -303,8 +376,15 @@ class ProductBOMLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductBOMLine
         fields = [
-            "id", "parent", "child", "child_name", "child_code",
-            "role", "quantity", "slot_label", "track_serial_override",
+            "id",
+            "parent",
+            "child",
+            "child_name",
+            "child_code",
+            "role",
+            "quantity",
+            "slot_label",
+            "track_serial_override",
         ]
 
 
@@ -316,15 +396,19 @@ class RZASpecSerializer(serializers.ModelSerializer):
     class Meta:
         model = RZASpec
         fields = [
-            "id", "product", "device_rza", "device_rza_code",
-            "device_rza_name", "mod_rza", "mod_rza_code", "description",
+            "id",
+            "product",
+            "device_rza",
+            "device_rza_code",
+            "device_rza_name",
+            "mod_rza",
+            "mod_rza_code",
+            "description",
         ]
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    product_type_name = serializers.CharField(
-        source="product_type.name", read_only=True, default=None
-    )
+    product_type_name = serializers.CharField(source="product_type.name", read_only=True, default=None)
     rza_spec = serializers.SerializerMethodField()
     categories = serializers.SerializerMethodField()
     bom_lines = serializers.SerializerMethodField()
@@ -332,12 +416,27 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "name", "internal_code", "slug", "product_type",
-            "product_type_name", "uom", "base_price", "currency",
-            "vat_rate", "price_with_vat", "track_serial",
-            "is_active", "is_spare_part", "valid_from", "valid_to",
-            "created_at", "updated_at",
-            "rza_spec", "categories", "bom_lines",
+            "id",
+            "name",
+            "internal_code",
+            "slug",
+            "product_type",
+            "product_type_name",
+            "uom",
+            "base_price",
+            "currency",
+            "vat_rate",
+            "price_with_vat",
+            "track_serial",
+            "is_active",
+            "is_spare_part",
+            "valid_from",
+            "valid_to",
+            "created_at",
+            "updated_at",
+            "rza_spec",
+            "categories",
+            "bom_lines",
         ]
 
     def get_rza_spec(self, obj):
@@ -350,8 +449,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_categories(self, obj):
         placements = obj.catalog_placements.select_related("category")
         return [
-            {"id": p.category.id, "name": p.category.name, "full_path": p.category.get_full_path()}
-            for p in placements
+            {"id": p.category.id, "name": p.category.name, "full_path": p.category.get_full_path()} for p in placements
         ]
 
     def get_bom_lines(self, obj):
@@ -362,10 +460,21 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "name", "internal_code", "slug", "product_type",
-            "uom", "base_price", "currency", "vat_rate", "price_with_vat",
-            "track_serial", "is_active", "is_spare_part",
-            "valid_from", "valid_to",
+            "id",
+            "name",
+            "internal_code",
+            "slug",
+            "product_type",
+            "uom",
+            "base_price",
+            "currency",
+            "vat_rate",
+            "price_with_vat",
+            "track_serial",
+            "is_active",
+            "is_spare_part",
+            "valid_from",
+            "valid_to",
         ]
         read_only_fields = ["slug"]
 
@@ -405,8 +514,15 @@ class ProductAttributeValueSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductAttributeValue
         fields = [
-            "id", "product", "attribute", "attribute_name", "attribute_code",
-            "option", "value_string", "value_decimal", "value_bool",
+            "id",
+            "product",
+            "attribute",
+            "attribute_name",
+            "attribute_code",
+            "option",
+            "value_string",
+            "value_decimal",
+            "value_bool",
             "display_value",
         ]
 

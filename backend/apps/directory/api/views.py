@@ -4,7 +4,6 @@ from rest_framework.response import Response
 
 from apps.core.mixins.export import ExportMixin
 from apps.core.mixins.metadata import MetadataMixin
-
 from apps.directory.models import (
     City,
     Contact,
@@ -122,12 +121,9 @@ class OrgUnitViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
             all_orgunit_ids.add(node.pk)
             for desc in node.get_descendants():
                 all_orgunit_ids.add(desc.pk)
-        facilities = Facility.objects.filter(
-            org_unit_id__in=all_orgunit_ids, is_active=True
-        ).select_related("org_unit")
+        facilities = Facility.objects.filter(org_unit_id__in=all_orgunit_ids, is_active=True).select_related("org_unit")
         data = [
-            {"id": f.id, "name": f.name, "org_unit_name": f.org_unit.name if f.org_unit else ""}
-            for f in facilities
+            {"id": f.id, "name": f.name, "org_unit_name": f.org_unit.name if f.org_unit else ""} for f in facilities
         ]
         return Response(data)
 
@@ -190,9 +186,7 @@ class ContactViewSet(ExportMixin, viewsets.ModelViewSet):
         ou_ids: list[int] = []
         if contact.org_unit_id:
             ou_ids.append(contact.org_unit_id)
-        ou_ids.extend(
-            contact.employments.exclude(org_unit_id__in=ou_ids).values_list("org_unit_id", flat=True)
-        )
+        ou_ids.extend(contact.employments.exclude(org_unit_id__in=ou_ids).values_list("org_unit_id", flat=True))
         preserved = {pk_: idx for idx, pk_ in enumerate(ou_ids)}
         org_units = sorted(
             OrgUnit.objects.filter(id__in=ou_ids),
@@ -304,8 +298,9 @@ class OrgUnitHeadViewSet(viewsets.ModelViewSet):
 
     GET ?org_unit=<id> — фильтрует по компании.
     """
-    from apps.directory.models import OrgUnitHead
+
     from apps.directory.api.serializers import OrgUnitHeadSerializer
+    from apps.directory.models import OrgUnitHead
 
     serializer_class = OrgUnitHeadSerializer
     queryset = OrgUnitHead.objects.select_related("org_unit").all()

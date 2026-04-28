@@ -46,6 +46,7 @@ class TestReportsAPI:
 
     def test_overdue_orders_report(self, api_client):
         from datetime import date, timedelta
+
         OrderFactory(status="P", ship_date=date.today() - timedelta(days=5))
         client = self._auth(api_client)
         resp = client.get("/api/reports/overdue_orders/")
@@ -70,10 +71,13 @@ class TestReportsAPI:
 
     def test_report_with_date_filter(self, api_client):
         client = self._auth(api_client)
-        resp = client.get("/api/reports/orders_by_status/", {
-            "date_from": "2026-01-01",
-            "date_to": "2026-12-31",
-        })
+        resp = client.get(
+            "/api/reports/orders_by_status/",
+            {
+                "date_from": "2026-01-01",
+                "date_to": "2026-12-31",
+            },
+        )
         assert resp.status_code == status.HTTP_200_OK
 
     def test_nonexistent_report(self, api_client):

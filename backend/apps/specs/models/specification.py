@@ -16,10 +16,16 @@ class Specification(BaseModel):
         verbose_name="КП",
     )
     total_amount = models.DecimalField(
-        "Сумма без НДС", max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        "Сумма без НДС",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
     total_amount_with_vat = models.DecimalField(
-        "Сумма с НДС", max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        "Сумма с НДС",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
 
     history = HistoricalRecords()
@@ -77,13 +83,21 @@ class SpecificationLine(BaseModel):
     name = models.CharField("Наименование", max_length=500)
     quantity = models.PositiveIntegerField("Количество", default=1)
     unit_price = models.DecimalField(
-        "Цена за ед.", max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        "Цена за ед.",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
     total_price = models.DecimalField(
-        "Итого", max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        "Итого",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
     delivery_date = models.DateField(
-        "Срок поставки", null=True, blank=True,
+        "Срок поставки",
+        null=True,
+        blank=True,
         help_text="Если отличается от общего срока (для отдельных партий)",
     )
     shipment_batch = models.ForeignKey(

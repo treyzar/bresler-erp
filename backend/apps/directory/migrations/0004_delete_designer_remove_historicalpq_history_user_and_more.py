@@ -6,63 +6,139 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('directory', '0003_facility_historicalfacility'),
-        ('orders', '0003_remove_order_pqs_alter_historicalorder_designer_and_more'),
+        ("directory", "0003_facility_historicalfacility"),
+        ("orders", "0003_remove_order_pqs_alter_historicalorder_designer_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.DeleteModel(
-            name='Designer',
+            name="Designer",
         ),
         migrations.RemoveField(
-            model_name='historicalpq',
-            name='history_user',
+            model_name="historicalpq",
+            name="history_user",
         ),
         migrations.DeleteModel(
-            name='Intermediary',
+            name="Intermediary",
         ),
         migrations.DeleteModel(
-            name='PQ',
+            name="PQ",
         ),
         migrations.AlterField(
-            model_name='historicalorgunit',
-            name='business_role',
-            field=models.CharField(blank=True, choices=[('customer', 'Заказчик'), ('supplier', 'Поставщик'), ('participant', 'Участник запроса'), ('internal', 'Внутренняя компания'), ('partner', 'Партнёр / Посредник'), ('manufacturer', 'Производитель оборудования'), ('contractor', 'Генподрядчик'), ('designer', 'Проектировщик'), ('expertise', 'Орган экспертизы'), ('buyer_branch', 'Филиал-покупатель (Legacy)'), ('shipment_site', 'Площадка отгрузки (Legacy)'), ('other', 'Другое')], max_length=30, verbose_name='Бизнес-роль'),
+            model_name="historicalorgunit",
+            name="business_role",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("customer", "Заказчик"),
+                    ("supplier", "Поставщик"),
+                    ("participant", "Участник запроса"),
+                    ("internal", "Внутренняя компания"),
+                    ("partner", "Партнёр / Посредник"),
+                    ("manufacturer", "Производитель оборудования"),
+                    ("contractor", "Генподрядчик"),
+                    ("designer", "Проектировщик"),
+                    ("expertise", "Орган экспертизы"),
+                    ("buyer_branch", "Филиал-покупатель (Legacy)"),
+                    ("shipment_site", "Площадка отгрузки (Legacy)"),
+                    ("other", "Другое"),
+                ],
+                max_length=30,
+                verbose_name="Бизнес-роль",
+            ),
         ),
         migrations.AlterField(
-            model_name='historicalorgunit',
-            name='unit_type',
-            field=models.CharField(choices=[('company', 'Головная компания / Холдинг'), ('branch', 'Филиал / Дочерняя компания'), ('division', 'Производственное отделение'), ('department', 'Участок'), ('site', 'Площадка'), ('other', 'Другое')], default='company', max_length=20, verbose_name='Тип'),
+            model_name="historicalorgunit",
+            name="unit_type",
+            field=models.CharField(
+                choices=[
+                    ("company", "Головная компания / Холдинг"),
+                    ("branch", "Филиал / Дочерняя компания"),
+                    ("division", "Производственное отделение"),
+                    ("department", "Участок"),
+                    ("site", "Площадка"),
+                    ("other", "Другое"),
+                ],
+                default="company",
+                max_length=20,
+                verbose_name="Тип",
+            ),
         ),
         migrations.AlterField(
-            model_name='orgunit',
-            name='business_role',
-            field=models.CharField(blank=True, choices=[('customer', 'Заказчик'), ('supplier', 'Поставщик'), ('participant', 'Участник запроса'), ('internal', 'Внутренняя компания'), ('partner', 'Партнёр / Посредник'), ('manufacturer', 'Производитель оборудования'), ('contractor', 'Генподрядчик'), ('designer', 'Проектировщик'), ('expertise', 'Орган экспертизы'), ('buyer_branch', 'Филиал-покупатель (Legacy)'), ('shipment_site', 'Площадка отгрузки (Legacy)'), ('other', 'Другое')], max_length=30, verbose_name='Бизнес-роль'),
+            model_name="orgunit",
+            name="business_role",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("customer", "Заказчик"),
+                    ("supplier", "Поставщик"),
+                    ("participant", "Участник запроса"),
+                    ("internal", "Внутренняя компания"),
+                    ("partner", "Партнёр / Посредник"),
+                    ("manufacturer", "Производитель оборудования"),
+                    ("contractor", "Генподрядчик"),
+                    ("designer", "Проектировщик"),
+                    ("expertise", "Орган экспертизы"),
+                    ("buyer_branch", "Филиал-покупатель (Legacy)"),
+                    ("shipment_site", "Площадка отгрузки (Legacy)"),
+                    ("other", "Другое"),
+                ],
+                max_length=30,
+                verbose_name="Бизнес-роль",
+            ),
         ),
         migrations.AlterField(
-            model_name='orgunit',
-            name='unit_type',
-            field=models.CharField(choices=[('company', 'Головная компания / Холдинг'), ('branch', 'Филиал / Дочерняя компания'), ('division', 'Производственное отделение'), ('department', 'Участок'), ('site', 'Площадка'), ('other', 'Другое')], default='company', max_length=20, verbose_name='Тип'),
+            model_name="orgunit",
+            name="unit_type",
+            field=models.CharField(
+                choices=[
+                    ("company", "Головная компания / Холдинг"),
+                    ("branch", "Филиал / Дочерняя компания"),
+                    ("division", "Производственное отделение"),
+                    ("department", "Участок"),
+                    ("site", "Площадка"),
+                    ("other", "Другое"),
+                ],
+                default="company",
+                max_length=20,
+                verbose_name="Тип",
+            ),
         ),
         migrations.AddField(
-            model_name='facility',
-            name='org_unit',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='facilities', to='directory.orgunit', verbose_name='Организация'),
+            model_name="facility",
+            name="org_unit",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="facilities",
+                to="directory.orgunit",
+                verbose_name="Организация",
+            ),
         ),
         migrations.AddField(
-            model_name='historicalfacility',
-            name='history_user',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to=settings.AUTH_USER_MODEL),
+            model_name="historicalfacility",
+            name="history_user",
+            field=models.ForeignKey(
+                null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="+", to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AddField(
-            model_name='historicalfacility',
-            name='org_unit',
-            field=models.ForeignKey(blank=True, db_constraint=False, null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='directory.orgunit', verbose_name='Организация'),
+            model_name="historicalfacility",
+            name="org_unit",
+            field=models.ForeignKey(
+                blank=True,
+                db_constraint=False,
+                null=True,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="directory.orgunit",
+                verbose_name="Организация",
+            ),
         ),
         migrations.DeleteModel(
-            name='HistoricalPQ',
+            name="HistoricalPQ",
         ),
     ]

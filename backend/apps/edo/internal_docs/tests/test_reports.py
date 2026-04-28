@@ -36,14 +36,18 @@ def org(db):
 @pytest.fixture
 def author(org):
     return UserFactory(
-        last_name="Иванов", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Иванов",
+        company_unit=org["company"],
+        department_unit=org["dept"],
     )
 
 
 @pytest.fixture
 def supervisor(org):
     return UserFactory(
-        last_name="Петров", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Петров",
+        company_unit=org["company"],
+        department_unit=org["dept"],
         is_department_head=True,
     )
 
@@ -53,14 +57,17 @@ def memo_type(db):
     seq = NumberSequence.objects.create(name="rep", prefix="R", pattern="{prefix}-{####}")
     chain = ApprovalChainTemplate.objects.create(
         name="rep-chain",
-        steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve",
-                "sla_hours": 24}],
+        steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve", "sla_hours": 24}],
     )
     return DocumentType.objects.create(
-        code="rep_memo", name="Report memo", category="memo",
+        code="rep_memo",
+        name="Report memo",
+        category="memo",
         field_schema=[{"name": "subject", "type": "text"}],
-        title_template="{{ subject }}", body_template="{{ subject }}",
-        default_chain=chain, numbering_sequence=seq,
+        title_template="{{ subject }}",
+        body_template="{{ subject }}",
+        default_chain=chain,
+        numbering_sequence=seq,
     )
 
 

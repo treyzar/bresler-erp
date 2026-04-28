@@ -1,3 +1,5 @@
+import contextlib
+
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
@@ -106,11 +108,10 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_allowed_modules(self, user) -> list[str]:
         if user.is_superuser:
             from apps.users.models import ALL_MODULES
+
             return ALL_MODULES
         modules: set[str] = set()
         for group in user.groups.select_related("profile").all():
-            try:
+            with contextlib.suppress(Exception):
                 modules.update(group.profile.allowed_modules)
-            except Exception:
-                pass
         return sorted(modules)

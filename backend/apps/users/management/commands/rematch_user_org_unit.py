@@ -15,8 +15,10 @@ def _find_company(company_text: str):
     if not company_text:
         return None
     return OrgUnit.objects.filter(
-        business_role="internal", unit_type="company",
-        name__iexact=company_text, is_active=True,
+        business_role="internal",
+        unit_type="company",
+        name__iexact=company_text,
+        is_active=True,
     ).first()
 
 
@@ -96,12 +98,8 @@ class Command(BaseCommand):
         prefix = "[DRY-RUN] " if dry_run else ""
         self.stdout.write("=" * 70)
         self.stdout.write(f"{prefix}Обработано {candidates} из {total} пользователей")
-        self.stdout.write(self.style.SUCCESS(
-            f"{prefix}Полный матч (company + department): {matched_full}"
-        ))
-        self.stdout.write(self.style.SUCCESS(
-            f"{prefix}Частичный матч (только одно поле): {matched_partial}"
-        ))
+        self.stdout.write(self.style.SUCCESS(f"{prefix}Полный матч (company + department): {matched_full}"))
+        self.stdout.write(self.style.SUCCESS(f"{prefix}Частичный матч (только одно поле): {matched_partial}"))
         if missing:
             self.stdout.write(self.style.WARNING(f"Не удалось сматчить: {len(missing)}"))
             for pk, comp, dept in missing:

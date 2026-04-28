@@ -4,10 +4,19 @@
  * Ensures data integrity and idempotent conversion
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { IEditorElement, ITextProperties, ITableProperties } from '../../types/editor.types';
 import { migrateCanvasToTiptap, validateTiptapDocument } from '../canvasToTiptap';
 import type { TiptapDocument } from '../../types/tiptap.types';
+
+/** Loose-shape helper for inspecting migrated Tiptap nodes in tests. */
+type TestNode = {
+  type?: string
+  attrs?: Record<string, unknown>
+  content?: TestNode[]
+  marks?: Array<{ type?: string; attrs?: Record<string, unknown> }>
+  text?: string
+}
 
 describe('migrateCanvasToTiptap', () => {
   describe('Text Element Migration', () => {
@@ -80,7 +89,7 @@ describe('migrateCanvasToTiptap', () => {
       const result = migrateCanvasToTiptap(elements);
       expect(result.success).toBe(true);
       
-      const paragraph = result.document?.content[0] as any;
+      const paragraph = result.document?.content[0] as TestNode;
       expect(paragraph.attrs?.textAlign).toBe('center');
     });
 
@@ -116,7 +125,7 @@ describe('migrateCanvasToTiptap', () => {
       const result = migrateCanvasToTiptap(elements);
       expect(result.success).toBe(true);
       
-      const paragraph = result.document?.content[0] as any;
+      const paragraph = result.document?.content[0] as TestNode;
       expect(paragraph.content).toBeDefined();
       expect(paragraph.content.length).toBeGreaterThan(0);
     });
@@ -157,7 +166,7 @@ describe('migrateCanvasToTiptap', () => {
       const result = migrateCanvasToTiptap(elements);
       expect(result.success).toBe(true);
       
-      const table = result.document?.content.find(n => n.type === 'table') as any;
+      const table = result.document?.content.find(n => n.type === "table") as TestNode;
       expect(table).toBeDefined();
       expect(table.content).toHaveLength(2); // 2 rows
       expect(table.content[0].content).toHaveLength(2); // 2 cells per row
@@ -197,7 +206,7 @@ describe('migrateCanvasToTiptap', () => {
       const result = migrateCanvasToTiptap(elements);
       expect(result.success).toBe(true);
       
-      const table = result.document?.content.find(n => n.type === 'table') as any;
+      const table = result.document?.content.find(n => n.type === "table") as TestNode;
       expect(table).toBeDefined();
       
       // First cell should have rowspan
@@ -234,7 +243,7 @@ describe('migrateCanvasToTiptap', () => {
       const result = migrateCanvasToTiptap(elements);
       expect(result.success).toBe(true);
       
-      const firstParagraph = result.document?.content[0] as any;
+      const firstParagraph = result.document?.content[0] as TestNode;
       expect(firstParagraph.content?.[0]?.text).toBe('First');
     });
 
@@ -268,7 +277,7 @@ describe('migrateCanvasToTiptap', () => {
 
   describe('Error Handling', () => {
     it('should handle unknown element types gracefully', () => {
-      const elements: any[] = [
+      const elements = [
         {
           id: 'unknown-1',
           type: 'unknown_type',
@@ -281,7 +290,7 @@ describe('migrateCanvasToTiptap', () => {
         },
       ];
 
-      const result = migrateCanvasToTiptap(elements as any);
+      const result = migrateCanvasToTiptap(elements as unknown as IEditorElement[]);
       expect(result.warnings).toHaveLength(1);
       expect(result.warnings[0].message).toContain('Unknown element type');
     });

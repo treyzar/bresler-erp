@@ -29,7 +29,6 @@ from apps.edo.internal_docs.models import (
 from apps.edo.internal_docs.services import document_service as svc
 from apps.users.tests.factories import UserFactory
 
-
 # ============== fixtures ==============
 
 
@@ -75,20 +74,33 @@ def admin_group(db):
 
 def _make_type(*, code, visibility="personal_only", tenancy_override=""):
     seq, _ = NumberSequence.objects.get_or_create(
-        name=f"perms-{code}", defaults={"prefix": "P", "pattern": "{prefix}-{####}"},
+        name=f"perms-{code}",
+        defaults={"prefix": "P", "pattern": "{prefix}-{####}"},
     )
     chain, _ = ApprovalChainTemplate.objects.get_or_create(
         name=f"perms-{code}",
-        defaults={"steps": [{
-            "order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve",
-        }]},
+        defaults={
+            "steps": [
+                {
+                    "order": 1,
+                    "role_key": "supervisor",
+                    "label": "Рук.",
+                    "action": "approve",
+                }
+            ]
+        },
     )
     return DocumentType.objects.create(
-        code=code, name=code, category="memo",
+        code=code,
+        name=code,
+        category="memo",
         field_schema=[{"name": "subject", "type": "text"}],
-        title_template="{{ subject }}", body_template="{{ subject }}",
-        visibility=visibility, tenancy_override=tenancy_override,
-        default_chain=chain, numbering_sequence=seq,
+        title_template="{{ subject }}",
+        body_template="{{ subject }}",
+        visibility=visibility,
+        tenancy_override=tenancy_override,
+        default_chain=chain,
+        numbering_sequence=seq,
     )
 
 
@@ -117,11 +129,13 @@ def author_with_supervisor(two_companies):
     """Автор в Секторе А, supervisor — head Сектора А (того же узла)."""
     author = UserFactory(
         last_name="Иванов",
-        company_unit=two_companies["rel"], department_unit=two_companies["rel_sector"],
+        company_unit=two_companies["rel"],
+        department_unit=two_companies["rel_sector"],
     )
     supervisor = UserFactory(
         last_name="Петров",
-        company_unit=two_companies["rel"], department_unit=two_companies["rel_sector"],
+        company_unit=two_companies["rel"],
+        department_unit=two_companies["rel_sector"],
         is_department_head=True,
     )
     return author, supervisor
@@ -139,7 +153,9 @@ def reset_tenancy_to_company_only(db):
 def _submit(doc_type, author):
     """Создаёт draft и сразу submit'ит его — нужен для проверки видимости."""
     doc = svc.create_draft(
-        author=author, doc_type=doc_type, field_values={"subject": "x"},
+        author=author,
+        doc_type=doc_type,
+        field_values={"subject": "x"},
     )
     svc.submit(doc, author)
     return doc
@@ -158,6 +174,7 @@ def test_author_sees_own_document(personal_type, author_with_supervisor):
 @pytest.mark.django_db
 def test_unauthenticated_sees_nothing(personal_type, author_with_supervisor):
     from django.contrib.auth.models import AnonymousUser
+
     author, _ = author_with_supervisor
     _submit(personal_type, author)
     assert not Document.objects.for_user(AnonymousUser()).exists()
@@ -165,7 +182,9 @@ def test_unauthenticated_sees_nothing(personal_type, author_with_supervisor):
 
 @pytest.mark.django_db
 def test_unrelated_coworker_does_not_see_personal(
-    personal_type, author_with_supervisor, two_companies,
+    personal_type,
+    author_with_supervisor,
+    two_companies,
 ):
     author, _ = author_with_supervisor
     doc = _submit(personal_type, author)
@@ -173,7 +192,8 @@ def test_unrelated_coworker_does_not_see_personal(
     # Коллега из той же компании, но другой ветки дерева — не согласующий, не head.
     outsider = UserFactory(
         last_name="Сидоров",
-        company_unit=two_companies["rel"], department_unit=two_companies["rel_dept_other"],
+        company_unit=two_companies["rel"],
+        department_unit=two_companies["rel_dept_other"],
     )
     assert doc not in Document.objects.for_user(outsider)
 
@@ -192,7 +212,8 @@ def test_dept_head_sees_subtree(personal_type, author_with_supervisor, two_compa
     # Head на уровне Отдел РЗА (родитель Сектора А, где работает автор).
     dept_head = UserFactory(
         last_name="Глава",
-        company_unit=two_companies["rel"], department_unit=two_companies["rel_dept"],
+        company_unit=two_companies["rel"],
+        department_unit=two_companies["rel_dept"],
         is_department_head=True,
     )
     doc = _submit(personal_type, author)
@@ -201,13 +222,16 @@ def test_dept_head_sees_subtree(personal_type, author_with_supervisor, two_compa
 
 @pytest.mark.django_db
 def test_dept_head_does_not_see_sibling_subtree(
-    personal_type, author_with_supervisor, two_companies,
+    personal_type,
+    author_with_supervisor,
+    two_companies,
 ):
     """Head Отдела ПКЗ (другая ветка дерева) не должен видеть документ из Отдела РЗА."""
     author, _ = author_with_supervisor
     other_head = UserFactory(
         last_name="ЧужойГлава",
-        company_unit=two_companies["rel"], department_unit=two_companies["rel_dept_other"],
+        company_unit=two_companies["rel"],
+        department_unit=two_companies["rel_dept_other"],
         is_department_head=True,
     )
     doc = _submit(personal_type, author)
@@ -216,7 +240,10 @@ def test_dept_head_does_not_see_sibling_subtree(
 
 @pytest.mark.django_db
 def test_group_step_member_sees_document(
-    department_type, author_with_supervisor, two_companies, accounting_group,
+    department_type,
+    author_with_supervisor,
+    two_companies,
+    accounting_group,
 ):
     """Если в цепочке `group:accounting@company` — все бухгалтеры компании видят документ."""
     author, supervisor = author_with_supervisor
@@ -227,11 +254,13 @@ def test_group_step_member_sees_document(
     department_type.default_chain.save()
 
     accountant_a = UserFactory(
-        last_name="БухА", company_unit=two_companies["rel"],
+        last_name="БухА",
+        company_unit=two_companies["rel"],
     )
     accountant_a.groups.add(accounting_group)
     accountant_b = UserFactory(
-        last_name="БухБ", company_unit=two_companies["rel"],
+        last_name="БухБ",
+        company_unit=two_companies["rel"],
     )
     accountant_b.groups.add(accounting_group)
 
@@ -245,13 +274,16 @@ def test_group_step_member_sees_document(
 
 @pytest.mark.django_db
 def test_company_only_hides_other_company_public(
-    public_type, author_with_supervisor, two_companies,
+    public_type,
+    author_with_supervisor,
+    two_companies,
 ):
     """company_only режим: public-документ Релесофта не виден сотруднику Электро."""
     author, _ = author_with_supervisor
     elc_user = UserFactory(
         last_name="ЭлектроСотрудник",
-        company_unit=two_companies["elc"], department_unit=two_companies["elc_dept"],
+        company_unit=two_companies["elc"],
+        department_unit=two_companies["elc_dept"],
     )
     doc = _submit(public_type, author)
     assert doc not in Document.objects.for_user(elc_user)
@@ -259,13 +291,16 @@ def test_company_only_hides_other_company_public(
 
 @pytest.mark.django_db
 def test_group_wide_override_overrides_company_only(
-    public_group_wide_type, author_with_supervisor, two_companies,
+    public_group_wide_type,
+    author_with_supervisor,
+    two_companies,
 ):
     """tenancy_override=group_wide пробивает company_only."""
     author, _ = author_with_supervisor
     elc_user = UserFactory(
         last_name="ЭлектроСотрудник",
-        company_unit=two_companies["elc"], department_unit=two_companies["elc_dept"],
+        company_unit=two_companies["elc"],
+        department_unit=two_companies["elc_dept"],
     )
     doc = _submit(public_group_wide_type, author)
     assert doc in Document.objects.for_user(elc_user)
@@ -273,7 +308,10 @@ def test_group_wide_override_overrides_company_only(
 
 @pytest.mark.django_db
 def test_admin_group_sees_everything(
-    personal_type, author_with_supervisor, admin_group, two_companies,
+    personal_type,
+    author_with_supervisor,
+    admin_group,
+    two_companies,
 ):
     author, _ = author_with_supervisor
     doc = _submit(personal_type, author)
@@ -288,7 +326,8 @@ def test_admin_group_sees_everything(
 
 @pytest.mark.django_db
 def test_inbox_personal_assignment(
-    personal_type, author_with_supervisor,
+    personal_type,
+    author_with_supervisor,
 ):
     author, supervisor = author_with_supervisor
     doc = _submit(personal_type, author)
@@ -300,7 +339,10 @@ def test_inbox_personal_assignment(
 
 @pytest.mark.django_db
 def test_inbox_group_step_visible_to_all_members(
-    department_type, author_with_supervisor, two_companies, accounting_group,
+    department_type,
+    author_with_supervisor,
+    two_companies,
+    accounting_group,
 ):
     """Коллективный шаг `group:accounting@company` — в inbox у всех бухгалтеров компании."""
     author, supervisor = author_with_supervisor
@@ -321,7 +363,10 @@ def test_inbox_group_step_visible_to_all_members(
 
 @pytest.mark.django_db
 def test_inbox_group_scoped_by_company(
-    department_type, author_with_supervisor, two_companies, accounting_group,
+    department_type,
+    author_with_supervisor,
+    two_companies,
+    accounting_group,
 ):
     """`group:NAME@company` фильтрует по author_company_unit — бухгалтер чужой компании НЕ видит."""
     author, supervisor = author_with_supervisor
@@ -336,7 +381,8 @@ def test_inbox_group_scoped_by_company(
 
     elc_accountant = UserFactory(
         last_name="БухЭлектро",
-        company_unit=two_companies["elc"], department_unit=two_companies["elc_dept"],
+        company_unit=two_companies["elc"],
+        department_unit=two_companies["elc_dept"],
     )
     elc_accountant.groups.add(accounting_group)
 
@@ -347,7 +393,8 @@ def test_inbox_group_scoped_by_company(
 
 @pytest.mark.django_db
 def test_inbox_excludes_non_pending(
-    personal_type, author_with_supervisor,
+    personal_type,
+    author_with_supervisor,
 ):
     author, supervisor = author_with_supervisor
     doc = _submit(personal_type, author)
@@ -358,7 +405,8 @@ def test_inbox_excludes_non_pending(
 
 @pytest.mark.django_db
 def test_inbox_user_without_groups_only_personal(
-    personal_type, author_with_supervisor,
+    personal_type,
+    author_with_supervisor,
 ):
     """Пользователь без групп: видит только персонально назначенные шаги (smoke)."""
     author, supervisor = author_with_supervisor

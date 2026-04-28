@@ -106,38 +106,50 @@ class TestChangePassword:
         self.client.force_authenticate(user=self.user)
 
     def test_change_password_success(self):
-        response = self.client.post("/api/users/me/change-password/", {
-            "current_password": "OldPass123!",
-            "new_password": "NewPass456!",
-            "new_password_confirm": "NewPass456!",
-        })
+        response = self.client.post(
+            "/api/users/me/change-password/",
+            {
+                "current_password": "OldPass123!",
+                "new_password": "NewPass456!",
+                "new_password_confirm": "NewPass456!",
+            },
+        )
         assert response.status_code == status.HTTP_200_OK
         self.user.refresh_from_db()
         assert self.user.check_password("NewPass456!")
 
     def test_change_password_wrong_current(self):
-        response = self.client.post("/api/users/me/change-password/", {
-            "current_password": "WrongPass!",
-            "new_password": "NewPass456!",
-            "new_password_confirm": "NewPass456!",
-        })
+        response = self.client.post(
+            "/api/users/me/change-password/",
+            {
+                "current_password": "WrongPass!",
+                "new_password": "NewPass456!",
+                "new_password_confirm": "NewPass456!",
+            },
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_change_password_mismatch(self):
-        response = self.client.post("/api/users/me/change-password/", {
-            "current_password": "OldPass123!",
-            "new_password": "NewPass456!",
-            "new_password_confirm": "Different789!",
-        })
+        response = self.client.post(
+            "/api/users/me/change-password/",
+            {
+                "current_password": "OldPass123!",
+                "new_password": "NewPass456!",
+                "new_password_confirm": "Different789!",
+            },
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_change_password_unauthenticated(self):
         client = APIClient()
-        response = client.post("/api/users/me/change-password/", {
-            "current_password": "OldPass123!",
-            "new_password": "NewPass456!",
-            "new_password_confirm": "NewPass456!",
-        })
+        response = client.post(
+            "/api/users/me/change-password/",
+            {
+                "current_password": "OldPass123!",
+                "new_password": "NewPass456!",
+                "new_password_confirm": "NewPass456!",
+            },
+        )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -150,8 +162,9 @@ class TestAvatarUpload:
 
     def test_upload_avatar(self):
         import io
-        from PIL import Image
+
         from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
 
         # Create a real 1x1 PNG in memory
         buf = io.BytesIO()

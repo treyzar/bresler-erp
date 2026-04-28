@@ -16,7 +16,6 @@ from apps.core.naming import NumberSequence
 from apps.directory.models import Department, OrgUnit
 from apps.edo.internal_docs.models import (
     ApprovalChainTemplate,
-    ApprovalStep,
     DocumentType,
 )
 from apps.edo.internal_docs.services import document_service as svc
@@ -33,14 +32,18 @@ def org(db):
 @pytest.fixture
 def author(org):
     return UserFactory(
-        last_name="Иванов", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Иванов",
+        company_unit=org["company"],
+        department_unit=org["dept"],
     )
 
 
 @pytest.fixture
 def supervisor(org):
     return UserFactory(
-        last_name="Петров", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Петров",
+        company_unit=org["company"],
+        department_unit=org["dept"],
         is_department_head=True,
     )
 
@@ -53,10 +56,14 @@ def memo_type(db):
         steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"}],
     )
     return DocumentType.objects.create(
-        code="sub_memo", name="Substitute test", category="memo",
+        code="sub_memo",
+        name="Substitute test",
+        category="memo",
         field_schema=[{"name": "subject", "type": "text"}],
-        title_template="{{ subject }}", body_template="{{ subject }}",
-        default_chain=chain, numbering_sequence=seq,
+        title_template="{{ subject }}",
+        body_template="{{ subject }}",
+        default_chain=chain,
+        numbering_sequence=seq,
     )
 
 
@@ -141,6 +148,7 @@ def test_step_redirected_to_substitute_at_activation(memo_type, author, supervis
     svc.approve(doc, deputy, comment="ok")
     doc.refresh_from_db()
     from apps.edo.internal_docs.models import Document
+
     assert doc.status == Document.Status.APPROVED
 
 

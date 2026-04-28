@@ -4,29 +4,48 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='NumberSequence',
+            name="NumberSequence",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(help_text="e.g. 'order', 'contract'", max_length=50, unique=True, verbose_name='Код')),
-                ('prefix', models.CharField(help_text="e.g. 'ORD', 'ДОГ'", max_length=20, verbose_name='Префикс')),
-                ('pattern', models.CharField(default='{prefix}-{YYYY}-{####}', help_text='Доступные переменные: {prefix}, {YYYY}, {YY}, {MM}, {####}, {######}', max_length=100, verbose_name='Шаблон')),
-                ('current_value', models.PositiveIntegerField(default=0, verbose_name='Текущее значение')),
-                ('reset_period', models.CharField(choices=[('never', 'Никогда'), ('yearly', 'Ежегодно')], default='yearly', max_length=10, verbose_name='Сброс счётчика')),
-                ('last_reset_year', models.PositiveIntegerField(default=0, verbose_name='Год последнего сброса')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="e.g. 'order', 'contract'", max_length=50, unique=True, verbose_name="Код"
+                    ),
+                ),
+                ("prefix", models.CharField(help_text="e.g. 'ORD', 'ДОГ'", max_length=20, verbose_name="Префикс")),
+                (
+                    "pattern",
+                    models.CharField(
+                        default="{prefix}-{YYYY}-{####}",
+                        help_text="Доступные переменные: {prefix}, {YYYY}, {YY}, {MM}, {####}, {######}",
+                        max_length=100,
+                        verbose_name="Шаблон",
+                    ),
+                ),
+                ("current_value", models.PositiveIntegerField(default=0, verbose_name="Текущее значение")),
+                (
+                    "reset_period",
+                    models.CharField(
+                        choices=[("never", "Никогда"), ("yearly", "Ежегодно")],
+                        default="yearly",
+                        max_length=10,
+                        verbose_name="Сброс счётчика",
+                    ),
+                ),
+                ("last_reset_year", models.PositiveIntegerField(default=0, verbose_name="Год последнего сброса")),
             ],
             options={
-                'verbose_name': 'Последовательность нумерации',
-                'verbose_name_plural': 'Последовательности нумерации',
+                "verbose_name": "Последовательность нумерации",
+                "verbose_name_plural": "Последовательности нумерации",
             },
         ),
     ]

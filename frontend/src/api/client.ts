@@ -66,6 +66,11 @@ apiClient.interceptors.response.use(
       useAuthStore.getState().logout()
       return Promise.reject(error)
     }
+    // No refresh token in store → session is dead, kick the user out.
+    if (!useAuthStore.getState().refreshToken) {
+      useAuthStore.getState().logout()
+      return Promise.reject(error)
+    }
 
     originalRequest._retry = true
 

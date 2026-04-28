@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import type { AxiosError } from "axios"
 import { toast } from "sonner"
 import {
   ClipboardList, Bell, User as UserIcon, Settings, Camera, Trash2, Lock,
@@ -21,8 +22,8 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuthStore } from "@/stores/useAuthStore"
 import { usersApi } from "@/api/usersApi"
-import type { ActivityItem, MyOrderItem, MyOfferItem } from "@/api/usersApi"
-import { ORDER_STATUSES, OFFER_STATUSES } from "@/api/types"
+import type { ActivityItem, MyOrderItem } from "@/api/usersApi"
+import { OFFER_STATUSES } from "@/api/types"
 import { MyCustomersTab } from "./MyCustomersTab"
 import { MyStatsTab } from "./MyStatsTab"
 import { AvatarCropDialog } from "./AvatarCropDialog"
@@ -623,7 +624,7 @@ function ChangePasswordCard() {
       toast.success("Пароль изменён")
       form.reset()
     },
-    onError: (err: any) => {
+    onError: (err: AxiosError<Record<string, string[]>>) => {
       const detail = err.response?.data
       if (detail?.current_password) {
         form.setError("current_password", { message: detail.current_password[0] })

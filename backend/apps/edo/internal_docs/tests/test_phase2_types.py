@@ -21,7 +21,6 @@ from apps.edo.internal_docs.models import (
 from apps.edo.internal_docs.services import document_service as svc
 from apps.users.tests.factories import UserFactory
 
-
 # ============== fixtures ==============
 
 
@@ -44,30 +43,43 @@ def people(org_tree, accounting_group):
     """Полный состав: автор-сотрудник, рук. сектора, рук. отдела (=директор для company_head),
     бухгалтер."""
     employee = UserFactory(
-        last_name="Сотрудников", first_name="Степан", patronymic="Сергеевич",
+        last_name="Сотрудников",
+        first_name="Степан",
+        patronymic="Сергеевич",
         position="Инженер РЗА",
-        company_unit=org_tree["company"], department_unit=org_tree["sector"],
+        company_unit=org_tree["company"],
+        department_unit=org_tree["sector"],
     )
     sector_head = UserFactory(
-        last_name="Секторов", first_name="Семён", patronymic="Сергеевич",
+        last_name="Секторов",
+        first_name="Семён",
+        patronymic="Сергеевич",
         position="Начальник сектора",
-        company_unit=org_tree["company"], department_unit=org_tree["sector"],
+        company_unit=org_tree["company"],
+        department_unit=org_tree["sector"],
         is_department_head=True,
     )
     dept_head = UserFactory(
-        last_name="Отделов", first_name="Олег", patronymic="Олегович",
+        last_name="Отделов",
+        first_name="Олег",
+        patronymic="Олегович",
         position="Начальник отдела",
-        company_unit=org_tree["company"], department_unit=org_tree["dept"],
+        company_unit=org_tree["company"],
+        department_unit=org_tree["dept"],
         is_department_head=True,
     )
     company_head = UserFactory(
-        last_name="Директоров", first_name="Дмитрий", patronymic="Дмитриевич",
+        last_name="Директоров",
+        first_name="Дмитрий",
+        patronymic="Дмитриевич",
         position="Директор",
         company_unit=org_tree["company"],
         is_department_head=True,
     )
     accountant = UserFactory(
-        last_name="Бухгалтерова", first_name="Берта", patronymic="Борисовна",
+        last_name="Бухгалтерова",
+        first_name="Берта",
+        patronymic="Борисовна",
         position="Главный бухгалтер",
         company_unit=org_tree["company"],
     )
@@ -132,6 +144,7 @@ def test_memo_bonus_monthly_requires_dept_head_initiator(people, org_tree):
     """Обычный сотрудник (не is_department_head) не может создать премирование."""
     dtype = DocumentType.objects.get(code="memo_bonus_monthly")
     from django.core.exceptions import PermissionDenied
+
     with pytest.raises(PermissionDenied):
         svc.create_draft(
             author=people["employee"],  # обычный сотрудник
@@ -260,12 +273,17 @@ def test_vacation_notification_reverse_flow(people, accounting_group):
 def test_vacation_notification_initiator_must_be_accounting(people):
     dtype = DocumentType.objects.get(code="vacation_notification")
     from django.core.exceptions import PermissionDenied
+
     with pytest.raises(PermissionDenied):
         svc.create_draft(
             author=people["employee"],  # не в accounting
             doc_type=dtype,
-            field_values={"employee": people["employee"].pk, "start_date": "2026-07-01",
-                          "duration_days": 14, "vacation_type": "annual"},
+            field_values={
+                "employee": people["employee"].pk,
+                "start_date": "2026-07-01",
+                "duration_days": 14,
+                "vacation_type": "annual",
+            },
         )
 
 
@@ -306,7 +324,9 @@ def test_travel_estimate_full_lifecycle(people):
     svc.approve(doc, people["sector_head"], comment="ok")
     svc.approve(doc, people["accountant"], comment="бюджет утверждён")
     svc.approve(
-        doc, people["company_head"], comment="одобрено",
+        doc,
+        people["company_head"],
+        comment="одобрено",
         signature_image="data:image/png;base64,iVBORw0KGgo=",
     )
     doc.refresh_from_db()
@@ -322,8 +342,11 @@ def test_travel_estimate_full_lifecycle(people):
 def test_seeded_types_pass_schema_validation():
     """Все 5 новых типов должны проходить валидатор field_schema."""
     codes = [
-        "memo_bonus_monthly", "memo_bonus_quarterly",
-        "app_dayoff_unpaid", "vacation_notification", "travel_estimate",
+        "memo_bonus_monthly",
+        "memo_bonus_quarterly",
+        "app_dayoff_unpaid",
+        "vacation_notification",
+        "travel_estimate",
     ]
     for c in codes:
         dt = DocumentType.objects.get(code=c)
@@ -335,20 +358,27 @@ def test_seeded_types_pass_schema_validation():
 def test_table_field_validates_columns():
     """Поле type=table требует columns; валидатор бросает на пустые/невалидные."""
     from django.core.exceptions import ValidationError
+
     from apps.edo.internal_docs.services.schema import validate_field_schema
 
-    validate_field_schema([{
-        "name": "rows", "type": "table",
-        "columns": [
-            {"name": "user", "type": "user", "label": "Пользователь"},
-            {"name": "amount", "type": "money", "label": "Сумма"},
-        ],
-    }])
+    validate_field_schema(
+        [
+            {
+                "name": "rows",
+                "type": "table",
+                "columns": [
+                    {"name": "user", "type": "user", "label": "Пользователь"},
+                    {"name": "amount", "type": "money", "label": "Сумма"},
+                ],
+            }
+        ]
+    )
 
     with pytest.raises(ValidationError):
         validate_field_schema([{"name": "rows", "type": "table"}])  # no columns
     with pytest.raises(ValidationError):
-        validate_field_schema([{"name": "rows", "type": "table",
-                                "columns": [{"name": "x", "type": "table"}]}])  # nested table
+        validate_field_schema(
+            [{"name": "rows", "type": "table", "columns": [{"name": "x", "type": "table"}]}]
+        )  # nested table
     with pytest.raises(ValidationError):
         validate_field_schema([{"name": "x", "type": "text", "columns": []}])  # columns on non-table

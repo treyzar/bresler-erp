@@ -5,30 +5,49 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('directory', '0011_department_expand_unit_types'),
+        ("directory", "0011_department_expand_unit_types"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='OrgUnitHead',
+            name="OrgUnitHead",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('head_name', models.CharField(max_length=255, verbose_name='ФИО')),
-                ('head_position', models.CharField(help_text='Например: «Директор», «Генеральный директор»', max_length=255, verbose_name='Должность')),
-                ('from_date', models.DateField(verbose_name='Действует с')),
-                ('to_date', models.DateField(blank=True, help_text='Пусто = действует по сей день', null=True, verbose_name='Действует по')),
-                ('note', models.TextField(blank=True, verbose_name='Примечание')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('org_unit', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='heads', to='directory.orgunit', verbose_name='Организация')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("head_name", models.CharField(max_length=255, verbose_name="ФИО")),
+                (
+                    "head_position",
+                    models.CharField(
+                        help_text="Например: «Директор», «Генеральный директор»",
+                        max_length=255,
+                        verbose_name="Должность",
+                    ),
+                ),
+                ("from_date", models.DateField(verbose_name="Действует с")),
+                (
+                    "to_date",
+                    models.DateField(
+                        blank=True, help_text="Пусто = действует по сей день", null=True, verbose_name="Действует по"
+                    ),
+                ),
+                ("note", models.TextField(blank=True, verbose_name="Примечание")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "org_unit",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="heads",
+                        to="directory.orgunit",
+                        verbose_name="Организация",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Руководитель организации',
-                'verbose_name_plural': 'Шапки организаций',
-                'ordering': ['-from_date'],
-                'indexes': [models.Index(fields=['org_unit', '-from_date'], name='directory_o_org_uni_673cde_idx')],
+                "verbose_name": "Руководитель организации",
+                "verbose_name_plural": "Шапки организаций",
+                "ordering": ["-from_date"],
+                "indexes": [models.Index(fields=["org_unit", "-from_date"], name="directory_o_org_uni_673cde_idx")],
             },
         ),
     ]

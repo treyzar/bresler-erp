@@ -184,14 +184,14 @@ export interface TiptapDocumentAttrs {
   color?: string;
   
   // Для обратной совместимости
-  _legacyCanvasElements?: any[]; // Исходные элементы Canvas (опционально)
+  _legacyCanvasElements?: unknown[]; // Исходные элементы Canvas (опционально)
 }
 
 /* ===== МАППИНГ: Canvas → Tiptap ===== */
 export interface CanvasToTiptapMapping {
   canvasType: string;
   tiptapType: TiptapNodeType;
-  converter: (element: any) => TiptapContentNode | null;
+  converter: (element: unknown) => TiptapContentNode | null;
 }
 
 /* ===== ВСПОМОГАТЕЛЬНЫЕ ТИПЫ ДЛЯ МИГРАЦИИ ===== */

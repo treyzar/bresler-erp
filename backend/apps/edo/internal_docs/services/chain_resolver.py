@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from django.contrib.auth import get_user_model
 
@@ -118,10 +119,11 @@ def _company_head(ctx: ResolveContext, _args: str):
     # 2) Fallback: head корневого (depth=1) Department в этой компании.
     # MP_Node treebeard: roots имеют depth=1.
     from apps.directory.models import Department
+
     root_dept_ids = list(
-        Department.objects
-        .filter(company_id=ctx.author.company_unit_id, depth=1, is_active=True)
-        .values_list("pk", flat=True)
+        Department.objects.filter(company_id=ctx.author.company_unit_id, depth=1, is_active=True).values_list(
+            "pk", flat=True
+        )
     )
     if not root_dept_ids:
         return None
@@ -200,10 +202,7 @@ def _group(ctx: ResolveContext, args: str):
     name = name.strip()
     if not name:
         raise ResolveError("group: requires group name")
-    qs = (
-        User.objects.filter(groups__name=name, is_active=True)
-        .exclude(pk=ctx.author.pk)
-    )
+    qs = User.objects.filter(groups__name=name, is_active=True).exclude(pk=ctx.author.pk)
     if scope == "company":
         if not ctx.author.company_unit_id:
             return None
@@ -218,12 +217,11 @@ def _group_head(ctx: ResolveContext, args: str):
     name = name.strip()
     if not name:
         raise ResolveError("group_head: requires group name")
-    qs = (
-        User.objects.filter(
-            groups__name=name, is_department_head=True, is_active=True,
-        )
-        .exclude(pk=ctx.author.pk)
-    )
+    qs = User.objects.filter(
+        groups__name=name,
+        is_department_head=True,
+        is_active=True,
+    ).exclude(pk=ctx.author.pk)
     if scope == "company":
         if not ctx.author.company_unit_id:
             return None
@@ -235,8 +233,8 @@ def _group_head(ctx: ResolveContext, args: str):
 def _fixed_user(ctx: ResolveContext, args: str):
     try:
         pk = int(args)
-    except (TypeError, ValueError):
-        raise ResolveError(f"fixed_user requires numeric id, got {args!r}")
+    except (TypeError, ValueError) as e:
+        raise ResolveError(f"fixed_user requires numeric id, got {args!r}") from e
     return User.objects.filter(pk=pk, is_active=True).first()
 
 
@@ -339,7 +337,9 @@ def _field_dept_head(ctx: ResolveContext, args: str):
     while node is not None:
         head = (
             User.objects.filter(
-                department_unit=node, is_department_head=True, is_active=True,
+                department_unit=node,
+                is_department_head=True,
+                is_active=True,
             )
             .exclude(pk=ctx.author.pk)
             .order_by("last_name", "first_name", "pk")
@@ -450,7 +450,8 @@ def build_approval_steps(
             if action in NON_BLOCKING_ACTIONS:
                 logger.info(
                     "Skipping non-blocking step order=%s role=%s (unresolvable)",
-                    order, role_key,
+                    order,
+                    role_key,
                 )
                 continue
             raise ResolveError(_format_unresolved(role_key, label, order, author))
@@ -458,20 +459,24 @@ def build_approval_steps(
         if dedupe and not parallel_group and user.pk in seen_approvers:
             logger.info(
                 "Skipping duplicate approver %s at step order=%s role=%s",
-                user.pk, order, role_key,
+                user.pk,
+                order,
+                role_key,
             )
             continue
 
         seen_approvers.add(user.pk)
-        result.append(ResolvedStep(
-            order=order,
-            role_key=role_key,
-            role_label=label,
-            action=action,
-            sla_hours=sla_hours,
-            parallel_group=parallel_group,
-            parallel_mode=parallel_mode,
-            approver=user,
-        ))
+        result.append(
+            ResolvedStep(
+                order=order,
+                role_key=role_key,
+                role_label=label,
+                action=action,
+                sla_hours=sla_hours,
+                parallel_group=parallel_group,
+                parallel_mode=parallel_mode,
+                approver=user,
+            )
+        )
 
     return result

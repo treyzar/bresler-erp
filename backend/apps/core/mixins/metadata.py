@@ -31,7 +31,6 @@ Usage:
     }
 """
 
-from django.db import models
 from django_filters import rest_framework as django_filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -111,14 +110,16 @@ class MetadataMixin:
         search_fields = self._build_search_fields(model)
         ordering_fields = self._build_ordering_fields(model)
 
-        return Response({
-            "model": model.__name__ if model else None,
-            "model_verbose": str(model._meta.verbose_name) if model else None,
-            "model_verbose_plural": str(model._meta.verbose_name_plural) if model else None,
-            "filters": filters,
-            "search_fields": search_fields,
-            "ordering_fields": ordering_fields,
-        })
+        return Response(
+            {
+                "model": model.__name__ if model else None,
+                "model_verbose": str(model._meta.verbose_name) if model else None,
+                "model_verbose_plural": str(model._meta.verbose_name_plural) if model else None,
+                "filters": filters,
+                "search_fields": search_fields,
+                "ordering_fields": ordering_fields,
+            }
+        )
 
     def _get_meta_model(self):
         """Get the model class from filterset or queryset."""
@@ -214,7 +215,7 @@ class MetadataMixin:
             choices = _get_choices(model_field)
             label = _get_field_label(model_field, field_name)
 
-            for lookup in (lookups if isinstance(lookups, list) else [lookups]):
+            for lookup in lookups if isinstance(lookups, list) else [lookups]:
                 entry = {
                     "name": field_name if lookup == "exact" else f"{field_name}__{lookup}",
                     "type": "choice" if choices else "text",
@@ -244,10 +245,12 @@ class MetadataMixin:
             model_field = _get_model_field(model, parts[0])
             label = _get_field_label(model_field, clean)
 
-            result.append({
-                "field": clean,
-                "label": str(label),
-            })
+            result.append(
+                {
+                    "field": clean,
+                    "label": str(label),
+                }
+            )
 
         return result
 
@@ -264,9 +267,11 @@ class MetadataMixin:
         for field_name in ordering_fields:
             model_field = _get_model_field(model, field_name)
             label = _get_field_label(model_field, field_name)
-            result.append({
-                "field": field_name,
-                "label": str(label),
-            })
+            result.append(
+                {
+                    "field": field_name,
+                    "label": str(label),
+                }
+            )
 
         return result

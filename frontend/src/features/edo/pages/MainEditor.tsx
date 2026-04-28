@@ -14,6 +14,10 @@ import {
 import type {
   IEditorElement,
   TVisibilityType,
+  ITextProperties,
+  IImageProperties,
+  ISignatureProperties,
+  IDividerProperties,
 } from "../utils/types/editor.types";
 import type { TemplateType, VisibilityType } from "../api/types";
 /* Иконки */
@@ -62,13 +66,23 @@ export default function Editor() {
   const location = useLocation();
 
   /* --- ПОЛУЧЕНИЕ ДАННЫХ ИЗ НАВИГАЦИИ --- */
-  const state = location.state as any;
+  interface NavState {
+    importedElements?: unknown[]
+    importedMetadata?: Record<string, unknown>
+    importedTitle?: string
+    prefill?: string
+    editingTemplateId?: number
+    letterId?: number
+    letterNumber?: string
+    letterData?: unknown
+  }
+  const state = (location.state ?? {}) as NavState;
   const prefill = state?.prefillText as string | undefined;
   const importedElements = state?.importedElements as
     | IEditorElement[]
     | undefined;
   const importedMetadata = state?.importedMetadata as
-    | Record<string, any>
+    | Record<string, unknown>
     | undefined;
   const importedTitle = state?.title as string | undefined;
   const editingTemplateId = state?.templateId as number | undefined;
@@ -130,7 +144,7 @@ export default function Editor() {
   );
 
   const updateProperties = useCallback(
-    (id: string, props: any) => {
+    (id: string, props: Record<string, unknown>) => {
       const next = elements.map((el) =>
         el.id === id
           ? { ...el, properties: { ...el.properties, ...props } }
@@ -147,7 +161,7 @@ export default function Editor() {
     setIsSigOpen(true);
     setTimeout(() => {
       const el = elements.find((i) => i.id === id);
-      const props = (el?.properties || {}) as any;
+      const props = (el?.properties || {}) as { image?: string; color?: string }
       const canvas = sigCanvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
@@ -181,7 +195,7 @@ export default function Editor() {
       const idx = arr.findIndex((el) => el.id === id);
       if (idx === -1) return;
       const [el] = arr.splice(idx, 1);
-      dir === "front" ? arr.push(el) : arr.unshift(el);
+      if (dir === "front") arr.push(el); else arr.unshift(el);
       const next = arr.map((e, i) => ({ ...e, zIndex: i }));
       setElements(next);
       saveToHistory(next);
@@ -218,8 +232,8 @@ export default function Editor() {
     try {
       const blob = await generateDocx(elements, title, description);
       saveAs(blob, `${title || "document"}.docx`);
-    } catch (e: any) {
-      setError("Ошибка DOCX: " + e.message);
+    } catch (e) {
+      setError("Ошибка DOCX: " + (e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -239,7 +253,7 @@ export default function Editor() {
             italic,
             underline,
             align,
-          } = el.properties as any;
+          } = el.properties as ITextProperties;
           return `<div style="position:absolute;left:${el.x}px;top:${
             el.y
           }px;width:${el.width}px;height:${
@@ -251,11 +265,11 @@ export default function Editor() {
           };text-align:${align}">${content}</p></div>`;
         }
         if (el.type === "image") {
-          const { src, alt } = el.properties as any;
+          const { src, alt } = el.properties as IImageProperties;
           return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px"><img src="${src}" alt="${alt}" style="width:100%;height:100%;object-fit:cover"></div>`;
         }
         if (el.type === "signature") {
-          const p = el.properties as any;
+          const p = el.properties as ISignatureProperties & { image?: string };
           if (p.image) {
             return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px"><img src="${p.image}" alt="signature" style="width:100%;height:100%;object-fit:contain"></div>`;
           }
@@ -268,7 +282,7 @@ export default function Editor() {
           }</span></div>`;
         }
         if (el.type === "divider") {
-          const p = el.properties as any;
+          const p = el.properties as IDividerProperties;
           return `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px"><hr style="border:none;border-top:${p.thickness}px ${p.style} ${p.color};margin:0;" /></div>`;
         }
         return "";
@@ -285,8 +299,8 @@ export default function Editor() {
     setLoading(true);
     try {
       await generatePdf(elements, title);
-    } catch (e: any) {
-      setError("Ошибка PDF: " + (e?.message || e));
+    } catch (e) {
+      setError("Ошибка PDF: " + ((e as Error)?.message || e));
     } finally {
       setLoading(false);
     }
@@ -318,8 +332,9 @@ export default function Editor() {
 
       localStorage.removeItem(LOCALSTORAGE_KEY);
       navigate("/edo/templates");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Ошибка сохранения");
+    } catch (err) {
+      const e = err as AxiosError<{ error?: string }>
+      setError(e.response?.data?.error || "Ошибка сохранения");
     } finally {
       setLoading(false);
     }
@@ -405,7 +420,7 @@ export default function Editor() {
           setTitle(tpl.title || "");
           setDescription(tpl.description || "");
           setVisibility(tpl.visibility || "PUBLIC");
-          if (tpl.template_type) setTemplateType(tpl.template_type as any);
+          if (tpl.template_type) setTemplateType(tpl.template_type);
 
           if (
             tpl.editor_content &&
@@ -432,8 +447,8 @@ export default function Editor() {
                 setElements(parsed);
                 saveToHistory(parsed);
               }
-            } catch (e) {
-              /* fallback */
+            } catch {
+              // HTML parse fallback failed — leave canvas empty.
             }
           }
         } catch (e) {
@@ -447,13 +462,13 @@ export default function Editor() {
     /* 3. ПРИОРИТЕТ: Prefill (простой текст) - из письма */
     if (prefill) {
       const el = createDefaultElement("text", generateId(), snapToGrid);
-      el.properties = { ...(el.properties as any), content: prefill };
+      el.properties = { ...(el.properties as ITextProperties), content: prefill };
       
       // Делаем ширину больше для длинного текста по умолчанию
       el.width = 700;
       el.x = snapToGrid(47); // (794 - 700) / 2 = 47
 
-      const p = el.properties as any;
+      const p = el.properties as ITextProperties;
       const fontSize = p.fontSize || 14;
       const charsPerLine = Math.max(10, el.width / (fontSize * 0.6));
       const explicitLines = (prefill as string).split("\n");
@@ -487,7 +502,9 @@ export default function Editor() {
           saveToHistory(els);
           return;
         }
-      } catch {}
+      } catch {
+        // Stored autosave is corrupt — start with a clean canvas.
+      }
     }
   }, []); // Выполняется один раз при монтировании
 
@@ -690,7 +707,7 @@ export default function Editor() {
                 <select
                   className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={templateType}
-                  onChange={(e) => setTemplateType(e.target.value as any)}
+                  onChange={(e) => setTemplateType(e.target.value as TemplateType)}
                 >
                   <option value="PDF">PDF</option>
                   <option value="HTML">HTML</option>

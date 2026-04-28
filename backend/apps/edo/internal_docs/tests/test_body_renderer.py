@@ -1,7 +1,5 @@
 """Тесты body_renderer: гидрация значений + рендер через Django Template."""
 
-from datetime import date
-
 import pytest
 
 from apps.directory.models import Department, OrgUnit
@@ -20,6 +18,7 @@ def dept(db, company):
 
 
 # ---------- passthrough types ----------
+
 
 @pytest.mark.django_db
 def test_plain_text():
@@ -61,6 +60,7 @@ def test_number_and_money():
 
 # ---------- date / time / date_range ----------
 
+
 @pytest.mark.django_db
 def test_date_iso_string_hydrates_to_date_object():
     author = UserFactory()
@@ -99,13 +99,17 @@ def test_date_range_from_to():
 
 # ---------- choice ----------
 
+
 @pytest.mark.django_db
 def test_choice_display_field():
     author = UserFactory()
-    schema = [{
-        "name": "work_type", "type": "choice",
-        "choices": [["overtime", "В сверхурочное время"], ["weekend", "В выходной день"]],
-    }]
+    schema = [
+        {
+            "name": "work_type",
+            "type": "choice",
+            "choices": [["overtime", "В сверхурочное время"], ["weekend", "В выходной день"]],
+        }
+    ]
     out = render_body("{{ work_type_display }}", schema, {"work_type": "overtime"}, author)
     assert out == "В сверхурочное время"
 
@@ -114,18 +118,24 @@ def test_choice_display_field():
 def test_choice_conditional_rendering():
     """Шаблон может делать {% if work_type == 'overtime' %}...{% endif %}."""
     author = UserFactory()
-    schema = [{
-        "name": "work_type", "type": "choice",
-        "choices": [["overtime", "A"], ["weekend", "B"]],
-    }]
+    schema = [
+        {
+            "name": "work_type",
+            "type": "choice",
+            "choices": [["overtime", "A"], ["weekend", "B"]],
+        }
+    ]
     out = render_body(
         "{% if work_type == 'overtime' %}X{% else %}Y{% endif %}",
-        schema, {"work_type": "overtime"}, author,
+        schema,
+        {"work_type": "overtime"},
+        author,
     )
     assert out == "X"
 
 
 # ---------- user / user_multi ----------
+
 
 @pytest.mark.django_db
 def test_user_field_hydrates_to_instance():
@@ -170,6 +180,7 @@ def test_user_missing_returns_empty():
 
 # ---------- orgunit / department ----------
 
+
 @pytest.mark.django_db
 def test_department_field(dept):
     author = UserFactory()
@@ -196,6 +207,7 @@ def test_orgunit_field(company):
 
 # ---------- reserved context ----------
 
+
 @pytest.mark.django_db
 def test_reserved_author_variable():
     author = UserFactory(last_name="Васильев", first_name="Сергей", patronymic="Андреевич")
@@ -206,6 +218,7 @@ def test_reserved_author_variable():
 @pytest.mark.django_db
 def test_reserved_today_variable():
     from django.utils import timezone
+
     author = UserFactory()
     out = render_body('{{ today|date:"d.m.Y" }}', [], {}, author)
     assert out == timezone.localdate().strftime("%d.%m.%Y")
@@ -225,6 +238,7 @@ def test_fields_dict_accessible():
 
 # ---------- full-document scenario: memo_overtime ----------
 
+
 @pytest.mark.django_db
 def test_memo_overtime_full_template(company, dept):
     author = UserFactory(last_name="Автор", first_name="А", patronymic="А", company_unit=company, department_unit=dept)
@@ -233,8 +247,11 @@ def test_memo_overtime_full_template(company, dept):
     emp2 = UserFactory(last_name="Сидоров", first_name="М", patronymic="В", position="Техник")
 
     schema = [
-        {"name": "work_type", "type": "choice",
-         "choices": [["overtime", "в сверхурочное время"], ["weekend", "в выходной день"]]},
+        {
+            "name": "work_type",
+            "type": "choice",
+            "choices": [["overtime", "в сверхурочное время"], ["weekend", "в выходной день"]],
+        },
         {"name": "overtime_date", "type": "date"},
         {"name": "time_from", "type": "time"},
         {"name": "time_to", "type": "time"},
@@ -255,7 +272,7 @@ def test_memo_overtime_full_template(company, dept):
         "Прошу разрешить выход работников {{ author.department_unit.name }} "
         "{% if work_type == 'overtime' %}в сверхурочное время{% else %}в выходной день{% endif %}\n"
         '{{ overtime_date|date:"d.m.Y" }} г. с {{ time_from|time:"H:i" }} до {{ time_to|time:"H:i" }} часов:\n'
-        "{% for emp in employees %}    {{ forloop.counter }}. {{ emp.last_name }} {{ emp.first_name|slice:\"1\" }}. — {{ emp.position }}\n{% endfor %}"
+        '{% for emp in employees %}    {{ forloop.counter }}. {{ emp.last_name }} {{ emp.first_name|slice:"1" }}. — {{ emp.position }}\n{% endfor %}'
         "Ответственный: {{ responsible.last_name }}, {{ responsible.position }}.\n"
         "{% if reason %}Обоснование: {{ reason }}{% endif %}"
     )
@@ -270,6 +287,7 @@ def test_memo_overtime_full_template(company, dept):
 
 
 # ---------- edge cases ----------
+
 
 @pytest.mark.django_db
 def test_empty_template_returns_empty():

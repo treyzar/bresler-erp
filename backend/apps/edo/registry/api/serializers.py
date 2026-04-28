@@ -43,6 +43,7 @@ class LetterListSerializer(serializers.ModelSerializer):
         if not request:
             return True
         from apps.edo.registry.services.registry_service import check_department_access
+
         return check_department_access(request.user, letter)
 
     def get_files_count(self, letter) -> int:
@@ -94,6 +95,7 @@ class LetterCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from apps.edo.registry.services.registry_service import generate_letter_number
+
         request = self.context["request"]
         validated_data["created_by"] = request.user
         number, seq = generate_letter_number(request.user)
@@ -140,9 +142,11 @@ class LetterHistorySerializer(serializers.Serializer):
             old_val = getattr(prev, field, None)
             new_val = getattr(record, field, None)
             if old_val != new_val:
-                changes.append({
-                    "field": self.FIELD_LABELS.get(field, field),
-                    "old": str(old_val) if old_val is not None else "",
-                    "new": str(new_val) if new_val is not None else "",
-                })
+                changes.append(
+                    {
+                        "field": self.FIELD_LABELS.get(field, field),
+                        "old": str(old_val) if old_val is not None else "",
+                        "new": str(new_val) if new_val is not None else "",
+                    }
+                )
         return changes

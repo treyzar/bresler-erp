@@ -2,6 +2,7 @@
 из-за старого "плоского" формата сохранения. html_content их сохранял, поэтому
 можно вытащить оттуда и залить обратно в editor_content по совпадению координат.
 """
+
 from __future__ import annotations
 
 import re
@@ -58,10 +59,9 @@ def recover_signatures(editor_content: list[dict[str, Any]], html_content: str) 
         return editor_content
 
     orphans = [
-        (idx, el) for idx, el in enumerate(editor_content)
-        if isinstance(el, dict)
-        and el.get("type") == "signature"
-        and not ((el.get("properties") or {}).get("image"))
+        (idx, el)
+        for idx, el in enumerate(editor_content)
+        if isinstance(el, dict) and el.get("type") == "signature" and not ((el.get("properties") or {}).get("image"))
     ]
     if not orphans:
         return editor_content

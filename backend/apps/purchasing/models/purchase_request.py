@@ -28,11 +28,15 @@ class PurchaseRequest(BaseModel):
         verbose_name="Создал",
     )
     status = models.CharField(
-        "Статус", max_length=20,
-        choices=Status.choices, default=Status.DRAFT,
+        "Статус",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
     )
     required_date = models.DateField(
-        "Требуемая дата", null=True, blank=True,
+        "Требуемая дата",
+        null=True,
+        blank=True,
     )
     note = models.TextField("Примечание", blank=True)
 
@@ -65,7 +69,9 @@ class PurchaseRequestLine(BaseModel):
     name = models.CharField("Наименование", max_length=500)
     quantity = models.PositiveIntegerField("Количество", default=1)
     target_description = models.CharField(
-        "Назначение", max_length=500, blank=True,
+        "Назначение",
+        max_length=500,
+        blank=True,
         help_text="Шкаф, дверца, заводской номер и т.д.",
     )
     note = models.TextField("Примечание", blank=True)

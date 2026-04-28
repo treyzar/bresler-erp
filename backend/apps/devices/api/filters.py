@@ -35,10 +35,9 @@ class ModRZAFilter(django_filters.FilterSet):
 
     def filter_search(self, queryset, name, value):
         from django.db.models import Q
+
         return queryset.filter(
-            Q(mod_name__icontains=value)
-            | Q(mod_code__icontains=value)
-            | Q(alter_mod_code__icontains=value)
+            Q(mod_name__icontains=value) | Q(mod_code__icontains=value) | Q(alter_mod_code__icontains=value)
         )
 
 
@@ -63,10 +62,8 @@ class DeviceComponentFilter(django_filters.FilterSet):
 
     def filter_search(self, queryset, name, value):
         from django.db.models import Q
-        return queryset.filter(
-            Q(component_name__icontains=value)
-            | Q(component_type__name__icontains=value)
-        )
+
+        return queryset.filter(Q(component_name__icontains=value) | Q(component_type__name__icontains=value))
 
 
 class ProductFilter(django_filters.FilterSet):
@@ -82,9 +79,8 @@ class ProductFilter(django_filters.FilterSet):
 
     def filter_search(self, queryset, name, value):
         from django.db.models import Q
-        return queryset.filter(
-            Q(name__icontains=value) | Q(internal_code__icontains=value)
-        )
+
+        return queryset.filter(Q(name__icontains=value) | Q(internal_code__icontains=value))
 
     def filter_category(self, queryset, name, value):
         return queryset.filter(catalog_placements__category_id=value)

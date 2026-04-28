@@ -21,11 +21,14 @@ class TestCommentAPI:
 
     def test_create_comment(self, api_client):
         client = self._auth_client(api_client)
-        response = client.post("/api/comments/", {
-            "text": "Test comment",
-            "target_model": "order",
-            "target_id": self.order.pk,
-        })
+        response = client.post(
+            "/api/comments/",
+            {
+                "text": "Test comment",
+                "target_model": "order",
+                "target_id": self.order.pk,
+            },
+        )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["text"] == "Test comment"
         assert response.data["author"] == self.user.pk
@@ -33,20 +36,26 @@ class TestCommentAPI:
 
     def test_create_comment_invalid_model(self, api_client):
         client = self._auth_client(api_client)
-        response = client.post("/api/comments/", {
-            "text": "Test",
-            "target_model": "nonexistent",
-            "target_id": 1,
-        })
+        response = client.post(
+            "/api/comments/",
+            {
+                "text": "Test",
+                "target_model": "nonexistent",
+                "target_id": 1,
+            },
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_comment_invalid_target_id(self, api_client):
         client = self._auth_client(api_client)
-        response = client.post("/api/comments/", {
-            "text": "Test",
-            "target_model": "order",
-            "target_id": 99999,
-        })
+        response = client.post(
+            "/api/comments/",
+            {
+                "text": "Test",
+                "target_model": "order",
+                "target_id": 99999,
+            },
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_list_comments_for_order(self, api_client):
@@ -62,10 +71,13 @@ class TestCommentAPI:
                 object_id=self.order.pk,
             )
 
-        response = client.get("/api/comments/", {
-            "target_model": "order",
-            "target_id": self.order.pk,
-        })
+        response = client.get(
+            "/api/comments/",
+            {
+                "target_model": "order",
+                "target_id": self.order.pk,
+            },
+        )
         assert response.status_code == status.HTTP_200_OK
         # Response may be paginated or a list
         results = response.data.get("results", response.data)
@@ -79,10 +91,13 @@ class TestCommentAPI:
         Comment.objects.create(author=self.user, text="Comment on order 1", content_type=ct, object_id=self.order.pk)
         Comment.objects.create(author=self.user, text="Comment on order 2", content_type=ct, object_id=other_order.pk)
 
-        response = client.get("/api/comments/", {
-            "target_model": "order",
-            "target_id": self.order.pk,
-        })
+        response = client.get(
+            "/api/comments/",
+            {
+                "target_model": "order",
+                "target_id": self.order.pk,
+            },
+        )
         results = response.data.get("results", response.data)
         assert len(results) == 1
         assert results[0]["text"] == "Comment on order 1"
@@ -90,9 +105,7 @@ class TestCommentAPI:
     def test_delete_own_comment(self, api_client):
         client = self._auth_client(api_client)
         ct = ContentType.objects.get_for_model(self.order)
-        comment = Comment.objects.create(
-            author=self.user, text="To delete", content_type=ct, object_id=self.order.pk
-        )
+        comment = Comment.objects.create(author=self.user, text="To delete", content_type=ct, object_id=self.order.pk)
         response = client.delete(f"/api/comments/{comment.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Comment.objects.filter(pk=comment.pk).exists()

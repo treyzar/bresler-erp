@@ -30,4 +30,4 @@ def process_import(self, session_id: int):
             session.save(update_fields=["status", "error_details"])
         except Exception:
             pass
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

@@ -5,32 +5,31 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('directory', '0012_orgunithead'),
-        ('internal_docs', '0010_approvalstep_sla_breached_at_and_more'),
+        ("directory", "0012_orgunithead"),
+        ("internal_docs", "0010_approvalstep_sla_breached_at_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='approvalstep',
-            index=models.Index(fields=['status', 'role_key'], name='internal_do_status_44cad0_idx'),
+            model_name="approvalstep",
+            index=models.Index(fields=["status", "role_key"], name="internal_do_status_44cad0_idx"),
         ),
         migrations.AddIndex(
-            model_name='approvalstep',
-            index=models.Index(fields=['original_approver'], name='internal_do_origina_294038_idx'),
+            model_name="approvalstep",
+            index=models.Index(fields=["original_approver"], name="internal_do_origina_294038_idx"),
         ),
         migrations.AddIndex(
-            model_name='approvalstep',
-            index=models.Index(fields=['status', 'sla_due_at'], name='internal_do_status_f809a7_idx'),
+            model_name="approvalstep",
+            index=models.Index(fields=["status", "sla_due_at"], name="internal_do_status_f809a7_idx"),
         ),
         migrations.AddIndex(
-            model_name='document',
-            index=models.Index(fields=['author_company_unit', 'status'], name='internal_do_author__3688fe_idx'),
+            model_name="document",
+            index=models.Index(fields=["author_company_unit", "status"], name="internal_do_author__3688fe_idx"),
         ),
         migrations.AddIndex(
-            model_name='document',
-            index=models.Index(fields=['author_department_unit'], name='internal_do_author__7f271f_idx'),
+            model_name="document",
+            index=models.Index(fields=["author_department_unit"], name="internal_do_author__7f271f_idx"),
         ),
     ]

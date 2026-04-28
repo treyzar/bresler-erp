@@ -48,8 +48,10 @@ class PurchaseOrder(BaseModel):
         verbose_name="Закупщик",
     )
     status = models.CharField(
-        "Статус", max_length=20,
-        choices=Status.choices, default=Status.DRAFT,
+        "Статус",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
     )
     order_date = models.DateField("Дата заказа", null=True, blank=True)
     expected_date = models.DateField("Ожидаемая дата поставки", null=True, blank=True)
@@ -92,10 +94,16 @@ class PurchaseOrderLine(BaseModel):
     name = models.CharField("Наименование", max_length=500)
     quantity = models.PositiveIntegerField("Количество", default=1)
     unit_price = models.DecimalField(
-        "Цена за ед.", max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        "Цена за ед.",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
     total_price = models.DecimalField(
-        "Итого", max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        "Итого",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
     delivery_date = models.DateField("Срок поставки", null=True, blank=True)
     delivered_quantity = models.PositiveIntegerField("Поставлено", default=0)

@@ -7,10 +7,18 @@ class ImportSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImportSession
         fields = [
-            "id", "original_filename", "target_model", "status",
-            "columns", "column_mapping", "total_rows",
-            "success_count", "error_count", "error_details",
-            "created_at", "updated_at",
+            "id",
+            "original_filename",
+            "target_model",
+            "status",
+            "columns",
+            "column_mapping",
+            "total_rows",
+            "success_count",
+            "error_count",
+            "error_details",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = fields
 

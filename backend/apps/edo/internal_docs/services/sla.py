@@ -31,8 +31,7 @@ def mark_sla_breaches() -> int:
     """Фиксирует просроченные шаги. Возвращает количество новых просрочек."""
     now = timezone.now()
     breached = list(
-        ApprovalStep.objects
-        .select_for_update(skip_locked=True)
+        ApprovalStep.objects.select_for_update(skip_locked=True)
         .filter(
             status=ApprovalStep.Status.PENDING,
             action__in=(ApprovalStep.Action.APPROVE, ApprovalStep.Action.SIGN),

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 import { useQuery, useMutation } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
 import { ChevronLeft, Save, Send, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -43,8 +44,8 @@ export function CreateDocumentPage() {
       toast.success(doc.status === "pending" ? "Документ отправлен на согласование" : "Черновик сохранён")
       navigate(`/edo/documents/${doc.id}`)
     },
-    onError: (e: any) => {
-      const detail = e?.response?.data?.detail ?? e?.message ?? "Ошибка"
+    onError: (e: AxiosError<{ detail?: string }>) => {
+      const detail = e.response?.data?.detail ?? e.message ?? "Ошибка"
       toast.error(detail)
     },
   })

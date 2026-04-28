@@ -4,20 +4,41 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('internal_docs', '0003_update_memo_overtime_template'),
+        ("internal_docs", "0003_update_memo_overtime_template"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='documenttype',
-            name='initiator_resolver',
-            field=models.CharField(choices=[('author', 'Любой сотрудник'), ('department_head', 'Только руководитель подразделения'), ('group:accounting', 'Бухгалтерия'), ('group:hr', 'HR / Отдел кадров'), ('group:admin', 'Администраторы')], default='author', max_length=30, verbose_name='Кто может создавать'),
+            model_name="documenttype",
+            name="initiator_resolver",
+            field=models.CharField(
+                choices=[
+                    ("author", "Любой сотрудник"),
+                    ("department_head", "Только руководитель подразделения"),
+                    ("group:accounting", "Бухгалтерия"),
+                    ("group:hr", "HR / Отдел кадров"),
+                    ("group:admin", "Администраторы"),
+                ],
+                default="author",
+                max_length=30,
+                verbose_name="Кто может создавать",
+            ),
         ),
         migrations.AlterField(
-            model_name='historicaldocumenttype',
-            name='initiator_resolver',
-            field=models.CharField(choices=[('author', 'Любой сотрудник'), ('department_head', 'Только руководитель подразделения'), ('group:accounting', 'Бухгалтерия'), ('group:hr', 'HR / Отдел кадров'), ('group:admin', 'Администраторы')], default='author', max_length=30, verbose_name='Кто может создавать'),
+            model_name="historicaldocumenttype",
+            name="initiator_resolver",
+            field=models.CharField(
+                choices=[
+                    ("author", "Любой сотрудник"),
+                    ("department_head", "Только руководитель подразделения"),
+                    ("group:accounting", "Бухгалтерия"),
+                    ("group:hr", "HR / Отдел кадров"),
+                    ("group:admin", "Администраторы"),
+                ],
+                default="author",
+                max_length=30,
+                verbose_name="Кто может создавать",
+            ),
         ),
     ]

@@ -50,7 +50,8 @@ class Document(models.Model):
         on_delete=models.PROTECT,
         related_name="authored_internal_docs",
         verbose_name="Компания автора (снепшот)",
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="Фиксируется на момент submit для multi-tenant фильтрации",
     )
     author_department_unit = models.ForeignKey(
@@ -58,14 +59,16 @@ class Document(models.Model):
         on_delete=models.SET_NULL,
         related_name="authored_internal_docs",
         verbose_name="Подразделение автора (снепшот)",
-        null=True, blank=True,
+        null=True,
+        blank=True,
     )
     addressee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="received_internal_docs",
         verbose_name="Адресат (опционально)",
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="Для уведомлений и адресных заявлений",
     )
     field_values = models.JSONField(
@@ -94,7 +97,8 @@ class Document(models.Model):
     current_step = models.ForeignKey(
         "internal_docs.ApprovalStep",
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name="+",
         verbose_name="Текущий шаг",
     )
@@ -142,7 +146,7 @@ class ApprovalStep(models.Model):
 
     class Status(models.TextChoices):
         WAITING = "waiting", "Ожидает активации"  # ещё не активный (параллельный/последующий шаг)
-        PENDING = "pending", "Ожидает решения"   # активный — текущий batch согласования
+        PENDING = "pending", "Ожидает решения"  # активный — текущий batch согласования
         APPROVED = "approved", "Согласовано"
         REJECTED = "rejected", "Отклонено"
         REVISION_REQUESTED = "revision_requested", "Запрошены правки"
@@ -195,7 +199,8 @@ class ApprovalStep(models.Model):
     approver = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name="approval_steps",
         verbose_name="Согласующий",
         help_text="Резолвится при submit",
@@ -203,7 +208,8 @@ class ApprovalStep(models.Model):
     original_approver = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name="+",
         verbose_name="Изначальный согласующий (до делегирования)",
     )
@@ -224,7 +230,8 @@ class ApprovalStep(models.Model):
     sla_due_at = models.DateTimeField("SLA истекает", null=True, blank=True)
     sla_breached_at = models.DateTimeField(
         "SLA нарушен (зафиксировано)",
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="Заполняется Celery Beat-задачей check_sla_breaches при первом обнаружении просрочки",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -260,9 +267,7 @@ class ApprovalStep(models.Model):
 
     def clean(self):
         if self.approver_id and self.approver_id == self.document.author_id and self.role_key != "author":
-            raise ValidationError(
-                "Автор не может быть согласующим своего же документа (кроме role_key='author')."
-            )
+            raise ValidationError("Автор не может быть согласующим своего же документа (кроме role_key='author').")
 
 
 def _attachment_upload_path(instance, filename):
@@ -290,7 +295,8 @@ class DocumentAttachment(models.Model):
     step = models.ForeignKey(
         ApprovalStep,
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name="attachments",
         verbose_name="Шаг (если файл прикреплён в рамках шага)",
     )

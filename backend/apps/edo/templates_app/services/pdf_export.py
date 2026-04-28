@@ -1,7 +1,9 @@
-from playwright.sync_api import sync_playwright
 import logging
 
+from playwright.sync_api import sync_playwright
+
 logger = logging.getLogger(__name__)
+
 
 class PDFExportService:
     @staticmethod
@@ -10,10 +12,10 @@ class PDFExportService:
         css = """
         <style>
             @page { size: A4; margin: 0; }
-            body { 
-                font-family: Arial, sans-serif; 
-                -webkit-print-color-adjust: exact; 
-                margin: 0; 
+            body {
+                font-family: Arial, sans-serif;
+                -webkit-print-color-adjust: exact;
+                margin: 0;
                 padding: 0;
             }
             .canvas-print {
@@ -21,13 +23,13 @@ class PDFExportService:
                 page-break-inside: avoid;
                 overflow: hidden;
             }
-            table { 
-                border-collapse: collapse !important; 
-                width: 100% !important; 
+            table {
+                border-collapse: collapse !important;
+                width: 100% !important;
                 table-layout: fixed !important;
             }
-            td, th { 
-                border: 0.5pt solid black; 
+            td, th {
+                border: 0.5pt solid black;
                 word-break: break-all;
             }
             /* Убеждаемся, что изображения печатаются корректно */
@@ -37,11 +39,11 @@ class PDFExportService:
         # Если пришел только кусок HTML, оборачиваем его
         if "<html>" not in raw_html:
             return f"<!DOCTYPE html><html><head><meta charset='UTF-8'>{css}</head><body>{raw_html}</body></html>"
-        
+
         # Если уже полный документ, вставляем стили в head
         if "</head>" in raw_html:
             return raw_html.replace("</head>", f"{css}</head>")
-        
+
         return raw_html
 
     @classmethod
@@ -49,7 +51,7 @@ class PDFExportService:
         clean_html = cls._inject_print_css(html_content or "")
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(args=['--no-sandbox', '--disable-setuid-sandbox'])
+                browser = p.chromium.launch(args=["--no-sandbox", "--disable-setuid-sandbox"])
                 # JS отключаем — наши шаблоны статичные, это ускоряет рендер и исключает зависания.
                 page = browser.new_page(java_script_enabled=False)
                 # Явный таймаут: без него networkidle мог висеть по 30с на битых image src.
@@ -67,4 +69,4 @@ class PDFExportService:
                 return pdf_bytes
         except Exception as e:
             logger.error(f"PDF Export Service Error: {e}", exc_info=True)
-            raise RuntimeError(f"Failed to generate PDF: {str(e)}")
+            raise RuntimeError(f"Failed to generate PDF: {str(e)}") from e

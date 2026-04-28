@@ -16,7 +16,6 @@ from apps.edo.internal_docs.models import (
 from apps.edo.internal_docs.services import document_service as svc
 from apps.users.tests.factories import UserFactory
 
-
 # ============== fixtures ==============
 
 
@@ -31,7 +30,8 @@ def org(db):
 def author(org):
     return UserFactory(
         last_name="Иванов",
-        company_unit=org["company"], department_unit=org["dept"],
+        company_unit=org["company"],
+        department_unit=org["dept"],
     )
 
 
@@ -39,7 +39,8 @@ def author(org):
 def supervisor(org):
     return UserFactory(
         last_name="Петров",
-        company_unit=org["company"], department_unit=org["dept"],
+        company_unit=org["company"],
+        department_unit=org["dept"],
         is_department_head=True,
     )
 
@@ -67,10 +68,14 @@ def doc_type_factory(db):
         seq = NumberSequence.objects.create(name=f"par-{n}", prefix="P", pattern="{prefix}-{####}")
         chain = ApprovalChainTemplate.objects.create(name=f"par-{n}", steps=steps)
         return DocumentType.objects.create(
-            code=f"par_type_{n}", name=f"Parallel {n}", category="memo",
+            code=f"par_type_{n}",
+            name=f"Parallel {n}",
+            category="memo",
             field_schema=[{"name": "subject", "type": "text"}],
-            title_template="{{ subject }}", body_template="{{ subject }}",
-            default_chain=chain, numbering_sequence=seq,
+            title_template="{{ subject }}",
+            body_template="{{ subject }}",
+            default_chain=chain,
+            numbering_sequence=seq,
         )
 
     return make
@@ -81,16 +86,22 @@ def doc_type_factory(db):
 
 @pytest.mark.django_db
 def test_submit_marks_only_first_batch_pending(
-    doc_type_factory, author, supervisor, org, accounting_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
 ):
     """При submit'е первый шаг — PENDING, остальные — WAITING."""
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
     accountant.groups.add(accounting_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
-        {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "approve"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
+            {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "approve"},
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -101,17 +112,23 @@ def test_submit_marks_only_first_batch_pending(
 
 @pytest.mark.django_db
 def test_inform_step_before_active_auto_completes_at_activation(
-    doc_type_factory, author, supervisor, org, accounting_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
 ):
     """inform-шаг между active-шагами автоматически закрывается при активации следующего batch'а."""
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
     accountant.groups.add(accounting_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
-        {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "inform"},
-        {"order": 3, "role_key": "fixed_user:" + str(supervisor.pk), "label": "Финал", "action": "approve"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
+            {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "inform"},
+            {"order": 3, "role_key": "fixed_user:" + str(supervisor.pk), "label": "Финал", "action": "approve"},
+        ]
+    )
     # Удаляем dedupe-кollision: supervisor встречается дважды; second step
     # дедупится только если parallel_group пуст. Используем разных людей.
     director = UserFactory(last_name="Директор", company_unit=org["company"], is_department_head=True)
@@ -135,7 +152,12 @@ def test_inform_step_before_active_auto_completes_at_activation(
 
 @pytest.mark.django_db
 def test_parallel_and_requires_all_approvers(
-    doc_type_factory, author, supervisor, org, accounting_group, legal_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
+    legal_group,
 ):
     """AND: пока не одобрили все участники batch'а, документ не идёт дальше."""
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
@@ -143,12 +165,26 @@ def test_parallel_and_requires_all_approvers(
     lawyer = UserFactory(last_name="Юрист", company_unit=org["company"])
     lawyer.groups.add(legal_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "group:accounting@company", "label": "Бух.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-        {"order": 2, "role_key": "group:legal@company", "label": "Юр.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {
+                "order": 1,
+                "role_key": "group:accounting@company",
+                "label": "Бух.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+            {
+                "order": 2,
+                "role_key": "group:legal@company",
+                "label": "Юр.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -170,19 +206,38 @@ def test_parallel_and_requires_all_approvers(
 
 @pytest.mark.django_db
 def test_parallel_and_one_reject_kills_document(
-    doc_type_factory, author, supervisor, org, accounting_group, legal_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
+    legal_group,
 ):
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
     accountant.groups.add(accounting_group)
     lawyer = UserFactory(last_name="Юр", company_unit=org["company"])
     lawyer.groups.add(legal_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "group:accounting@company", "label": "Бух.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-        {"order": 2, "role_key": "group:legal@company", "label": "Юр.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {
+                "order": 1,
+                "role_key": "group:accounting@company",
+                "label": "Бух.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+            {
+                "order": 2,
+                "role_key": "group:legal@company",
+                "label": "Юр.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -196,7 +251,12 @@ def test_parallel_and_one_reject_kills_document(
 
 @pytest.mark.django_db
 def test_parallel_or_one_approve_advances(
-    doc_type_factory, author, supervisor, org, accounting_group, legal_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
+    legal_group,
 ):
     """OR: первый approve в batch'е → остальные SKIPPED, документ идёт дальше."""
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
@@ -204,12 +264,26 @@ def test_parallel_or_one_approve_advances(
     lawyer = UserFactory(last_name="Юр", company_unit=org["company"])
     lawyer.groups.add(legal_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "group:accounting@company", "label": "Бух.",
-         "action": "approve", "parallel_group": "any_one", "parallel_mode": "or"},
-        {"order": 2, "role_key": "group:legal@company", "label": "Юр.",
-         "action": "approve", "parallel_group": "any_one", "parallel_mode": "or"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {
+                "order": 1,
+                "role_key": "group:accounting@company",
+                "label": "Бух.",
+                "action": "approve",
+                "parallel_group": "any_one",
+                "parallel_mode": "or",
+            },
+            {
+                "order": 2,
+                "role_key": "group:legal@company",
+                "label": "Юр.",
+                "action": "approve",
+                "parallel_group": "any_one",
+                "parallel_mode": "or",
+            },
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -224,19 +298,38 @@ def test_parallel_or_one_approve_advances(
 
 @pytest.mark.django_db
 def test_parallel_or_one_reject_does_not_kill_document(
-    doc_type_factory, author, supervisor, org, accounting_group, legal_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
+    legal_group,
 ):
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
     accountant.groups.add(accounting_group)
     lawyer = UserFactory(last_name="Юр", company_unit=org["company"])
     lawyer.groups.add(legal_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "group:accounting@company", "label": "Бух.",
-         "action": "approve", "parallel_group": "any_one", "parallel_mode": "or"},
-        {"order": 2, "role_key": "group:legal@company", "label": "Юр.",
-         "action": "approve", "parallel_group": "any_one", "parallel_mode": "or"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {
+                "order": 1,
+                "role_key": "group:accounting@company",
+                "label": "Бух.",
+                "action": "approve",
+                "parallel_group": "any_one",
+                "parallel_mode": "or",
+            },
+            {
+                "order": 2,
+                "role_key": "group:legal@company",
+                "label": "Юр.",
+                "action": "approve",
+                "parallel_group": "any_one",
+                "parallel_mode": "or",
+            },
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -252,19 +345,38 @@ def test_parallel_or_one_reject_does_not_kill_document(
 
 @pytest.mark.django_db
 def test_parallel_or_all_reject_kills_document(
-    doc_type_factory, author, supervisor, org, accounting_group, legal_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
+    legal_group,
 ):
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
     accountant.groups.add(accounting_group)
     lawyer = UserFactory(last_name="Юр", company_unit=org["company"])
     lawyer.groups.add(legal_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "group:accounting@company", "label": "Бух.",
-         "action": "approve", "parallel_group": "any_one", "parallel_mode": "or"},
-        {"order": 2, "role_key": "group:legal@company", "label": "Юр.",
-         "action": "approve", "parallel_group": "any_one", "parallel_mode": "or"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {
+                "order": 1,
+                "role_key": "group:accounting@company",
+                "label": "Бух.",
+                "action": "approve",
+                "parallel_group": "any_one",
+                "parallel_mode": "or",
+            },
+            {
+                "order": 2,
+                "role_key": "group:legal@company",
+                "label": "Юр.",
+                "action": "approve",
+                "parallel_group": "any_one",
+                "parallel_mode": "or",
+            },
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -279,7 +391,12 @@ def test_parallel_or_all_reject_kills_document(
 
 @pytest.mark.django_db
 def test_sequential_then_parallel_then_sequential(
-    doc_type_factory, author, supervisor, org, accounting_group, legal_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
+    legal_group,
 ):
     """Цепочка: руководитель → [бух || юр] (AND) → директор."""
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
@@ -287,17 +404,33 @@ def test_sequential_then_parallel_then_sequential(
     lawyer = UserFactory(last_name="Юр", company_unit=org["company"])
     lawyer.groups.add(legal_group)
     director = UserFactory(
-        last_name="Дир", company_unit=org["company"], is_department_head=True,
+        last_name="Дир",
+        company_unit=org["company"],
+        is_department_head=True,
     )
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
-        {"order": 2, "role_key": "group:accounting@company", "label": "Бух.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-        {"order": 3, "role_key": "group:legal@company", "label": "Юр.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-        {"order": 4, "role_key": f"fixed_user:{director.pk}", "label": "Дир.", "action": "approve"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
+            {
+                "order": 2,
+                "role_key": "group:accounting@company",
+                "label": "Бух.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+            {
+                "order": 3,
+                "role_key": "group:legal@company",
+                "label": "Юр.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+            {"order": 4, "role_key": f"fixed_user:{director.pk}", "label": "Дир.", "action": "approve"},
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -327,19 +460,38 @@ def test_sequential_then_parallel_then_sequential(
 
 @pytest.mark.django_db
 def test_inbox_for_includes_all_pending_in_parallel_batch(
-    doc_type_factory, author, supervisor, org, accounting_group, legal_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
+    legal_group,
 ):
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
     accountant.groups.add(accounting_group)
     lawyer = UserFactory(last_name="Юр", company_unit=org["company"])
     lawyer.groups.add(legal_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "group:accounting@company", "label": "Бух.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-        {"order": 2, "role_key": "group:legal@company", "label": "Юр.",
-         "action": "approve", "parallel_group": "review", "parallel_mode": "and"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {
+                "order": 1,
+                "role_key": "group:accounting@company",
+                "label": "Бух.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+            {
+                "order": 2,
+                "role_key": "group:legal@company",
+                "label": "Юр.",
+                "action": "approve",
+                "parallel_group": "review",
+                "parallel_mode": "and",
+            },
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 
@@ -351,17 +503,23 @@ def test_inbox_for_includes_all_pending_in_parallel_batch(
 
 @pytest.mark.django_db
 def test_inbox_for_excludes_waiting_steps(
-    doc_type_factory, author, supervisor, org, accounting_group,
+    doc_type_factory,
+    author,
+    supervisor,
+    org,
+    accounting_group,
 ):
     """Сотрудник назначенный на 2-й (sequential) шаг не должен видеть документ
     в inbox'е, пока не дошла его очередь."""
     accountant = UserFactory(last_name="Бух", company_unit=org["company"])
     accountant.groups.add(accounting_group)
 
-    dtype = doc_type_factory([
-        {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
-        {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "approve"},
-    ])
+    dtype = doc_type_factory(
+        [
+            {"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"},
+            {"order": 2, "role_key": "group:accounting@company", "label": "Бух.", "action": "approve"},
+        ]
+    )
     doc = svc.create_draft(author=author, doc_type=dtype, field_values={"subject": "x"})
     svc.submit(doc, author)
 

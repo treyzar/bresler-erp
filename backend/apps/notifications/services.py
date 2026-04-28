@@ -13,8 +13,6 @@ import logging
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 
 from apps.notifications.models import Notification, NotificationEntry, NotificationPreference
 
@@ -111,16 +109,17 @@ def create_notification(
                 continue
 
         # Deduplication check
-        if deduplicate_key and target_id:
-            if NotificationEntry.check_recent(
-                deduplicate_key, target_id, user.pk, deduplicate_hours
-            ):
-                logger.debug(
-                    "Skipping duplicate notification '%s' for user %s",
-                    deduplicate_key,
-                    user.pk,
-                )
-                continue
+        if (
+            deduplicate_key
+            and target_id
+            and NotificationEntry.check_recent(deduplicate_key, target_id, user.pk, deduplicate_hours)
+        ):
+            logger.debug(
+                "Skipping duplicate notification '%s' for user %s",
+                deduplicate_key,
+                user.pk,
+            )
+            continue
 
         notification = Notification.objects.create(
             recipient=user,
@@ -180,25 +179,21 @@ def mark_read(notification_id: int, user) -> bool:
 
 def mark_all_read(user) -> int:
     """Mark all notifications as read for a user. Returns count."""
-    return Notification.objects.filter(
-        recipient=user, is_read=False
-    ).update(is_read=True)
+    return Notification.objects.filter(recipient=user, is_read=False).update(is_read=True)
 
 
 def _build_link(target) -> str:
     """Auto-generate frontend URL from a model instance."""
     model_name = target._meta.model_name
 
-    if model_name == "order":
-        return f"/orders/{target.order_number}"
-    elif model_name == "contract":
-        return f"/orders/{target.order.order_number}"
-    elif model_name == "orgunit":
-        return f"/directory/orgunits"
-    elif model_name == "letter":
-        return f"/edo/registry/{target.pk}"
-
-    return ""
+    builders = {
+        "order": lambda t: f"/orders/{t.order_number}",
+        "contract": lambda t: f"/orders/{t.order.order_number}",
+        "orgunit": lambda _t: "/directory/orgunits",
+        "letter": lambda t: f"/edo/registry/{t.pk}",
+    }
+    builder = builders.get(model_name)
+    return builder(target) if builder else ""
 
 
 def send_email_digest() -> int:
@@ -224,7 +219,7 @@ def send_email_digest() -> int:
     )
 
     for user in users_with_unread:
-        pref = _get_preference(user)
+        _get_preference(user)
 
         # Collect unread notifications for events where email is enabled
         unread = Notification.objects.filter(
@@ -310,8 +305,8 @@ def _send_email(notification: Notification) -> None:
 def _send_websocket(notification: Notification) -> None:
     """Push notification to user via WebSocket (async-safe)."""
     try:
-        from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
 
         channel_layer = get_channel_layer()
         if channel_layer is None:

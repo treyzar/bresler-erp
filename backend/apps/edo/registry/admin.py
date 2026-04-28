@@ -21,22 +21,37 @@ class LetterAdmin(admin.ModelAdmin):
     inlines = [LetterFileInline]
 
     fieldsets = (
-        (None, {
-            "fields": ("number", "seq", "date", "direction"),
-        }),
-        ("Контрагент", {
-            "fields": ("recipient", "sender"),
-        }),
-        ("Содержание", {
-            "fields": ("subject", "note"),
-        }),
-        ("Ответственные", {
-            "fields": ("executor", "created_by"),
-        }),
-        ("Служебное", {
-            "fields": ("created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            None,
+            {
+                "fields": ("number", "seq", "date", "direction"),
+            },
+        ),
+        (
+            "Контрагент",
+            {
+                "fields": ("recipient", "sender"),
+            },
+        ),
+        (
+            "Содержание",
+            {
+                "fields": ("subject", "note"),
+            },
+        ),
+        (
+            "Ответственные",
+            {
+                "fields": ("executor", "created_by"),
+            },
+        ),
+        (
+            "Служебное",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def save_model(self, request, obj, form, change):

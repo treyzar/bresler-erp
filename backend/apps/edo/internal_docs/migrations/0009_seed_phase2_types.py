@@ -7,7 +7,6 @@ vacation_notification (обратный поток — создаётся бух
 
 from django.db import migrations
 
-
 TYPES_SPEC = [
     # ====================================================================
     {
@@ -17,21 +16,35 @@ TYPES_SPEC = [
         "category": "bonus",
         "icon": "trending-up",
         "field_schema": [
-            {"name": "month", "label": "Месяц премирования", "type": "date", "required": True,
-             "help_text": "Любая дата внутри отчётного месяца"},
-            {"name": "employees_with_amounts", "label": "Список премий",
-             "type": "table", "required": True,
-             "columns": [
-                 {"name": "employee", "label": "Сотрудник", "type": "user"},
-                 {"name": "amount", "label": "Сумма (₽)", "type": "money"},
-                 {"name": "reason", "label": "Обоснование", "type": "textarea"},
-             ]},
-            {"name": "total", "label": "Итого", "type": "money", "required": True,
-             "help_text": "Сумма всех строк (заполняется автоматически)"},
+            {
+                "name": "month",
+                "label": "Месяц премирования",
+                "type": "date",
+                "required": True,
+                "help_text": "Любая дата внутри отчётного месяца",
+            },
+            {
+                "name": "employees_with_amounts",
+                "label": "Список премий",
+                "type": "table",
+                "required": True,
+                "columns": [
+                    {"name": "employee", "label": "Сотрудник", "type": "user"},
+                    {"name": "amount", "label": "Сумма (₽)", "type": "money"},
+                    {"name": "reason", "label": "Обоснование", "type": "textarea"},
+                ],
+            },
+            {
+                "name": "total",
+                "label": "Итого",
+                "type": "money",
+                "required": True,
+                "help_text": "Сумма всех строк (заполняется автоматически)",
+            },
         ],
         "title_template": 'Премирование за {{ month|date:"F Y" }}',
         "body_template": (
-            'Прошу премировать сотрудников {{ author.department_unit.name|default:author.company_unit.name }} '
+            "Прошу премировать сотрудников {{ author.department_unit.name|default:author.company_unit.name }} "
             'по итогам {{ month|date:"F Y" }} согласно списку:\n\n'
             "{% for row in employees_with_amounts %}"
             "    {{ forloop.counter }}. "
@@ -49,15 +62,23 @@ TYPES_SPEC = [
         "prefix": "СЗ-ПРЕМ-М",
         "chain_name": "Премирование месяц: рук → бухгалтерия → директор",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "group:accounting@company",
-             "label": "Бухгалтерия", "action": "approve", "sla_hours": 72},
-            {"order": 3, "role_key": "company_head",
-             "label": "Директор", "action": "approve", "sla_hours": 48},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "group:accounting@company",
+                "label": "Бухгалтерия",
+                "action": "approve",
+                "sla_hours": 72,
+            },
+            {"order": 3, "role_key": "company_head", "label": "Директор", "action": "approve", "sla_hours": 48},
         ],
     },
-
     # ====================================================================
     {
         "code": "memo_bonus_quarterly",
@@ -66,20 +87,31 @@ TYPES_SPEC = [
         "category": "bonus",
         "icon": "award",
         "field_schema": [
-            {"name": "period", "label": "Период", "type": "choice", "required": True,
-             "choices": [
-                 ["Q1", "I квартал"], ["Q2", "II квартал"],
-                 ["Q3", "III квартал"], ["Q4", "IV квартал"],
-                 ["YEAR", "По итогам года"],
-             ]},
+            {
+                "name": "period",
+                "label": "Период",
+                "type": "choice",
+                "required": True,
+                "choices": [
+                    ["Q1", "I квартал"],
+                    ["Q2", "II квартал"],
+                    ["Q3", "III квартал"],
+                    ["Q4", "IV квартал"],
+                    ["YEAR", "По итогам года"],
+                ],
+            },
             {"name": "year", "label": "Год", "type": "number", "required": True},
-            {"name": "employees_with_amounts", "label": "Список премий",
-             "type": "table", "required": True,
-             "columns": [
-                 {"name": "employee", "label": "Сотрудник", "type": "user"},
-                 {"name": "amount", "label": "Сумма (₽)", "type": "money"},
-                 {"name": "reason", "label": "Обоснование", "type": "textarea"},
-             ]},
+            {
+                "name": "employees_with_amounts",
+                "label": "Список премий",
+                "type": "table",
+                "required": True,
+                "columns": [
+                    {"name": "employee", "label": "Сотрудник", "type": "user"},
+                    {"name": "amount", "label": "Сумма (₽)", "type": "money"},
+                    {"name": "reason", "label": "Обоснование", "type": "textarea"},
+                ],
+            },
             {"name": "total", "label": "Итого", "type": "money", "required": True},
         ],
         "title_template": "Премирование {{ period_display }} {{ year }}",
@@ -102,15 +134,23 @@ TYPES_SPEC = [
         "prefix": "СЗ-ПРЕМ-К",
         "chain_name": "Премирование квартал: рук → бухгалтерия → директор",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "group:accounting@company",
-             "label": "Бухгалтерия", "action": "approve", "sla_hours": 72},
-            {"order": 3, "role_key": "company_head",
-             "label": "Директор", "action": "approve", "sla_hours": 48},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "group:accounting@company",
+                "label": "Бухгалтерия",
+                "action": "approve",
+                "sla_hours": 72,
+            },
+            {"order": 3, "role_key": "company_head", "label": "Директор", "action": "approve", "sla_hours": 48},
         ],
     },
-
     # ====================================================================
     {
         "code": "app_dayoff_unpaid",
@@ -120,13 +160,15 @@ TYPES_SPEC = [
         "icon": "calendar-x",
         "field_schema": [
             {"name": "date_range", "label": "Период отгула", "type": "date_range", "required": True},
-            {"name": "reason", "label": "Причина", "type": "textarea", "required": True,
-             "placeholder": "Семейные обстоятельства, лечение и т.п."},
+            {
+                "name": "reason",
+                "label": "Причина",
+                "type": "textarea",
+                "required": True,
+                "placeholder": "Семейные обстоятельства, лечение и т.п.",
+            },
         ],
-        "title_template": (
-            'Отгул за свой счёт {{ date_range.from|date:"d.m.Y" }} – '
-            '{{ date_range.to|date:"d.m.Y" }}'
-        ),
+        "title_template": ('Отгул за свой счёт {{ date_range.from|date:"d.m.Y" }} – {{ date_range.to|date:"d.m.Y" }}'),
         "body_template": (
             "Прошу предоставить мне отпуск без сохранения заработной платы "
             'с {{ date_range.from|date:"«d» F Y" }} г. по '
@@ -140,13 +182,22 @@ TYPES_SPEC = [
         "prefix": "ЗАЯВ-ОТГ-СВ",
         "chain_name": "Отгул за свой счёт: рук → бухгалтерия",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "group:accounting@company",
-             "label": "Бухгалтерия", "action": "approve", "sla_hours": 48},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "group:accounting@company",
+                "label": "Бухгалтерия",
+                "action": "approve",
+                "sla_hours": 48,
+            },
         ],
     },
-
     # ====================================================================
     # Обратный поток: создаётся бухгалтером, подписывается сотрудником.
     {
@@ -160,15 +211,25 @@ TYPES_SPEC = [
         "category": "notification",
         "icon": "bell-ring",
         "field_schema": [
-            {"name": "employee", "label": "Сотрудник", "type": "user", "required": True,
-             "help_text": "Кому адресовано уведомление"},
+            {
+                "name": "employee",
+                "label": "Сотрудник",
+                "type": "user",
+                "required": True,
+                "help_text": "Кому адресовано уведомление",
+            },
             {"name": "start_date", "label": "Дата начала отпуска", "type": "date", "required": True},
             {"name": "duration_days", "label": "Продолжительность (дней)", "type": "number", "required": True},
-            {"name": "vacation_type", "label": "Вид отпуска", "type": "choice", "required": True,
-             "choices": [
-                 ["annual", "Ежегодный оплачиваемый"],
-                 ["additional", "Дополнительный оплачиваемый"],
-             ]},
+            {
+                "name": "vacation_type",
+                "label": "Вид отпуска",
+                "type": "choice",
+                "required": True,
+                "choices": [
+                    ["annual", "Ежегодный оплачиваемый"],
+                    ["additional", "Дополнительный оплачиваемый"],
+                ],
+            },
         ],
         "title_template": (
             "Уведомление об отпуске "
@@ -192,15 +253,22 @@ TYPES_SPEC = [
         "prefix": "УВЕД-ОТП",
         "chain_name": "Уведомление об отпуске: бухгалтер → сотрудник → рук",
         "chain_steps": [
-            {"order": 1, "role_key": "author",
-             "label": "Бухгалтерия (составитель)", "action": "sign", "sla_hours": 24},
-            {"order": 2, "role_key": "field_user:employee",
-             "label": "Сотрудник (роспись об ознакомлении)", "action": "sign", "sla_hours": 168},
-            {"order": 3, "role_key": "field_user_supervisor:employee",
-             "label": "Руководитель сотрудника (для информации)", "action": "inform"},
+            {"order": 1, "role_key": "author", "label": "Бухгалтерия (составитель)", "action": "sign", "sla_hours": 24},
+            {
+                "order": 2,
+                "role_key": "field_user:employee",
+                "label": "Сотрудник (роспись об ознакомлении)",
+                "action": "sign",
+                "sla_hours": 168,
+            },
+            {
+                "order": 3,
+                "role_key": "field_user_supervisor:employee",
+                "label": "Руководитель сотрудника (для информации)",
+                "action": "inform",
+            },
         ],
     },
-
     # ====================================================================
     {
         "code": "travel_estimate",
@@ -217,14 +285,24 @@ TYPES_SPEC = [
             {"name": "date_range", "label": "Период командировки", "type": "date_range", "required": True},
             {"name": "transport_cost", "label": "Транспорт (₽)", "type": "money", "required": True},
             {"name": "lodging_cost", "label": "Проживание (₽)", "type": "money", "required": True},
-            {"name": "per_diem", "label": "Суточные (₽)", "type": "money", "required": True,
-             "help_text": "Рассчитывается автоматически от длительности"},
-            {"name": "total", "label": "Итого (₽)", "type": "money", "required": True,
-             "help_text": "Сумма всех статей"},
+            {
+                "name": "per_diem",
+                "label": "Суточные (₽)",
+                "type": "money",
+                "required": True,
+                "help_text": "Рассчитывается автоматически от длительности",
+            },
+            {
+                "name": "total",
+                "label": "Итого (₽)",
+                "type": "money",
+                "required": True,
+                "help_text": "Сумма всех статей",
+            },
             {"name": "advance_requested", "label": "Запрашивается аванс?", "type": "boolean"},
         ],
         "title_template": (
-            'Командировка в {{ destination_city }} '
+            "Командировка в {{ destination_city }} "
             '{{ date_range.from|date:"d.m.Y" }} – {{ date_range.to|date:"d.m.Y" }}'
         ),
         "body_template": (
@@ -247,12 +325,21 @@ TYPES_SPEC = [
         "prefix": "КОМАНД-СМЕТА",
         "chain_name": "Командировка: рук → бухгалтерия → директор",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "group:accounting@company",
-             "label": "Бухгалтерия", "action": "approve", "sla_hours": 72},
-            {"order": 3, "role_key": "company_head",
-             "label": "Директор", "action": "sign", "sla_hours": 48},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "group:accounting@company",
+                "label": "Бухгалтерия",
+                "action": "approve",
+                "sla_hours": 72,
+            },
+            {"order": 3, "role_key": "company_head", "label": "Директор", "action": "sign", "sla_hours": 48},
         ],
     },
 ]
@@ -309,16 +396,11 @@ def backwards(apps, schema_editor):
 
     codes = [s["code"] for s in TYPES_SPEC]
     DocumentType.objects.filter(code__in=codes).delete()
-    ApprovalChainTemplate.objects.filter(
-        name__in=[s["chain_name"] for s in TYPES_SPEC]
-    ).delete()
-    NumberSequence.objects.filter(
-        name__in=[f"internal_docs_{c}" for c in codes]
-    ).delete()
+    ApprovalChainTemplate.objects.filter(name__in=[s["chain_name"] for s in TYPES_SPEC]).delete()
+    NumberSequence.objects.filter(name__in=[f"internal_docs_{c}" for c in codes]).delete()
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("internal_docs", "0008_approvalstep_parallel_mode_and_more"),
     ]

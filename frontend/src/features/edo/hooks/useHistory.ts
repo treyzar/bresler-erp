@@ -15,18 +15,18 @@ interface IUseHistoryReturn {
 }
 
 export const useHistory = (initial: IEditorElement[]): IUseHistoryReturn => {
-  const initialState: IHistoryState = {
-    elements: structuredClone(initial),
-    timestamp: Date.now(),
-  };
+  // Lazy init via useState callback — keeps Date.now() / structuredClone
+  // out of the render body so React Compiler stays happy.
+  const [historyState, setHistoryState] = useState<IHistoryState[]>(() => [
+    {
+      elements: structuredClone(initial),
+      timestamp: Date.now(),
+    },
+  ]);
+  const [indexState, setIndexState] = useState<number>(0);
 
-  const historyRef = useRef<IHistoryState[]>([initialState]);
+  const historyRef = useRef<IHistoryState[]>(historyState);
   const indexRef = useRef<number>(0);
-
-  const [historyState, setHistoryState] = useState<IHistoryState[]>(
-    historyRef.current
-  );
-  const [indexState, setIndexState] = useState<number>(indexRef.current);
 
   const saveToHistory = useCallback((els: IEditorElement[]) => {
     const newState: IHistoryState = {

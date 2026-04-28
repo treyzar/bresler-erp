@@ -12,25 +12,43 @@ from collections.abc import Iterable
 
 from django.core.exceptions import ValidationError
 
-ALLOWED_FIELD_TYPES = frozenset({
-    "text", "textarea", "markdown",
-    "number", "money",
-    "date", "date_range", "time",
-    "boolean", "choice",
-    "user", "user_multi",
-    "orgunit", "department",
-    "file",
-    "table",
-})
+ALLOWED_FIELD_TYPES = frozenset(
+    {
+        "text",
+        "textarea",
+        "markdown",
+        "number",
+        "money",
+        "date",
+        "date_range",
+        "time",
+        "boolean",
+        "choice",
+        "user",
+        "user_multi",
+        "orgunit",
+        "department",
+        "file",
+        "table",
+    }
+)
 
 # Внутри type=table колонки могут быть только простыми (без вложенных таблиц).
 ALLOWED_COLUMN_TYPES = ALLOWED_FIELD_TYPES - {"table"}
 
-ALLOWED_KEYS = frozenset({
-    "name", "label", "type", "required",
-    "choices", "filter", "placeholder", "help_text",
-    "columns",
-})
+ALLOWED_KEYS = frozenset(
+    {
+        "name",
+        "label",
+        "type",
+        "required",
+        "choices",
+        "filter",
+        "placeholder",
+        "help_text",
+        "columns",
+    }
+)
 
 
 def _is_identifier(name: str) -> bool:
@@ -76,10 +94,7 @@ def validate_field_schema(value) -> None:
         if not ftype:
             errors.append(f"{prefix}: 'type' is required")
         elif ftype not in ALLOWED_FIELD_TYPES:
-            errors.append(
-                f"{prefix}: type {ftype!r} not allowed "
-                f"(must be one of {sorted(ALLOWED_FIELD_TYPES)})"
-            )
+            errors.append(f"{prefix}: type {ftype!r} not allowed (must be one of {sorted(ALLOWED_FIELD_TYPES)})")
 
         if "required" in spec and not isinstance(spec["required"], bool):
             errors.append(f"{prefix}: 'required' must be bool")

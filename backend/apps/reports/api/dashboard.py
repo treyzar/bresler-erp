@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -13,6 +13,7 @@ from apps.orders.models import Contract, Order
 
 class DashboardView(APIView):
     """GET /api/dashboard/ — aggregated data for dashboard widgets."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -23,12 +24,8 @@ class DashboardView(APIView):
         # Number cards
         total_orders = Order.objects.count()
         in_progress = Order.objects.filter(status__in=["D", "P", "C"]).count()
-        overdue = Order.objects.filter(
-            ship_date__lt=today, status__in=active_statuses, ship_date__isnull=False
-        ).count()
-        total_amount = Contract.objects.aggregate(
-            total=Sum("amount")
-        )["total"] or 0
+        overdue = Order.objects.filter(ship_date__lt=today, status__in=active_statuses, ship_date__isnull=False).count()
+        total_amount = Contract.objects.aggregate(total=Sum("amount"))["total"] or 0
 
         # Orders by status (pie chart)
         orders_by_status = [
@@ -37,18 +34,25 @@ class DashboardView(APIView):
                 "label": status_labels.get(row["status"], row["status"]),
                 "count": row["count"],
             }
-            for row in (
-                Order.objects.values("status")
-                .annotate(count=Count("id"))
-                .order_by("-count")
-            )
+            for row in (Order.objects.values("status").annotate(count=Count("id")).order_by("-count"))
         ]
 
         # Orders timeline — last 12 months (line chart)
         twelve_months_ago = today - timedelta(days=365)
         months_ru = [
-            "", "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
-            "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+            "",
+            "Янв",
+            "Фев",
+            "Мар",
+            "Апр",
+            "Май",
+            "Июн",
+            "Июл",
+            "Авг",
+            "Сен",
+            "Окт",
+            "Ноя",
+            "Дек",
         ]
         orders_timeline = [
             {
@@ -80,12 +84,14 @@ class DashboardView(APIView):
             )
         ]
 
-        return Response({
-            "total_orders": total_orders,
-            "in_progress": in_progress,
-            "overdue": overdue,
-            "total_contract_amount": float(total_amount),
-            "orders_by_status": orders_by_status,
-            "orders_timeline": orders_timeline,
-            "my_orders": my_orders,
-        })
+        return Response(
+            {
+                "total_orders": total_orders,
+                "in_progress": in_progress,
+                "overdue": overdue,
+                "total_contract_amount": float(total_amount),
+                "orders_by_status": orders_by_status,
+                "orders_timeline": orders_timeline,
+                "my_orders": my_orders,
+            }
+        )

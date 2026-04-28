@@ -9,7 +9,6 @@ import {
   FileText,
   BarChart3,
   Upload,
-  ArrowRight,
 } from "lucide-react"
 import {
   PieChart, Pie, Cell, LineChart, Line,
@@ -26,7 +25,6 @@ import {
 } from "@/components/ui/chart"
 import { useAuthStore } from "@/stores/useAuthStore"
 import apiClient from "@/api/client"
-import { ORDER_STATUSES } from "@/api/types"
 
 const STATUS_COLORS: Record<string, string> = {
   N: "oklch(0.646 0.222 41.116)",
@@ -165,7 +163,7 @@ export function DashboardPage() {
                     />
                     <Legend
                       verticalAlign="bottom"
-                      formatter={(value: string, entry: any) => {
+                      formatter={(value: string, entry: { payload?: Record<string, unknown> }) => {
                         const count = entry?.payload?.count ?? entry?.payload?.value ?? ""
                         return (
                           <span className="text-xs text-muted-foreground">

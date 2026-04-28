@@ -1,6 +1,14 @@
 from rest_framework import serializers
 
-from apps.orders.models import Contract, DocumentTemplate, Order, OrderFile, OrderOrgUnit, OrderParticipant, ShipmentBatch
+from apps.orders.models import (
+    Contract,
+    DocumentTemplate,
+    Order,
+    OrderFile,
+    OrderOrgUnit,
+    OrderParticipant,
+    ShipmentBatch,
+)
 
 
 class OrderOrgUnitSerializer(serializers.ModelSerializer):
@@ -56,10 +64,17 @@ class DocumentTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentTemplate
         fields = (
-            "id", "name", "document_type", "document_type_display",
-            "entity", "entity_display", "template_file",
-            "description", "is_active",
-            "created_at", "updated_at",
+            "id",
+            "name",
+            "document_type",
+            "document_type_display",
+            "entity",
+            "entity_display",
+            "template_file",
+            "description",
+            "is_active",
+            "created_at",
+            "updated_at",
         )
         read_only_fields = ("id", "created_at", "updated_at")
 
@@ -317,16 +332,10 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         )
 
     def get_manager_names(self, obj):
-        return [
-            {"id": u.id, "name": u.get_full_name() or u.username}
-            for u in obj.managers.all()
-        ]
+        return [{"id": u.id, "name": u.get_full_name() or u.username} for u in obj.managers.all()]
 
     def get_contact_names(self, obj):
-        return [
-            {"id": c.id, "name": c.full_name}
-            for c in obj.contacts.all()
-        ]
+        return [{"id": c.id, "name": c.full_name} for c in obj.contacts.all()]
 
     def get_equipment_names(self, obj):
         return [{"id": e.id, "name": e.name} for e in obj.equipments.all()]

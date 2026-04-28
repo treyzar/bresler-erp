@@ -5,57 +5,92 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('directory', '0003_facility_historicalfacility'),
-        ('orders', '0002_initial'),
+        ("directory", "0003_facility_historicalfacility"),
+        ("orders", "0002_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='order',
-            name='pqs',
+            model_name="order",
+            name="pqs",
         ),
         migrations.AlterField(
-            model_name='historicalorder',
-            name='designer',
-            field=models.ForeignKey(blank=True, db_constraint=False, null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='directory.orgunit', verbose_name='Проектировщик'),
+            model_name="historicalorder",
+            name="designer",
+            field=models.ForeignKey(
+                blank=True,
+                db_constraint=False,
+                null=True,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="directory.orgunit",
+                verbose_name="Проектировщик",
+            ),
         ),
         migrations.AlterField(
-            model_name='historicalorder',
-            name='intermediary',
-            field=models.ForeignKey(blank=True, db_constraint=False, null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='directory.orgunit', verbose_name='Посредник'),
+            model_name="historicalorder",
+            name="intermediary",
+            field=models.ForeignKey(
+                blank=True,
+                db_constraint=False,
+                null=True,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="directory.orgunit",
+                verbose_name="Посредник",
+            ),
         ),
         migrations.AlterField(
-            model_name='order',
-            name='designer',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='designer_orders', to='directory.orgunit', verbose_name='Проектировщик'),
+            model_name="order",
+            name="designer",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="designer_orders",
+                to="directory.orgunit",
+                verbose_name="Проектировщик",
+            ),
         ),
         migrations.AlterField(
-            model_name='order',
-            name='intermediary',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='intermediary_orders', to='directory.orgunit', verbose_name='Посредник'),
+            model_name="order",
+            name="intermediary",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="intermediary_orders",
+                to="directory.orgunit",
+                verbose_name="Посредник",
+            ),
         ),
         migrations.CreateModel(
-            name='OrderParticipant',
+            name="OrderParticipant",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('order_index', models.PositiveIntegerField(default=0, verbose_name='Порядок')),
-                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='orders.order')),
-                ('org_unit', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='directory.orgunit')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("order_index", models.PositiveIntegerField(default=0, verbose_name="Порядок")),
+                ("order", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="orders.order")),
+                ("org_unit", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="directory.orgunit")),
             ],
             options={
-                'verbose_name': 'Участник ЦЗ',
-                'verbose_name_plural': 'Участники ЦЗ',
-                'ordering': ['order_index'],
+                "verbose_name": "Участник ЦЗ",
+                "verbose_name_plural": "Участники ЦЗ",
+                "ordering": ["order_index"],
             },
         ),
         migrations.AddField(
-            model_name='order',
-            name='participants',
-            field=models.ManyToManyField(blank=True, related_name='participant_orders', through='orders.OrderParticipant', to='directory.orgunit', verbose_name='Участники ЦЗ'),
+            model_name="order",
+            name="participants",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="participant_orders",
+                through="orders.OrderParticipant",
+                to="directory.orgunit",
+                verbose_name="Участники ЦЗ",
+            ),
         ),
         migrations.DeleteModel(
-            name='OrderPQ',
+            name="OrderPQ",
         ),
     ]

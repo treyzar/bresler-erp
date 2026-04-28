@@ -96,13 +96,15 @@ class MyOrdersView(APIView):
 
     def _scope_queryset(self, user, scope: str):
         from apps.orders.models import Order
+
         manager_q = Q(managers=user)
         if scope == "manager":
             return Order.objects.filter(manager_q)
         # Find orders this user created via simple_history
         HistoricalOrder = Order.history.model  # type: ignore[attr-defined]
         created_pks = HistoricalOrder.objects.filter(
-            history_user=user, history_type="+",
+            history_user=user,
+            history_type="+",
         ).values_list("id", flat=True)
         creator_q = Q(pk__in=list(created_pks))
         if scope == "creator":
@@ -123,7 +125,9 @@ class MyOrdersView(APIView):
         page_size = int(request.query_params.get("page_size", 50))
 
         qs = self._scope_queryset(request.user, scope).select_related(
-            "customer_org_unit", "country", "contract",
+            "customer_org_unit",
+            "country",
+            "contract",
         )
 
         if group == "current":
@@ -142,18 +146,21 @@ class MyOrdersView(APIView):
         stats = all_my.aggregate(
             total=Count("id"),
             in_progress=Count("id", filter=Q(status__in=["D", "P", "C"])),
-            overdue=Count("id", filter=Q(
-                ship_date__lt=today,
-                ship_date__isnull=False,
-                status__in=["N", "D", "P", "C"],
-            )),
+            overdue=Count(
+                "id",
+                filter=Q(
+                    ship_date__lt=today,
+                    ship_date__isnull=False,
+                    status__in=["N", "D", "P", "C"],
+                ),
+            ),
             shipped=Count("id", filter=Q(status__in=["S", "A"])),
         )
 
         # Pagination
         total = qs.count()
         start = (page - 1) * page_size
-        orders = qs[start:start + page_size]
+        orders = qs[start : start + page_size]
 
         order_data = [
             {
@@ -164,19 +171,23 @@ class MyOrdersView(APIView):
                 "customer_name": o.customer_org_unit.name if o.customer_org_unit else None,
                 "ship_date": o.ship_date.isoformat() if o.ship_date else None,
                 "contract_number": getattr(getattr(o, "contract", None), "contract_number", None),
-                "contract_amount": str(o.contract.amount) if hasattr(o, "contract") and o.contract and o.contract.amount else None,
+                "contract_amount": str(o.contract.amount)
+                if hasattr(o, "contract") and o.contract and o.contract.amount
+                else None,
                 "payment_status": o.contract.get_status_display() if hasattr(o, "contract") and o.contract else None,
             }
             for o in orders
         ]
 
-        return Response({
-            "stats": stats,
-            "orders": order_data,
-            "count": total,
-            "page": page,
-            "page_size": page_size,
-        })
+        return Response(
+            {
+                "stats": stats,
+                "orders": order_data,
+                "count": total,
+                "page": page,
+                "page_size": page_size,
+            }
+        )
 
 
 class ActivityFeedView(APIView):
@@ -244,11 +255,16 @@ class MyOffersView(APIView):
     def get(self, request):
         from apps.specs.models import CommercialOffer
 
-        qs = CommercialOffer.objects.filter(
-            manager=request.user,
-        ).select_related(
-            "participant__org_unit", "order",
-        ).order_by("-date")[:100]
+        qs = (
+            CommercialOffer.objects.filter(
+                manager=request.user,
+            )
+            .select_related(
+                "participant__org_unit",
+                "order",
+            )
+            .order_by("-date")[:100]
+        )
 
         data = [
             {
@@ -277,7 +293,8 @@ class MyStatsView(APIView):
 
 def _get_manager_stats(user):
     """Compute stats for a given user (manager)."""
-    from django.db.models import Count, Q, Sum
+    from django.db.models import Count, Sum
+
     from apps.orders.models import Order
     from apps.specs.models import CommercialOffer
 
@@ -332,7 +349,10 @@ def _get_manager_stats(user):
         "my_share": my_share,
         "top_customers": [{"name": r["customer_org_unit__name"], "count": r["count"]} for r in top_customers],
         "top_equipment": [{"name": r["equipments__name"], "count": r["count"]} for r in top_equipment],
-        "by_year": [{"year": int(r["year"]) if r["year"] else None, "count": r["count"], "amount": float(r["amount"] or 0)} for r in by_year],
+        "by_year": [
+            {"year": int(r["year"]) if r["year"] else None, "count": r["count"], "amount": float(r["amount"] or 0)}
+            for r in by_year
+        ],
     }
 
 
@@ -373,7 +393,8 @@ class UserOrdersView(APIView):
         page_size = int(request.query_params.get("page_size", 50))
 
         qs = Order.objects.filter(managers=target_user).select_related(
-            "customer_org_unit", "contract",
+            "customer_org_unit",
+            "contract",
         )
         if group == "current":
             qs = qs.filter(status__in=["N", "D", "P", "C"])
@@ -383,26 +404,30 @@ class UserOrdersView(APIView):
         qs = qs.order_by("-created_at")
         total = qs.count()
         start = (page - 1) * page_size
-        orders = qs[start:start + page_size]
+        orders = qs[start : start + page_size]
 
-        return Response({
-            "user": {"id": target_user.pk, "full_name": target_user.get_full_name()},
-            "orders": [
-                {
-                    "id": o.pk,
-                    "order_number": o.order_number,
-                    "status": o.status,
-                    "status_display": o.get_status_display(),
-                    "customer_name": o.customer_org_unit.name if o.customer_org_unit else None,
-                    "ship_date": o.ship_date.isoformat() if o.ship_date else None,
-                    "contract_amount": str(o.contract.amount) if hasattr(o, "contract") and o.contract and o.contract.amount else None,
-                }
-                for o in orders
-            ],
-            "count": total,
-            "page": page,
-            "page_size": page_size,
-        })
+        return Response(
+            {
+                "user": {"id": target_user.pk, "full_name": target_user.get_full_name()},
+                "orders": [
+                    {
+                        "id": o.pk,
+                        "order_number": o.order_number,
+                        "status": o.status,
+                        "status_display": o.get_status_display(),
+                        "customer_name": o.customer_org_unit.name if o.customer_org_unit else None,
+                        "ship_date": o.ship_date.isoformat() if o.ship_date else None,
+                        "contract_amount": str(o.contract.amount)
+                        if hasattr(o, "contract") and o.contract and o.contract.amount
+                        else None,
+                    }
+                    for o in orders
+                ],
+                "count": total,
+                "page": page,
+                "page_size": page_size,
+            }
+        )
 
 
 class UserStatsView(APIView):
@@ -432,6 +457,7 @@ class TeamPerformanceView(APIView):
 
     def get(self, request):
         from django.db.models import Count, Q, Sum
+
         from apps.orders.models import Order
 
         user = request.user
@@ -488,28 +514,31 @@ class TeamPerformanceView(APIView):
                 shipped=Count("id", filter=Q(status__in=["S", "A"])),
                 total_amount=Sum("contract__amount", filter=Q(status__in=["S", "A"])),
             )
-            rows.append({
-                "id": mgr.pk,
-                "full_name": mgr.get_full_name() or mgr.username,
-                "department": mgr.department,
-                "total": agg["total"],
-                "current": agg["current"],
-                "shipped": agg["shipped"],
-                "total_amount": float(agg["total_amount"] or 0),
-            })
+            rows.append(
+                {
+                    "id": mgr.pk,
+                    "full_name": mgr.get_full_name() or mgr.username,
+                    "department": mgr.department,
+                    "total": agg["total"],
+                    "current": agg["current"],
+                    "shipped": agg["shipped"],
+                    "total_amount": float(agg["total_amount"] or 0),
+                }
+            )
 
         rows.sort(key=lambda r: -r["shipped"])
-        return Response({
-            "managers": rows,
-            "departments": departments,
-            "department_units": [
-                {"id": du["department_unit_id"], "name": du["department_unit__name"]}
-                for du in department_units
-            ],
-            "is_admin": is_admin,
-            "my_department": user.department,
-            "my_department_unit_id": user.department_unit_id,
-        })
+        return Response(
+            {
+                "managers": rows,
+                "departments": departments,
+                "department_units": [
+                    {"id": du["department_unit_id"], "name": du["department_unit__name"]} for du in department_units
+                ],
+                "is_admin": is_admin,
+                "my_department": user.department,
+                "my_department_unit_id": user.department_unit_id,
+            }
+        )
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -527,6 +556,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
         if params.get("same_group"):
             from apps.edo.registry.services.registry_service import get_department_user_ids
+
             qs = qs.filter(id__in=get_department_user_ids(me))
 
         # Только сотрудники моего поддерева подразделений (включая меня).
@@ -536,10 +566,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Только сотрудники моей компании (любой уровень дерева, включая меня).
         if params.get("in_my_company"):
-            if me.company_unit_id:
-                qs = qs.filter(company_unit_id=me.company_unit_id)
-            else:
-                qs = qs.none()
+            qs = qs.filter(company_unit_id=me.company_unit_id) if me.company_unit_id else qs.none()
 
         # Опциональный фильтр по флагу руководителя.
         if params.get("is_department_head") in ("true", "True", "1"):
@@ -553,15 +580,12 @@ def _subtree_user_ids(user) -> list[int]:
     Если department_unit нет — все из моей company_unit. Если и компании нет — только я."""
     if user.department_unit_id:
         from apps.directory.models import Department
+
         subtree = Department.get_tree(user.department_unit)
         dept_ids = list(subtree.values_list("pk", flat=True))
-        return list(
-            User.objects.filter(is_active=True, department_unit_id__in=dept_ids)
-            .values_list("pk", flat=True)
-        )
+        return list(User.objects.filter(is_active=True, department_unit_id__in=dept_ids).values_list("pk", flat=True))
     if user.company_unit_id:
         return list(
-            User.objects.filter(is_active=True, company_unit_id=user.company_unit_id)
-            .values_list("pk", flat=True)
+            User.objects.filter(is_active=True, company_unit_id=user.company_unit_id).values_list("pk", flat=True)
         )
     return [user.pk]

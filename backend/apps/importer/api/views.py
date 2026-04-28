@@ -55,9 +55,9 @@ class ImportSessionViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
         )
 
         # Parse file and extract columns
-        columns = parse_file(session)
+        parse_file(session)
         # Auto-map columns
-        mapping = auto_map_columns(session)
+        auto_map_columns(session)
 
         session.refresh_from_db()
         return Response(
@@ -119,9 +119,12 @@ class ImportSessionViewSet(ListModelMixin, RetrieveModelMixin, GenericViewSet):
             return Response({"status": "processing", "detail": "Import queued."})
 
         from apps.importer.services import apply_import
+
         result = apply_import(session)
         session.refresh_from_db()
-        return Response({
-            **result,
-            "session": ImportSessionSerializer(session).data,
-        })
+        return Response(
+            {
+                **result,
+                "session": ImportSessionSerializer(session).data,
+            }
+        )

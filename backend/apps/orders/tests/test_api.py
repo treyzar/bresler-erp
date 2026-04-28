@@ -38,10 +38,13 @@ class TestOrderAPI:
     def test_create_with_customer(self):
         org = OrgUnitFactory()
         url = reverse("orders:order-list")
-        response = self.client.post(url, {
-            "order_number": 101,
-            "customer_org_unit": org.pk,
-        })
+        response = self.client.post(
+            url,
+            {
+                "order_number": 101,
+                "customer_org_unit": org.pk,
+            },
+        )
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_retrieve(self):
@@ -59,7 +62,7 @@ class TestOrderAPI:
         response = self.client.patch(url, {"status": "P"})
         assert response.status_code == status.HTTP_200_OK
         order.refresh_from_db()
-        assert order.status == Order.Status.IN_PROGRESS
+        assert order.status == Order.Status.PRODUCTION
 
     def test_delete(self):
         order = OrderFactory()
@@ -91,7 +94,7 @@ class TestOrderAPI:
 
     def test_filter_by_status(self):
         OrderFactory(status=Order.Status.NEW)
-        OrderFactory(status=Order.Status.COMPLETED)
+        OrderFactory(status=Order.Status.ASSEMBLED)
         url = reverse("orders:order-list")
         response = self.client.get(url, {"status": "N"})
         assert response.status_code == status.HTTP_200_OK
@@ -153,9 +156,7 @@ class TestOrderListOrgUnitDecomposition:
     def test_customer_is_deep_division_node(self):
         # Газпром (company) → Газпром переработка Благовещенск (branch) → Амурский ГПЗ (division)
         company = OrgUnitFactory(name="Газпром", unit_type="company")
-        branch = OrgUnitFactory(
-            name="Газпром переработка Благовещенск", unit_type="branch", parent=company
-        )
+        branch = OrgUnitFactory(name="Газпром переработка Благовещенск", unit_type="branch", parent=company)
         division = OrgUnitFactory(name="Амурский ГПЗ", unit_type="division", parent=branch)
         order = OrderFactory(customer_org_unit=division)
 
@@ -280,10 +281,13 @@ class TestOrderContractAPI:
     def test_create_contract_via_patch(self):
         order = OrderFactory()
         url = reverse("orders:order-contract", args=[order.order_number])
-        response = self.client.patch(url, {
-            "contract_number": "K-NEW-001",
-            "status": "not_paid",
-        })
+        response = self.client.patch(
+            url,
+            {
+                "contract_number": "K-NEW-001",
+                "status": "not_paid",
+            },
+        )
         assert response.status_code == status.HTTP_200_OK
         assert response.data["contract_number"] == "K-NEW-001"
 

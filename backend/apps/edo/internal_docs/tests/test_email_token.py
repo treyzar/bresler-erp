@@ -10,7 +10,6 @@ from apps.core.naming import NumberSequence
 from apps.directory.models import Department, OrgUnit
 from apps.edo.internal_docs.models import (
     ApprovalChainTemplate,
-    ApprovalStep,
     Document,
     DocumentType,
 )
@@ -40,7 +39,9 @@ def author(org):
 @pytest.fixture
 def supervisor(org):
     return UserFactory(
-        last_name="Петров", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Петров",
+        company_unit=org["company"],
+        department_unit=org["dept"],
         is_department_head=True,
     )
 
@@ -53,10 +54,14 @@ def memo_type(db):
         steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"}],
     )
     return DocumentType.objects.create(
-        code="email_memo", name="Email memo", category="memo",
+        code="email_memo",
+        name="Email memo",
+        category="memo",
         field_schema=[{"name": "subject", "type": "text"}],
-        title_template="{{ subject }}", body_template="{{ subject }}",
-        default_chain=chain, numbering_sequence=seq,
+        title_template="{{ subject }}",
+        body_template="{{ subject }}",
+        default_chain=chain,
+        numbering_sequence=seq,
     )
 
 

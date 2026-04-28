@@ -169,18 +169,19 @@ class NotificationEntry(models.Model):
     @classmethod
     def check_recent(cls, key: str, uid: int, recipient_id: int, hours: int = 24) -> bool:
         """Return True if a notification with this key+uid was sent recently."""
-        from django.utils import timezone
         from datetime import timedelta
 
+        from django.utils import timezone
+
         cutoff = timezone.now() - timedelta(hours=hours)
-        return cls.objects.filter(
-            key=key, uid=uid, recipient_id=recipient_id, updated__gte=cutoff
-        ).exists()
+        return cls.objects.filter(key=key, uid=uid, recipient_id=recipient_id, updated__gte=cutoff).exists()
 
     @classmethod
     def notify(cls, key: str, uid: int, recipient_id: int) -> None:
         """Record that a notification was sent."""
         cls.objects.update_or_create(
-            key=key, uid=uid, recipient_id=recipient_id,
+            key=key,
+            uid=uid,
+            recipient_id=recipient_id,
             defaults={},
         )

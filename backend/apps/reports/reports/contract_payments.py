@@ -21,7 +21,9 @@ class ContractPaymentsReport(BaseReport):
         ColumnDef("count", "Контрактов", type="number"),
         ColumnDef("total_amount", "Общая сумма", type="currency"),
     ]
-    chart = ChartConfig(chart_type="bar", value_field="total_amount", label_field="status_label", title="Суммы по статусам оплаты")
+    chart = ChartConfig(
+        chart_type="bar", value_field="total_amount", label_field="status_label", title="Суммы по статусам оплаты"
+    )
 
     def get_data(self, filters: dict) -> list[dict]:
         qs = Contract.objects.all()
@@ -30,11 +32,7 @@ class ContractPaymentsReport(BaseReport):
         if filters.get("date_to"):
             qs = qs.filter(created_at__date__lte=filters["date_to"])
 
-        data = (
-            qs.values("status")
-            .annotate(count=Count("id"), total_amount=Sum("amount"))
-            .order_by("-total_amount")
-        )
+        data = qs.values("status").annotate(count=Count("id"), total_amount=Sum("amount")).order_by("-total_amount")
         return [
             {
                 "status": row["status"],

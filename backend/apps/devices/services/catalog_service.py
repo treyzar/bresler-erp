@@ -3,7 +3,6 @@
 from django.db.models import Q, QuerySet
 
 from apps.devices.models import (
-    CatalogPlacement,
     Product,
     ProductCategory,
 )
@@ -40,16 +39,16 @@ class CatalogService:
     def search_products(search: str) -> QuerySet[Product]:
         if not search:
             return Product.objects.none()
-        return Product.objects.filter(
-            Q(name__icontains=search)
-            | Q(internal_code__icontains=search)
-        ).filter(is_active=True).select_related("product_type")
+        return (
+            Product.objects.filter(Q(name__icontains=search) | Q(internal_code__icontains=search))
+            .filter(is_active=True)
+            .select_related("product_type")
+        )
 
     @staticmethod
     def search_categories(search: str) -> QuerySet[ProductCategory]:
         if not search:
             return ProductCategory.objects.none()
-        return ProductCategory.objects.filter(
-            Q(name__icontains=search)
-            | Q(short_name__icontains=search)
-        ).filter(is_active=True)
+        return ProductCategory.objects.filter(Q(name__icontains=search) | Q(short_name__icontains=search)).filter(
+            is_active=True
+        )

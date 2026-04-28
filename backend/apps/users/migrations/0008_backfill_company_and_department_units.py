@@ -18,8 +18,10 @@ def _find_company(OrgUnit, company_text: str):
     if not company_text:
         return None
     return OrgUnit.objects.filter(
-        business_role="internal", unit_type="company",
-        name__iexact=company_text, is_active=True,
+        business_role="internal",
+        unit_type="company",
+        name__iexact=company_text,
+        is_active=True,
     ).first()
 
 
@@ -77,8 +79,10 @@ def forwards(apps, schema_editor):
     if matched_full or matched_partial or missing:
         print()
         print("=" * 70)
-        print(f"User FK backfill: total={total}, matched_full={matched_full}, "
-              f"matched_partial={matched_partial}, missing={len(missing)}")
+        print(
+            f"User FK backfill: total={total}, matched_full={matched_full}, "
+            f"matched_partial={matched_partial}, missing={len(missing)}"
+        )
         for pk, comp, dept in missing:
             print(f"  user_id={pk}: company={comp!r}, department={dept!r}")
         if missing:
@@ -92,7 +96,6 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("users", "0007_user_company_unit_department_unit_supervisor"),
         ("directory", "0010_add_department_model"),

@@ -4,25 +4,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='ParsedDocument',
+            name="ParsedDocument",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('original_filename', models.CharField(max_length=255)),
-                ('file_type', models.CharField(max_length=10)),
-                ('file_size', models.IntegerField()),
-                ('page_count', models.IntegerField(blank=True, null=True)),
-                ('editor_json', models.JSONField(blank=True, default=dict)),
-                ('extracted_text', models.TextField(blank=True)),
-                ('original_file', models.FileField(upload_to='parsed_documents/')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("original_filename", models.CharField(max_length=255)),
+                ("file_type", models.CharField(max_length=10)),
+                ("file_size", models.IntegerField()),
+                ("page_count", models.IntegerField(blank=True, null=True)),
+                ("editor_json", models.JSONField(blank=True, default=dict)),
+                ("extracted_text", models.TextField(blank=True)),
+                ("original_file", models.FileField(upload_to="parsed_documents/")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
         ),
     ]

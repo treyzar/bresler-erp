@@ -48,12 +48,14 @@ def on_event(*event_names: str, async_task: bool = False):
 
     def decorator(func):
         for event_name in event_names:
-            _registry[event_name].append({
-                "handler": func,
-                "async_task": async_task,
-                "module": func.__module__,
-                "name": func.__qualname__,
-            })
+            _registry[event_name].append(
+                {
+                    "handler": func,
+                    "async_task": async_task,
+                    "module": func.__module__,
+                    "name": func.__qualname__,
+                }
+            )
             logger.debug(
                 "Registered handler %s.%s for event '%s'",
                 func.__module__,
@@ -198,10 +200,7 @@ class suppress_events:
 
 def get_registered_events() -> dict[str, list[str]]:
     """Return a dict of event_name -> list of handler names (for debugging)."""
-    return {
-        event_name: [f"{e['module']}.{e['name']}" for e in entries]
-        for event_name, entries in _registry.items()
-    }
+    return {event_name: [f"{e['module']}.{e['name']}" for e in entries] for event_name, entries in _registry.items()}
 
 
 def clear_registry() -> None:

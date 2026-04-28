@@ -9,13 +9,14 @@ Each report is a Python class with:
   - chart_config: optional chart configuration
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
 @dataclass
 class FilterDef:
     """Report filter definition."""
+
     name: str
     label: str
     type: str = "text"  # text, date, select, date_range
@@ -27,6 +28,7 @@ class FilterDef:
 @dataclass
 class ColumnDef:
     """Report column definition."""
+
     name: str
     label: str
     type: str = "text"  # text, number, currency, percent, badge, date
@@ -35,6 +37,7 @@ class ColumnDef:
 @dataclass
 class ChartConfig:
     """Chart configuration for report."""
+
     chart_type: str = "bar"  # bar, pie, line
     value_field: str = ""
     label_field: str = ""
@@ -72,14 +75,13 @@ class BaseReport:
                 }
                 for f in self.filters
             ],
-            "columns": [
-                {"name": c.name, "label": c.label, "type": c.type}
-                for c in self.columns
-            ],
+            "columns": [{"name": c.name, "label": c.label, "type": c.type} for c in self.columns],
             "chart": {
                 "chart_type": self.chart.chart_type,
                 "value_field": self.chart.value_field,
                 "label_field": self.chart.label_field,
                 "title": self.chart.title,
-            } if self.chart else None,
+            }
+            if self.chart
+            else None,
         }

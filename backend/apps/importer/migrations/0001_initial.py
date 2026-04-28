@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,27 +14,62 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='ImportSession',
+            name="ImportSession",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('file', models.FileField(upload_to='imports/%Y/%m/', verbose_name='Файл')),
-                ('original_filename', models.CharField(max_length=255, verbose_name='Имя файла')),
-                ('target_model', models.CharField(choices=[('orgunit', 'Организации'), ('contact', 'Контакты'), ('equipment', 'Оборудование'), ('typeofwork', 'Виды работ'), ('facility', 'Объекты')], max_length=30, verbose_name='Целевая модель')),
-                ('status', models.CharField(choices=[('upload', 'Загрузка'), ('mapping', 'Маппинг колонок'), ('validating', 'Валидация'), ('processing', 'Обработка'), ('complete', 'Завершён'), ('error', 'Ошибка')], default='upload', max_length=20, verbose_name='Статус')),
-                ('columns', models.JSONField(default=list, verbose_name='Колонки файла')),
-                ('column_mapping', models.JSONField(default=dict, verbose_name='Маппинг колонок')),
-                ('total_rows', models.PositiveIntegerField(default=0, verbose_name='Всего строк')),
-                ('success_count', models.PositiveIntegerField(default=0, verbose_name='Успешно')),
-                ('error_count', models.PositiveIntegerField(default=0, verbose_name='Ошибок')),
-                ('error_details', models.JSONField(default=list, verbose_name='Детали ошибок')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='import_sessions', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("file", models.FileField(upload_to="imports/%Y/%m/", verbose_name="Файл")),
+                ("original_filename", models.CharField(max_length=255, verbose_name="Имя файла")),
+                (
+                    "target_model",
+                    models.CharField(
+                        choices=[
+                            ("orgunit", "Организации"),
+                            ("contact", "Контакты"),
+                            ("equipment", "Оборудование"),
+                            ("typeofwork", "Виды работ"),
+                            ("facility", "Объекты"),
+                        ],
+                        max_length=30,
+                        verbose_name="Целевая модель",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("upload", "Загрузка"),
+                            ("mapping", "Маппинг колонок"),
+                            ("validating", "Валидация"),
+                            ("processing", "Обработка"),
+                            ("complete", "Завершён"),
+                            ("error", "Ошибка"),
+                        ],
+                        default="upload",
+                        max_length=20,
+                        verbose_name="Статус",
+                    ),
+                ),
+                ("columns", models.JSONField(default=list, verbose_name="Колонки файла")),
+                ("column_mapping", models.JSONField(default=dict, verbose_name="Маппинг колонок")),
+                ("total_rows", models.PositiveIntegerField(default=0, verbose_name="Всего строк")),
+                ("success_count", models.PositiveIntegerField(default=0, verbose_name="Успешно")),
+                ("error_count", models.PositiveIntegerField(default=0, verbose_name="Ошибок")),
+                ("error_details", models.JSONField(default=list, verbose_name="Детали ошибок")),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="import_sessions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Сессия импорта',
-                'verbose_name_plural': 'Сессии импорта',
-                'ordering': ['-created_at'],
+                "verbose_name": "Сессия импорта",
+                "verbose_name_plural": "Сессии импорта",
+                "ordering": ["-created_at"],
             },
         ),
     ]

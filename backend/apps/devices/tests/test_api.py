@@ -6,23 +6,18 @@ from apps.devices.models import (
     DeviceRZA,
     DeviceRZAComponent,
     DeviceRZAParameter,
-    ModRZA,
-    ModRZAParameter,
     Product,
     ProductCategory,
 )
 from apps.devices.tests.factories import (
-    ComponentTypeFactory,
     DeviceComponentFactory,
     DeviceRZAFactory,
     ModRZAFactory,
     ParameterFactory,
-    ParameterValueFactory,
     ProductCategoryFactory,
     ProductFactory,
     ProductTypeFactory,
     RZASpecFactory,
-    VoltageClassFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -178,6 +173,7 @@ class TestParameterAPI:
 
     def test_tree_endpoint(self, authenticated_client):
         from apps.devices.models import Parameter
+
         root = Parameter.add_root(name="Root", parameter_type="select")
         root.add_child(name="Child", parameter_type="select")
         url = reverse("parameter-tree")
@@ -188,6 +184,7 @@ class TestParameterAPI:
 
     def test_children_endpoint(self, authenticated_client):
         from apps.devices.models import Parameter
+
         root = Parameter.add_root(name="Root", parameter_type="select")
         root.add_child(name="C1", parameter_type="select")
         root.add_child(name="C2", parameter_type="select")
@@ -203,6 +200,7 @@ class TestParameterAPI:
 
     def test_add_child(self, authenticated_client):
         from apps.devices.models import Parameter
+
         root = Parameter.add_root(name="Root", parameter_type="select")
         url = reverse("parameter-add-child", args=[root.pk])
         response = authenticated_client.post(url, {"name": "Дочерний", "parameter_type": "select"})
@@ -277,6 +275,7 @@ class TestProductCategoryAPI:
         p1 = ProductFactory()
         p2 = ProductFactory()
         from apps.devices.models import CatalogPlacement
+
         CatalogPlacement.objects.create(product=p1, category=cat)
         CatalogPlacement.objects.create(product=p2, category=cat)
         url = reverse("product-category-products", args=[cat.pk])
@@ -327,8 +326,9 @@ class TestProductAPI:
     def test_filter_by_category(self, authenticated_client):
         cat = ProductCategoryFactory()
         p1 = ProductFactory()
-        p2 = ProductFactory()
+        ProductFactory()
         from apps.devices.models import CatalogPlacement
+
         CatalogPlacement.objects.create(product=p1, category=cat)
         url = reverse("product-list")
         response = authenticated_client.get(url, {"category": cat.pk})

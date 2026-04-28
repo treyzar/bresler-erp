@@ -1,23 +1,24 @@
 from django.core.management.base import BaseCommand
+
 from apps.edo.templates_app.models import Template
 
 
 class Command(BaseCommand):
-    help = 'Seed initial demo data'
+    help = "Seed initial demo data"
 
     def handle(self, *args, **options):
         if Template.objects.exists():
-            self.stdout.write(self.style.WARNING('Demo data already exists. Skipping.'))
+            self.stdout.write(self.style.WARNING("Demo data already exists. Skipping."))
             return
 
         Template.objects.create(
-            title='Коммерческое предложение',
-            description='Шаблон коммерческого предложения для клиентов',
-            template_type='HTML',
-            visibility='PUBLIC',
+            title="Коммерческое предложение",
+            description="Шаблон коммерческого предложения для клиентов",
+            template_type="HTML",
+            visibility="PUBLIC",
             owner_id=1,
             allowed_users=[],
-            html_content='''<!DOCTYPE html>
+            html_content="""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -44,18 +45,18 @@ class Command(BaseCommand):
         <p>С уважением,<br>{{company_name}}</p>
     </div>
 </body>
-</html>'''
+</html>""",
         )
 
         Template.objects.create(
-            title='Договор поставки',
-            description='Шаблон договора поставки с плейсхолдерами',
-            template_type='DOCX',
-            visibility='RESTRICTED',
+            title="Договор поставки",
+            description="Шаблон договора поставки с плейсхолдерами",
+            template_type="DOCX",
+            visibility="RESTRICTED",
             owner_id=1,
             allowed_users=[],
-            html_content='',
-            docx_file=None
+            html_content="",
+            docx_file=None,
         )
 
-        self.stdout.write(self.style.SUCCESS('Demo data created successfully!'))
+        self.stdout.write(self.style.SUCCESS("Demo data created successfully!"))

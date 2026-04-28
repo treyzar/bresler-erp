@@ -1,6 +1,7 @@
 /** Список типов документов (админка). Создание / редактирование / удаление. */
 import { Link } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
 import { ChevronLeft, Plus, Pencil, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -27,7 +28,8 @@ export function AdminTypesPage() {
       toast.success("Тип удалён")
       qc.invalidateQueries({ queryKey: ["edo-admin", "types"] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
 
   return (

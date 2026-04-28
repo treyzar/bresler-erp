@@ -88,7 +88,9 @@ export const useKeyboard = ({
             setElements(next);
             saveToHistory(next);
             setSelectedId(newEl.id);
-          } catch {}
+          } catch {
+            // Clipboard payload wasn't a serialised editor element — ignore.
+          }
         });
       }
 

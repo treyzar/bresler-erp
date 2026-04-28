@@ -9,7 +9,6 @@ from apps.core.workflow import (
     WorkflowConfig,
     WorkflowService,
 )
-from apps.orders.models import Order
 from apps.orders.tests.factories import ContractFactory, OrderFactory
 from apps.users.tests.factories import UserFactory
 
@@ -91,6 +90,7 @@ class TestWorkflowService:
 
     def test_condition_met(self):
         from datetime import date
+
         wf = make_workflow()
         order = OrderFactory(status="C", ship_date=date(2026, 4, 1))
         user = UserFactory()

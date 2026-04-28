@@ -17,9 +17,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import type { AxiosError } from "axios"
 import api from "@/api/client"
 import {
-  HelpPanel, HelpSection, HelpItem, HelpCallout,
+  HelpPanel, HelpSection, HelpItem,
 } from "@/components/shared/HelpPanel"
 import {
   FormInput, GitBranch, Bell as BellIcon, Ban, Code2,
@@ -140,13 +141,16 @@ export function AdminTypeEditPage() {
       qc.invalidateQueries({ queryKey: ["internal-docs"] })
       navigate(`/edo/admin/types/${saved.code}`)
     },
-    onError: (e: any) => {
-      const detail = e?.response?.data
-      const msg = typeof detail === "string"
-        ? detail
-        : detail?.detail
-          ? detail.detail
-          : Object.entries(detail ?? {}).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join("; ")
+    onError: (e: AxiosError<unknown>) => {
+      const detail = e.response?.data
+      const msg =
+        typeof detail === "string"
+          ? detail
+          : (detail as { detail?: string })?.detail
+            ? (detail as { detail: string }).detail
+            : Object.entries((detail as Record<string, unknown>) ?? {})
+                .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`)
+                .join("; ")
       toast.error(msg || "Ошибка сохранения")
     },
   })
@@ -206,7 +210,9 @@ export function AdminTypeEditPage() {
               <Label>Категория</Label>
               <Select
                 value={type.category}
-                onValueChange={(v) => setType((p) => ({ ...p, category: v as any }))}
+                onValueChange={(v) =>
+                  setType((p) => ({ ...p, category: v as AdminDocumentType["category"] }))
+                }
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -244,7 +250,9 @@ export function AdminTypeEditPage() {
               <Label>Видимость</Label>
               <Select
                 value={type.visibility}
-                onValueChange={(v) => setType((p) => ({ ...p, visibility: v as any }))}
+                onValueChange={(v) =>
+                  setType((p) => ({ ...p, visibility: v as AdminDocumentType["visibility"] }))
+                }
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>

@@ -5,16 +5,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('orders', '0014_shipment_batch'),
-        ('specs', '0004_calc_delivery_work_prices'),
+        ("orders", "0014_shipment_batch"),
+        ("specs", "0004_calc_delivery_work_prices"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='specificationline',
-            name='shipment_batch',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='specification_lines', to='orders.shipmentbatch', verbose_name='Партия отгрузки'),
+            model_name="specificationline",
+            name="shipment_batch",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="specification_lines",
+                to="orders.shipmentbatch",
+                verbose_name="Партия отгрузки",
+            ),
         ),
     ]

@@ -19,11 +19,17 @@ export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
   const currentUserId = user?.id;
 
-  const incomingState = location.state as any;
-  const letterId = incomingState?.letterId;
-  const prefillText = incomingState?.prefillText;
-  const letterNumber = incomingState?.letterNumber;
-  const letterData = incomingState?.letterData;
+  interface IncomingState {
+    letterId?: number
+    prefillText?: string
+    letterNumber?: string
+    letterData?: unknown
+  }
+  const incomingState = (location.state ?? {}) as IncomingState;
+  const letterId = incomingState.letterId;
+  const prefillText = incomingState.prefillText;
+  const letterNumber = incomingState.letterNumber;
+  const letterData = incomingState.letterData;
 
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [scope, setScope] = useState<Scope>('public');

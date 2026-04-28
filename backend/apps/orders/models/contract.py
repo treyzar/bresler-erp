@@ -102,9 +102,11 @@ class Contract(BaseModel):
         """Auto-generate contract number via NamingSeries if available."""
         try:
             from apps.core.naming import NamingService
+
             return NamingService.generate("contract")
         except (ValueError, Exception):
             # Fallback if sequence not configured
             from django.db.models import Max
+
             max_num = Contract.objects.aggregate(m=Max("id"))["m"] or 0
             return f"ДОГ-{max_num + 1}"

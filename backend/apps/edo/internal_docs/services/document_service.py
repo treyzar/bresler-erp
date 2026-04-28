@@ -58,15 +58,11 @@ def create_draft(
         ir = doc_type.initiator_resolver
         if ir == DocumentType.InitiatorResolver.DEPARTMENT_HEAD:
             if not author.is_department_head:
-                raise PermissionDenied(
-                    f"Тип {doc_type.code!r} может создавать только руководитель подразделения"
-                )
+                raise PermissionDenied(f"Тип {doc_type.code!r} может создавать только руководитель подразделения")
         elif ir.startswith("group:"):
             group_name = ir.split(":", 1)[1]
             if not author.groups.filter(name=group_name).exists():
-                raise PermissionDenied(
-                    f"Тип {doc_type.code!r} может создавать только член группы {group_name!r}"
-                )
+                raise PermissionDenied(f"Тип {doc_type.code!r} может создавать только член группы {group_name!r}")
 
     doc = Document.objects.create(
         type=doc_type,
@@ -86,9 +82,7 @@ def update_draft(document: Document, *, field_values=None, title=None, addressee
     Передача `addressee=None` явно очищает поле; по умолчанию (sentinel) — не трогает.
     """
     if document.status not in (Document.Status.DRAFT, Document.Status.REVISION_REQUESTED):
-        raise DocumentServiceError(
-            f"Cannot edit document in status {document.status!r}"
-        )
+        raise DocumentServiceError(f"Cannot edit document in status {document.status!r}")
     update_fields: list[str] = []
     if field_values is not None:
         document.field_values = field_values
@@ -167,12 +161,10 @@ def submit(document: Document, user) -> Document:
             field_values=document.field_values or {},
         )
     except ResolveError as e:
-        raise DocumentServiceError(f"Не удалось собрать цепочку согласования: {e}")
+        raise DocumentServiceError(f"Не удалось собрать цепочку согласования: {e}") from e
 
     if not resolved:
-        raise DocumentServiceError(
-            "Цепочка согласования пуста — документ некому отправить"
-        )
+        raise DocumentServiceError("Цепочка согласования пуста — документ некому отправить")
 
     # 2. Рендерим body_rendered и title.
     body_rendered = render_body(
@@ -258,9 +250,7 @@ def _get_step_batch(step: ApprovalStep) -> list[ApprovalStep]:
     """
     if not step.parallel_group:
         return [step]
-    return list(
-        step.document.steps.filter(parallel_group=step.parallel_group).order_by("order", "pk")
-    )
+    return list(step.document.steps.filter(parallel_group=step.parallel_group).order_by("order", "pk"))
 
 
 def _is_batch_complete(batch: list[ApprovalStep]) -> bool:
@@ -297,10 +287,8 @@ def _get_user_pending_step(document: Document, user) -> ApprovalStep:
     Только PENDING-шаги, поэтому WAITING (ещё не активные параллельные
     или последующие шаги) автоматически отфильтровываются.
     """
-    pending = (
-        document.steps
-        .filter(status=ApprovalStep.Status.PENDING, action__in=ACTIVE_ACTIONS)
-        .order_by("order", "pk")
+    pending = document.steps.filter(status=ApprovalStep.Status.PENDING, action__in=ACTIVE_ACTIONS).order_by(
+        "order", "pk"
     )
 
     direct = pending.filter(approver=user).first()
@@ -312,21 +300,20 @@ def _get_user_pending_step(document: Document, user) -> ApprovalStep:
         rk = s.role_key or ""
         if not rk.startswith("group:"):
             continue
-        group_name, _, scope = rk[len("group:"):].partition("@")
+        group_name, _, scope = rk[len("group:") :].partition("@")
         if group_name not in user_groups:
             continue
-        if scope == "company":
-            if not user.company_unit_id or document.author_company_unit_id != user.company_unit_id:
-                continue
+        if scope == "company" and (
+            not user.company_unit_id or document.author_company_unit_id != user.company_unit_id
+        ):
+            continue
         if s.approver_id != user.pk:
             s.original_approver = s.original_approver or s.approver
             s.approver = user
             s.save(update_fields=["approver", "original_approver", "updated_at"])
         return s
 
-    raise PermissionDenied(
-        f"У пользователя {user.pk} нет активных шагов согласования этого документа"
-    )
+    raise PermissionDenied(f"У пользователя {user.pk} нет активных шагов согласования этого документа")
 
 
 def _activate_next_batch(document: Document, *, after_order: int) -> None:
@@ -342,11 +329,7 @@ def _activate_next_batch(document: Document, *, after_order: int) -> None:
     Используется и при первичном submit (`after_order=-1`), и после успешного
     закрытия предыдущего batch'а.
     """
-    waiting = (
-        document.steps
-        .filter(status=ApprovalStep.Status.WAITING, order__gt=after_order)
-        .order_by("order", "pk")
-    )
+    waiting = document.steps.filter(status=ApprovalStep.Status.WAITING, order__gt=after_order).order_by("order", "pk")
 
     # 1. Находим первый active-WAITING шаг.
     next_active = waiting.filter(action__in=ACTIVE_ACTIONS).first()
@@ -370,9 +353,7 @@ def _activate_next_batch(document: Document, *, after_order: int) -> None:
     # 3. Активируем batch следующего active-шага.
     if next_active.parallel_group:
         batch = list(
-            waiting
-            .filter(parallel_group=next_active.parallel_group, action__in=ACTIVE_ACTIONS)
-            .order_by("order", "pk")
+            waiting.filter(parallel_group=next_active.parallel_group, action__in=ACTIVE_ACTIONS).order_by("order", "pk")
         )
     else:
         batch = [next_active]
@@ -434,10 +415,7 @@ def approve(
     batch = _get_step_batch(step)
 
     # OR-batch: первый approve пропускает остальных в batch'е.
-    if (
-        step.parallel_group
-        and step.parallel_mode == ApprovalStep.ParallelMode.OR
-    ):
+    if step.parallel_group and step.parallel_mode == ApprovalStep.ParallelMode.OR:
         for sib in batch:
             if sib.pk != step.pk and sib.status == ApprovalStep.Status.PENDING:
                 sib.status = ApprovalStep.Status.SKIPPED
@@ -476,10 +454,7 @@ def reject(document: Document, user, *, comment: str) -> ApprovalStep:
     step.comment = comment
     step.save()
 
-    is_or_batch = (
-        step.parallel_group
-        and step.parallel_mode == ApprovalStep.ParallelMode.OR
-    )
+    is_or_batch = step.parallel_group and step.parallel_mode == ApprovalStep.ParallelMode.OR
     batch = _get_step_batch(step)
 
     # OR-batch: reject не убивает документ, пока не все отклонили.
@@ -537,7 +512,10 @@ def delegate(step: ApprovalStep, from_user, to_user) -> ApprovalStep:
     step.save(update_fields=["approver", "original_approver", "updated_at"])
     trigger_event(
         "document.delegated",
-        instance=step.document, step=step, from_user=from_user, to_user=to_user,
+        instance=step.document,
+        step=step,
+        from_user=from_user,
+        to_user=to_user,
     )
     return step
 
@@ -582,9 +560,7 @@ def cancel(document: Document, user) -> Document:
 
     # Нельзя отозвать, если уже есть хоть одно approved.
     if document.steps.filter(status=ApprovalStep.Status.APPROVED).exists():
-        raise DocumentServiceError(
-            "Нельзя отменить документ после первого одобрения — запросите правки"
-        )
+        raise DocumentServiceError("Нельзя отменить документ после первого одобрения — запросите правки")
 
     document.status = Document.Status.CANCELLED
     document.closed_at = timezone.now()

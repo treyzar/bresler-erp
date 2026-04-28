@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
 import { Plus, FileText, Inbox, Send, FileClock, Archive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,8 +11,8 @@ import { useAuthStore } from "@/stores/useAuthStore"
 import { internalDocsApi } from "../api/client"
 import type { DocumentListItem, DocumentStatus, ListParams } from "../api/types"
 
-const NO_RETRY_ON_AUTH = (failureCount: number, error: any) => {
-  const status = error?.response?.status
+const NO_RETRY_ON_AUTH = (failureCount: number, error: Error) => {
+  const status = (error as AxiosError)?.response?.status
   if (status === 401 || status === 403 || status === 404) return false
   return failureCount < 2
 }

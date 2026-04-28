@@ -112,11 +112,15 @@ class User(AbstractUser):
         help_text="Кто принимает решения вместо меня в период отсутствия",
     )
     substitute_from = models.DateField(
-        "Замещение с", null=True, blank=True,
+        "Замещение с",
+        null=True,
+        blank=True,
         help_text="Дата начала отсутствия (включительно)",
     )
     substitute_until = models.DateField(
-        "Замещение до", null=True, blank=True,
+        "Замещение до",
+        null=True,
+        blank=True,
         help_text="Дата окончания отсутствия (включительно)",
     )
     my_customers = models.ManyToManyField(
@@ -141,9 +145,7 @@ class User(AbstractUser):
     @property
     def full_name_short(self) -> str:
         """«Васильев С. А.» — фамилия + инициалы через пробел."""
-        initials = " ".join(
-            f"{p[0]}." for p in (self.first_name, self.patronymic) if p
-        )
+        initials = " ".join(f"{p[0]}." for p in (self.first_name, self.patronymic) if p)
         last = self.last_name or ""
         if last and initials:
             return f"{last} {initials}"
@@ -174,20 +176,30 @@ class User(AbstractUser):
         if self.department_unit_id:
             node = self.department_unit
             while node is not None:
-                head = User.objects.filter(
-                    department_unit=node, is_department_head=True, is_active=True,
-                ).exclude(pk=self.pk).first()
+                head = (
+                    User.objects.filter(
+                        department_unit=node,
+                        is_department_head=True,
+                        is_active=True,
+                    )
+                    .exclude(pk=self.pk)
+                    .first()
+                )
                 if head is not None:
                     return head
                 node = node.get_parent()
 
         if self.company_unit_id:
-            head = User.objects.filter(
-                company_unit=self.company_unit_id,
-                department_unit__isnull=True,
-                is_department_head=True,
-                is_active=True,
-            ).exclude(pk=self.pk).first()
+            head = (
+                User.objects.filter(
+                    company_unit=self.company_unit_id,
+                    department_unit__isnull=True,
+                    is_department_head=True,
+                    is_active=True,
+                )
+                .exclude(pk=self.pk)
+                .first()
+            )
             if head is not None:
                 return head
 
@@ -204,6 +216,7 @@ class User(AbstractUser):
             return None
         if on_date is None:
             from django.utils import timezone
+
             on_date = timezone.localdate()
         if self.substitute_from and on_date < self.substitute_from:
             return None

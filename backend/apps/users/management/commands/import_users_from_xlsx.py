@@ -22,7 +22,6 @@ from pathlib import Path
 
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
 
 from apps.directory.models import Department, OrgUnit
 from apps.users.models import User
@@ -86,15 +85,22 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("xlsx", type=str, help="Путь к users_.xlsx (внутри контейнера)")
-        parser.add_argument("--company-id", type=int, default=None,
-                            help="OrgUnit pk для company_unit (по умолчанию — единственный internal)")
-        parser.add_argument("--dry-run", action="store_true",
-                            help="Только показать, что бы изменилось")
-        parser.add_argument("--force", action="store_true",
-                            help="Перезаписать уже проставленные FK")
-        parser.add_argument("--create-missing", action="store_true",
-                            help=("Создавать новых User для строк Excel, которых нет в БД "
-                                  f"(username=email, password={DEFAULT_PASSWORD!r}, is_active=True)"))
+        parser.add_argument(
+            "--company-id",
+            type=int,
+            default=None,
+            help="OrgUnit pk для company_unit (по умолчанию — единственный internal)",
+        )
+        parser.add_argument("--dry-run", action="store_true", help="Только показать, что бы изменилось")
+        parser.add_argument("--force", action="store_true", help="Перезаписать уже проставленные FK")
+        parser.add_argument(
+            "--create-missing",
+            action="store_true",
+            help=(
+                "Создавать новых User для строк Excel, которых нет в БД "
+                f"(username=email, password={DEFAULT_PASSWORD!r}, is_active=True)"
+            ),
+        )
 
     def handle(self, *args, **options):
         path = Path(options["xlsx"])
@@ -107,9 +113,7 @@ class Command(BaseCommand):
             if company is None:
                 raise CommandError(f"OrgUnit {options['company_id']} не найден")
         else:
-            companies = list(
-                OrgUnit.objects.filter(business_role="internal", unit_type="company")
-            )
+            companies = list(OrgUnit.objects.filter(business_role="internal", unit_type="company"))
             if len(companies) == 0:
                 raise CommandError("Нет ни одной internal-company OrgUnit. Создайте её в админке.")
             if len(companies) > 1:
@@ -124,8 +128,7 @@ class Command(BaseCommand):
 
         # Cache существующих Department по (company, name_lower).
         dept_cache: dict[str, Department] = {
-            d.name.lower(): d
-            for d in Department.objects.filter(company=company, is_active=True)
+            d.name.lower(): d for d in Department.objects.filter(company=company, is_active=True)
         }
 
         prefix = "[DRY-RUN] " if options["dry_run"] else ""
@@ -134,10 +137,7 @@ class Command(BaseCommand):
         dry_run = options["dry_run"]
 
         # Email-set уже существующих в БД пользователей.
-        db_emails: dict[str, User] = {
-            u.email.lower(): u
-            for u in User.objects.exclude(email="")
-        }
+        db_emails: dict[str, User] = {u.email.lower(): u for u in User.objects.exclude(email="")}
 
         matched_company_only = 0
         matched_full = 0
@@ -156,7 +156,9 @@ class Command(BaseCommand):
                     created_depts.append(dept_clean)
                 else:
                     dept = Department.add_root(
-                        name=dept_clean, unit_type="department", company=company,
+                        name=dept_clean,
+                        unit_type="department",
+                        company=company,
                     )
                     dept_cache[dept_clean.lower()] = dept
                     created_depts.append(dept_clean)
@@ -220,20 +222,14 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self.stdout.write("=" * 70)
-        self.stdout.write(self.style.SUCCESS(
-            f"{prefix}Сматчено существующих с подразделением: {matched_full}"
-        ))
-        self.stdout.write(self.style.SUCCESS(
-            f"{prefix}Сматчено существующих на уровне компании: {matched_company_only}"
-        ))
+        self.stdout.write(self.style.SUCCESS(f"{prefix}Сматчено существующих с подразделением: {matched_full}"))
+        self.stdout.write(
+            self.style.SUCCESS(f"{prefix}Сматчено существующих на уровне компании: {matched_company_only}")
+        )
         if create_missing:
-            self.stdout.write(self.style.SUCCESS(
-                f"{prefix}Создано новых User'ов: {created_users}"
-            ))
+            self.stdout.write(self.style.SUCCESS(f"{prefix}Создано новых User'ов: {created_users}"))
         if created_depts:
-            self.stdout.write(self.style.SUCCESS(
-                f"{prefix}Новых Department: {len(set(created_depts))}"
-            ))
+            self.stdout.write(self.style.SUCCESS(f"{prefix}Новых Department: {len(set(created_depts))}"))
             for d in sorted(set(created_depts)):
                 self.stdout.write(f"    - {d}")
         if skipped:

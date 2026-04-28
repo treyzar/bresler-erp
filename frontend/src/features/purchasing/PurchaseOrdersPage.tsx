@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { OrgUnitCombobox } from "@/components/shared/OrgUnitCombobox"
 import { purchasingApi } from "@/api/purchasingApi"
-import type { PurchaseOrderListItem, PurchaseOrderDetail, PurchasePaymentType } from "@/api/types"
+import type { PurchaseOrderListItem, PurchasePaymentType } from "@/api/types"
 import { PURCHASE_ORDER_STATUSES, PAYMENT_STATUSES } from "@/api/types"
 import { useDebounce } from "@/hooks/useDebounce"
 

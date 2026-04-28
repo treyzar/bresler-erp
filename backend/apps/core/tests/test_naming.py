@@ -1,8 +1,8 @@
 """Tests for NamingSeries."""
 
-import pytest
 from datetime import date
-from unittest.mock import patch
+
+import pytest
 
 from apps.core.naming import NamingService, NumberSequence, _format_number
 
@@ -11,16 +11,22 @@ from apps.core.naming import NamingService, NumberSequence, _format_number
 class TestNumberSequence:
     def test_generate_basic(self):
         NumberSequence.objects.create(
-            name="test", prefix="TST", pattern="{prefix}-{####}",
-            current_value=0, reset_period="never",
+            name="test",
+            prefix="TST",
+            pattern="{prefix}-{####}",
+            current_value=0,
+            reset_period="never",
         )
         result = NamingService.generate("test")
         assert result == "TST-0001"
 
     def test_generate_increments(self):
         NumberSequence.objects.create(
-            name="test", prefix="TST", pattern="{prefix}-{####}",
-            current_value=0, reset_period="never",
+            name="test",
+            prefix="TST",
+            pattern="{prefix}-{####}",
+            current_value=0,
+            reset_period="never",
         )
         assert NamingService.generate("test") == "TST-0001"
         assert NamingService.generate("test") == "TST-0002"
@@ -28,8 +34,11 @@ class TestNumberSequence:
 
     def test_generate_with_year(self):
         NumberSequence.objects.create(
-            name="test", prefix="ORD", pattern="{prefix}-{YYYY}-{####}",
-            current_value=0, reset_period="never",
+            name="test",
+            prefix="ORD",
+            pattern="{prefix}-{YYYY}-{####}",
+            current_value=0,
+            reset_period="never",
         )
         result = NamingService.generate("test")
         year = date.today().year
@@ -37,8 +46,11 @@ class TestNumberSequence:
 
     def test_generate_with_short_year(self):
         NumberSequence.objects.create(
-            name="test", prefix="ORD", pattern="{prefix}-{YY}-{######}",
-            current_value=0, reset_period="never",
+            name="test",
+            prefix="ORD",
+            pattern="{prefix}-{YY}-{######}",
+            current_value=0,
+            reset_period="never",
         )
         result = NamingService.generate("test")
         yy = str(date.today().year)[-2:]
@@ -46,8 +58,11 @@ class TestNumberSequence:
 
     def test_generate_with_month(self):
         NumberSequence.objects.create(
-            name="test", prefix="INV", pattern="{prefix}-{YYYY}{MM}-{####}",
-            current_value=0, reset_period="never",
+            name="test",
+            prefix="INV",
+            pattern="{prefix}-{YYYY}{MM}-{####}",
+            current_value=0,
+            reset_period="never",
         )
         result = NamingService.generate("test")
         today = date.today()
@@ -55,8 +70,12 @@ class TestNumberSequence:
 
     def test_yearly_reset(self):
         NumberSequence.objects.create(
-            name="test", prefix="TST", pattern="{prefix}-{YYYY}-{####}",
-            current_value=42, reset_period="yearly", last_reset_year=2025,
+            name="test",
+            prefix="TST",
+            pattern="{prefix}-{YYYY}-{####}",
+            current_value=42,
+            reset_period="yearly",
+            last_reset_year=2025,
         )
         # Current year > 2025, so counter should reset
         result = NamingService.generate("test")
@@ -66,16 +85,24 @@ class TestNumberSequence:
     def test_no_reset_same_year(self):
         year = date.today().year
         NumberSequence.objects.create(
-            name="test", prefix="TST", pattern="{prefix}-{####}",
-            current_value=42, reset_period="yearly", last_reset_year=year,
+            name="test",
+            prefix="TST",
+            pattern="{prefix}-{####}",
+            current_value=42,
+            reset_period="yearly",
+            last_reset_year=year,
         )
         result = NamingService.generate("test")
         assert result == "TST-0043"
 
     def test_never_reset(self):
         NumberSequence.objects.create(
-            name="test", prefix="TST", pattern="{prefix}-{####}",
-            current_value=42, reset_period="never", last_reset_year=2020,
+            name="test",
+            prefix="TST",
+            pattern="{prefix}-{####}",
+            current_value=42,
+            reset_period="never",
+            last_reset_year=2020,
         )
         result = NamingService.generate("test")
         assert result == "TST-0043"
@@ -93,8 +120,11 @@ class TestNumberSequence:
 
     def test_preview(self):
         NumberSequence.objects.create(
-            name="test", prefix="ORD", pattern="{prefix}-{####}",
-            current_value=10, reset_period="never",
+            name="test",
+            prefix="ORD",
+            pattern="{prefix}-{####}",
+            current_value=10,
+            reset_period="never",
         )
         assert NamingService.preview("test") == "ORD-0011"
 

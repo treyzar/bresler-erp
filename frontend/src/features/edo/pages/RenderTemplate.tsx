@@ -107,7 +107,7 @@ export default function RenderTemplate() {
         try {
           const errorData = JSON.parse(text);
           throw new Error(errorData.error || "Download failed");
-        } catch (parseErr) {
+        } catch (_parseErr) {
           throw new Error("Download failed");
         }
       }
@@ -150,7 +150,7 @@ export default function RenderTemplate() {
         try {
           const errorData = JSON.parse(text);
           throw new Error(errorData.error || "Render failed");
-        } catch (parseErr) {
+        } catch (_parseErr) {
           throw new Error("Render failed");
         }
       }

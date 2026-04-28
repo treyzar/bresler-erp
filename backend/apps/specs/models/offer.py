@@ -88,59 +88,87 @@ class CommercialOffer(BaseModel):
 
     # Identification
     offer_number = models.CharField(
-        "Номер КП", max_length=50, unique=True, blank=True,
+        "Номер КП",
+        max_length=50,
+        unique=True,
+        blank=True,
     )
     version = models.PositiveIntegerField("Версия", default=1)
     status = models.CharField(
-        "Статус", max_length=20,
-        choices=Status.choices, default=Status.DRAFT,
+        "Статус",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
     )
 
     # Dates
     date = models.DateField("Дата КП")
     valid_days = models.PositiveIntegerField("Срок действия (дней)", default=30)
     valid_until = models.DateField(
-        "Действует до", blank=True, null=True,
+        "Действует до",
+        blank=True,
+        null=True,
         help_text="Вычисляется автоматически: дата + срок действия",
     )
 
     # Financial terms
     vat_rate = models.DecimalField(
-        "Ставка НДС, %", max_digits=5, decimal_places=2, default=Decimal("20.00"),
+        "Ставка НДС, %",
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("20.00"),
     )
     payment_terms = models.CharField(
-        "Условия оплаты", max_length=20,
-        choices=PaymentTerms.choices, default=PaymentTerms.FIFTY_FIFTY,
+        "Условия оплаты",
+        max_length=20,
+        choices=PaymentTerms.choices,
+        default=PaymentTerms.FIFTY_FIFTY,
     )
     advance_percent = models.DecimalField(
-        "Аванс, %", max_digits=5, decimal_places=2, default=Decimal("50.00"),
+        "Аванс, %",
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("50.00"),
     )
     pre_shipment_percent = models.DecimalField(
-        "Перед отгрузкой, %", max_digits=5, decimal_places=2, default=Decimal("50.00"),
+        "Перед отгрузкой, %",
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("50.00"),
     )
     post_payment_percent = models.DecimalField(
-        "Постоплата, %", max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        "Постоплата, %",
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
 
     # Production & delivery
     manufacturing_period = models.CharField(
-        "Срок изготовления", max_length=20, default="60-90",
+        "Срок изготовления",
+        max_length=20,
+        default="60-90",
     )
     warranty_months = models.PositiveIntegerField(
-        "Гарантия (мес.)", default=60,
+        "Гарантия (мес.)",
+        default=60,
     )
     delivery_included = models.BooleanField("Доставка включена", default=False)
     delivery_city = models.CharField(
-        "Город доставки", max_length=255, blank=True,
+        "Город доставки",
+        max_length=255,
+        blank=True,
     )
     additional_conditions = models.TextField(
-        "Дополнительные условия", blank=True,
+        "Дополнительные условия",
+        blank=True,
         help_text="МЭК, соответствие ТЗ и прочее. Если пусто — не выводится в КП.",
     )
 
     # Template
     is_template = models.BooleanField(
-        "Типовое КП", default=False,
+        "Типовое КП",
+        default=False,
         help_text="Сохранить как типовое для участника запроса",
     )
 
@@ -163,6 +191,7 @@ class CommercialOffer(BaseModel):
         # Auto-calculate valid_until
         if self.date and self.valid_days:
             from datetime import timedelta
+
             self.valid_until = self.date + timedelta(days=self.valid_days)
         # Auto-fill percents from payment template
         percents = self.PAYMENT_TEMPLATE_PERCENTS.get(self.payment_terms)
@@ -174,14 +203,8 @@ class CommercialOffer(BaseModel):
     def shipment_condition_text(self) -> str:
         """Автоформирование текста условий отгрузки."""
         if self.post_payment_percent > 0:
-            return (
-                "Срок отгрузки — в течение 10 рабочих дней "
-                "после уведомления о готовности оборудования к отгрузке."
-            )
-        return (
-            "Срок отгрузки — в течение 10 рабочих дней "
-            "после полной оплаты оборудования."
-        )
+            return "Срок отгрузки — в течение 10 рабочих дней после уведомления о готовности оборудования к отгрузке."
+        return "Срок отгрузки — в течение 10 рабочих дней после полной оплаты оборудования."
 
 
 class OfferWorkItem(models.Model):
@@ -204,10 +227,14 @@ class OfferWorkItem(models.Model):
     specialists = models.PositiveIntegerField("Кол-во специалистов", default=1)
     trips = models.PositiveIntegerField("Кол-во выездов", default=1)
     unit_price = models.DecimalField(
-        "Цена за единицу", max_digits=14, decimal_places=2, default=0,
+        "Цена за единицу",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
     pricing_mode = models.CharField(
-        "Режим цены", max_length=20,
+        "Режим цены",
+        max_length=20,
         choices=[("separate", "Отдельная строка"), ("included", "Включено в стоимость")],
         default="separate",
     )

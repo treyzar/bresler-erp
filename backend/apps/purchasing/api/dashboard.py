@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import Avg, Count, F, Max, Min, Q, Sum, Subquery, OuterRef
+from django.db.models import Avg, Count, Max, Min, Sum
 from django.db.models.functions import ExtractYear
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -35,8 +35,7 @@ class PurchasingDashboardView(APIView):
 
         # Top suppliers by total amount
         top_suppliers = list(
-            PurchaseOrderLine.objects
-            .filter(purchase_order__in=po_qs)
+            PurchaseOrderLine.objects.filter(purchase_order__in=po_qs)
             .values("purchase_order__supplier__name")
             .annotate(
                 total=Sum("total_price"),
@@ -53,8 +52,7 @@ class PurchasingDashboardView(APIView):
 
         # Average prices per product (top 20 most purchased)
         avg_prices = list(
-            PurchaseOrderLine.objects
-            .filter(purchase_order__in=po_qs, product__isnull=False)
+            PurchaseOrderLine.objects.filter(purchase_order__in=po_qs, product__isnull=False)
             .values("product__name", "product__internal_code")
             .annotate(
                 avg_price=Avg("unit_price"),
@@ -69,8 +67,7 @@ class PurchasingDashboardView(APIView):
 
         # Purchases by month (for chart)
         by_month = list(
-            po_qs
-            .filter(order_date__isnull=False)
+            po_qs.filter(order_date__isnull=False)
             .extra(select={"month": "TO_CHAR(order_date, 'YYYY-MM')"})
             .values("month")
             .annotate(
@@ -85,53 +82,54 @@ class PurchasingDashboardView(APIView):
 
         # Available years
         years = list(
-            PurchaseOrder.objects
-            .filter(order_date__isnull=False)
+            PurchaseOrder.objects.filter(order_date__isnull=False)
             .annotate(year=ExtractYear("order_date"))
             .values_list("year", flat=True)
             .distinct()
             .order_by("-year")
         )
 
-        return Response({
-            "summary": {
-                "total_orders": total_orders,
-                "total_amount": str(total_amount),
-                "delivered": delivered,
-                "pending_payments": pending_payments,
-                "pending_amount": str(pending_amount),
-            },
-            "top_suppliers": [
-                {
-                    "name": s["purchase_order__supplier__name"],
-                    "total": str(s["total"]),
-                    "orders_count": s["orders_count"],
-                }
-                for s in top_suppliers
-            ],
-            "supplier_share": supplier_share,
-            "avg_prices": [
-                {
-                    "name": p["product__name"],
-                    "code": p["product__internal_code"],
-                    "avg_price": str(round(p["avg_price"], 2)),
-                    "total_qty": p["total_qty"],
-                    "orders_count": p["orders_count"],
-                }
-                for p in avg_prices
-            ],
-            "price_comparison": price_comparison,
-            "by_month": [
-                {
-                    "month": m["month"],
-                    "count": m["count"],
-                    "amount": str(m["amount"] or 0),
-                }
-                for m in by_month
-            ],
-            "forecast": forecast,
-            "years": years,
-        })
+        return Response(
+            {
+                "summary": {
+                    "total_orders": total_orders,
+                    "total_amount": str(total_amount),
+                    "delivered": delivered,
+                    "pending_payments": pending_payments,
+                    "pending_amount": str(pending_amount),
+                },
+                "top_suppliers": [
+                    {
+                        "name": s["purchase_order__supplier__name"],
+                        "total": str(s["total"]),
+                        "orders_count": s["orders_count"],
+                    }
+                    for s in top_suppliers
+                ],
+                "supplier_share": supplier_share,
+                "avg_prices": [
+                    {
+                        "name": p["product__name"],
+                        "code": p["product__internal_code"],
+                        "avg_price": str(round(p["avg_price"], 2)),
+                        "total_qty": p["total_qty"],
+                        "orders_count": p["orders_count"],
+                    }
+                    for p in avg_prices
+                ],
+                "price_comparison": price_comparison,
+                "by_month": [
+                    {
+                        "month": m["month"],
+                        "count": m["count"],
+                        "amount": str(m["amount"] or 0),
+                    }
+                    for m in by_month
+                ],
+                "forecast": forecast,
+                "years": years,
+            }
+        )
 
     def _get_price_comparison(self, po_qs):
         """Compare purchase prices vs KP (specification) prices for same products."""
@@ -139,8 +137,7 @@ class PurchasingDashboardView(APIView):
 
         # Get products that exist both in purchases and specifications
         purchased_products = (
-            PurchaseOrderLine.objects
-            .filter(purchase_order__in=po_qs, product__isnull=False)
+            PurchaseOrderLine.objects.filter(purchase_order__in=po_qs, product__isnull=False)
             .values("product_id", "product__name", "product__internal_code")
             .annotate(
                 purchase_avg=Avg("unit_price"),
@@ -153,33 +150,32 @@ class PurchasingDashboardView(APIView):
         result = []
         for p in purchased_products[:30]:
             # KP prices for the same product
-            kp_data = (
-                SpecificationLine.objects
-                .filter(product_id=p["product_id"])
-                .aggregate(
-                    kp_avg=Avg("unit_price"),
-                    kp_min=Min("unit_price"),
-                    kp_max=Max("unit_price"),
-                    kp_count=Count("id"),
-                )
+            kp_data = SpecificationLine.objects.filter(product_id=p["product_id"]).aggregate(
+                kp_avg=Avg("unit_price"),
+                kp_min=Min("unit_price"),
+                kp_max=Max("unit_price"),
+                kp_count=Count("id"),
             )
             if kp_data["kp_count"] and kp_data["kp_count"] > 0:
                 margin = None
                 if p["purchase_avg"] and kp_data["kp_avg"] and p["purchase_avg"] > 0:
                     margin = round(
-                        float((kp_data["kp_avg"] - p["purchase_avg"]) / p["purchase_avg"] * 100), 1,
+                        float((kp_data["kp_avg"] - p["purchase_avg"]) / p["purchase_avg"] * 100),
+                        1,
                     )
-                result.append({
-                    "name": p["product__name"],
-                    "code": p["product__internal_code"],
-                    "purchase_avg": str(round(p["purchase_avg"], 2)),
-                    "purchase_min": str(round(p["purchase_min"], 2)),
-                    "purchase_max": str(round(p["purchase_max"], 2)),
-                    "kp_avg": str(round(kp_data["kp_avg"], 2)),
-                    "kp_min": str(round(kp_data["kp_min"], 2)),
-                    "kp_max": str(round(kp_data["kp_max"], 2)),
-                    "margin_percent": margin,
-                })
+                result.append(
+                    {
+                        "name": p["product__name"],
+                        "code": p["product__internal_code"],
+                        "purchase_avg": str(round(p["purchase_avg"], 2)),
+                        "purchase_min": str(round(p["purchase_min"], 2)),
+                        "purchase_max": str(round(p["purchase_max"], 2)),
+                        "kp_avg": str(round(kp_data["kp_avg"], 2)),
+                        "kp_min": str(round(kp_data["kp_min"], 2)),
+                        "kp_max": str(round(kp_data["kp_max"], 2)),
+                        "margin_percent": margin,
+                    }
+                )
         return sorted(result, key=lambda x: x["margin_percent"] or 0, reverse=True)
 
     def _get_forecast(self):
@@ -189,8 +185,7 @@ class PurchasingDashboardView(APIView):
         current_year = timezone.now().year
 
         by_year = list(
-            PurchaseOrder.objects
-            .filter(order_date__isnull=False)
+            PurchaseOrder.objects.filter(order_date__isnull=False)
             .annotate(year=ExtractYear("order_date"))
             .values("year")
             .annotate(
@@ -228,21 +223,25 @@ class PurchasingDashboardView(APIView):
                 projected = max(0, intercept + slope * n)
 
                 if not current_data:
-                    yearly.append({
-                        "year": current_year,
-                        "count": 0,
-                        "amount": str(round(projected, 2)),
-                        "is_forecast": True,
-                    })
+                    yearly.append(
+                        {
+                            "year": current_year,
+                            "count": 0,
+                            "amount": str(round(projected, 2)),
+                            "is_forecast": True,
+                        }
+                    )
                 else:
                     # Add projected as separate entry
-                    yearly.append({
-                        "year": current_year,
-                        "count": 0,
-                        "amount": str(round(projected, 2)),
-                        "is_forecast": True,
-                        "label": "Прогноз",
-                    })
+                    yearly.append(
+                        {
+                            "year": current_year,
+                            "count": 0,
+                            "amount": str(round(projected, 2)),
+                            "is_forecast": True,
+                            "label": "Прогноз",
+                        }
+                    )
 
         return yearly
 
@@ -262,13 +261,15 @@ class BOMCostView(APIView):
 
         bom_lines = ProductBOMLine.objects.filter(parent=product).select_related("child")
         if not bom_lines.exists():
-            return Response({
-                "product": {"id": product.id, "name": product.name, "code": product.internal_code},
-                "bom_lines": [],
-                "total_cost": "0.00",
-                "base_price": str(product.base_price),
-                "margin_percent": None,
-            })
+            return Response(
+                {
+                    "product": {"id": product.id, "name": product.name, "code": product.internal_code},
+                    "bom_lines": [],
+                    "total_cost": "0.00",
+                    "base_price": str(product.base_price),
+                    "margin_percent": None,
+                }
+            )
 
         lines = []
         total_cost = Decimal("0.00")
@@ -277,44 +278,47 @@ class BOMCostView(APIView):
             child = bom.child
             # Latest purchase price for this component
             latest_purchase = (
-                PurchaseOrderLine.objects
-                .filter(product=child, purchase_order__status__in=["ordered", "delivered"])
+                PurchaseOrderLine.objects.filter(product=child, purchase_order__status__in=["ordered", "delivered"])
                 .order_by("-purchase_order__order_date")
                 .values_list("unit_price", flat=True)
                 .first()
             )
             # Average purchase price
             avg_purchase = (
-                PurchaseOrderLine.objects
-                .filter(product=child, purchase_order__status__in=["ordered", "delivered"])
-                .aggregate(avg=Avg("unit_price"))
+                PurchaseOrderLine.objects.filter(
+                    product=child, purchase_order__status__in=["ordered", "delivered"]
+                ).aggregate(avg=Avg("unit_price"))
             )["avg"]
 
             unit_cost = latest_purchase or child.base_price or Decimal("0.00")
             line_cost = unit_cost * bom.quantity
 
-            lines.append({
-                "component_id": child.id,
-                "component_name": child.name,
-                "component_code": child.internal_code,
-                "role": bom.role,
-                "quantity": bom.quantity,
-                "base_price": str(child.base_price or "0.00"),
-                "latest_purchase_price": str(latest_purchase) if latest_purchase else None,
-                "avg_purchase_price": str(round(avg_purchase, 2)) if avg_purchase else None,
-                "unit_cost": str(unit_cost),
-                "line_cost": str(line_cost),
-            })
+            lines.append(
+                {
+                    "component_id": child.id,
+                    "component_name": child.name,
+                    "component_code": child.internal_code,
+                    "role": bom.role,
+                    "quantity": bom.quantity,
+                    "base_price": str(child.base_price or "0.00"),
+                    "latest_purchase_price": str(latest_purchase) if latest_purchase else None,
+                    "avg_purchase_price": str(round(avg_purchase, 2)) if avg_purchase else None,
+                    "unit_cost": str(unit_cost),
+                    "line_cost": str(line_cost),
+                }
+            )
             total_cost += line_cost
 
         margin = None
         if product.base_price and total_cost > 0:
             margin = round(float((product.base_price - total_cost) / total_cost * 100), 1)
 
-        return Response({
-            "product": {"id": product.id, "name": product.name, "code": product.internal_code},
-            "bom_lines": lines,
-            "total_cost": str(total_cost.quantize(Decimal("0.01"))),
-            "base_price": str(product.base_price or "0.00"),
-            "margin_percent": margin,
-        })
+        return Response(
+            {
+                "product": {"id": product.id, "name": product.name, "code": product.internal_code},
+                "bom_lines": lines,
+                "total_cost": str(total_cost.quantize(Decimal("0.01"))),
+                "base_price": str(product.base_price or "0.00"),
+                "margin_percent": margin,
+            }
+        )

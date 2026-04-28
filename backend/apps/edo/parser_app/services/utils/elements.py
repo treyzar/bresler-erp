@@ -1,26 +1,32 @@
 # project/app/utils/elements.py
-import uuid
 import base64
+import uuid
+
 
 def generate_id():
     return f"el_{uuid.uuid4().hex[:8]}"
+
 
 def is_likely_signature(width: int, height: int) -> bool:
     """
     Эвристика: проверяет, похожа ли картинка на подпись.
     Подписи обычно вытянуты по горизонтали (ratio > 1.2) и не слишком высокие.
     """
-    if height == 0: return False
+    if height == 0:
+        return False
     ratio = width / height
-    
+
     # 1. Пропорции: ширина больше высоты
     # 2. Размеры: не слишком мелкая (иконка) и не слишком огромная (фон)
     is_wide = 1.2 < ratio < 6.0
     is_reasonable_size = 40 < width < 600 and 20 < height < 300
-    
+
     return is_wide and is_reasonable_size
 
-def make_text_element(x, y, width, height, content, font="Inter", size=14, bold=False, italic=False, color="#000000", align="left"):
+
+def make_text_element(
+    x, y, width, height, content, font="Inter", size=14, bold=False, italic=False, color="#000000", align="left"
+):
     return {
         "id": generate_id(),
         "type": "text",
@@ -44,8 +50,9 @@ def make_text_element(x, y, width, height, content, font="Inter", size=14, bold=
             "whiteSpace": "pre-wrap",
             "wordBreak": "break-word",
             "paragraphSpacing": 8,
-        }
+        },
     }
+
 
 def _normalize_table_data(data):
     if not data:
@@ -54,10 +61,7 @@ def _normalize_table_data(data):
     normalized = []
     max_cols = 0
     for row in data:
-        if row is None:
-            normalized_row = []
-        else:
-            normalized_row = ["" if cell is None else str(cell) for cell in row]
+        normalized_row = [] if row is None else ["" if cell is None else str(cell) for cell in row]
         max_cols = max(max_cols, len(normalized_row))
         normalized.append(normalized_row)
 
@@ -94,17 +98,14 @@ def _build_table_cells(final_data, final_colors):
 def make_table_element(x, y, width, height, table=None, rows=2, cols=2, data=None, cell_text_colors=None):
     final_data = []
     final_colors = []
-    
+
     # Если переданы сырые данные (из PDF/HTML)
     if data:
         final_data = _normalize_table_data(data)
         rows = len(final_data)
         cols = len(final_data[0]) if final_data else 0
         # Инициализируем цвета, если не переданы
-        if cell_text_colors:
-            final_colors = cell_text_colors
-        else:
-            final_colors = [["#000000" for _ in range(cols)] for _ in range(rows)]
+        final_colors = cell_text_colors or [["#000000" for _ in range(cols)] for _ in range(rows)]
     # Если передан объект docx table
     elif table:
         for row in table.rows:
@@ -150,8 +151,9 @@ def make_table_element(x, y, width, height, table=None, rows=2, cols=2, data=Non
             # Новая структура (совместима с новым редактором таблиц)
             "columns": columns,
             "cells": cells,
-        }
+        },
     }
+
 
 def make_image_element(x, y, width, height, image_bytes=None, ext="png", src=None):
     if not src and image_bytes:
@@ -160,7 +162,7 @@ def make_image_element(x, y, width, height, image_bytes=None, ext="png", src=Non
             src = f"data:image/{ext};base64,{b64}"
         except Exception:
             src = ""
-    
+
     return {
         "id": generate_id(),
         "type": "image",
@@ -169,11 +171,9 @@ def make_image_element(x, y, width, height, image_bytes=None, ext="png", src=Non
         "width": int(width),
         "height": int(height),
         "zIndex": 0,
-        "properties": {
-            "src": src or "",
-            "alt": "Image"
-        }
+        "properties": {"src": src or "", "alt": "Image"},
     }
+
 
 def make_signature_element(x, y, width, height, image_bytes=None, ext="png", src=None):
     if not src and image_bytes:
@@ -191,13 +191,9 @@ def make_signature_element(x, y, width, height, image_bytes=None, ext="png", src
         "width": int(width),
         "height": int(height),
         "zIndex": 2,
-        "properties": {
-            "image": src or "",
-            "text": "",
-            "fontSize": 16,
-            "color": "#000000"
-        }
+        "properties": {"image": src or "", "text": "", "fontSize": 16, "color": "#000000"},
     }
+
 
 def make_divider_element(x, y, width, thickness=1, color="#000000"):
     return {
@@ -208,9 +204,5 @@ def make_divider_element(x, y, width, thickness=1, color="#000000"):
         "width": int(width),
         "height": 20,
         "zIndex": 1,
-        "properties": {
-            "thickness": thickness,
-            "color": color,
-            "style": "solid"
-        }
+        "properties": {"thickness": thickness, "color": color, "style": "solid"},
     }

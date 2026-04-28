@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { ClipboardList, Plus, Send, Eye } from "lucide-react"
+import { ClipboardList, Send, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,7 +17,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { purchasingApi } from "@/api/purchasingApi"
-import type { PurchaseRequestListItem, PurchaseRequestDetail } from "@/api/types"
 import { PURCHASE_REQUEST_STATUSES } from "@/api/types"
 import { useDebounce } from "@/hooks/useDebounce"
 

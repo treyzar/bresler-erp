@@ -22,10 +22,7 @@ def migrate_m2m_to_fk(apps, schema_editor):
         contact.save(update_fields=["org_unit"])
 
         # Only create history rows that don't already exist (idempotent rerun)
-        existing_pairs = set(
-            ContactEmployment.objects.filter(contact=contact)
-            .values_list("org_unit_id", flat=True)
-        )
+        existing_pairs = set(ContactEmployment.objects.filter(contact=contact).values_list("org_unit_id", flat=True))
         for i, ou in enumerate(org_units):
             if ou.id in existing_pairs:
                 continue
@@ -47,7 +44,6 @@ def reverse_fk_to_m2m(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("directory", "0006_contact_employment"),
     ]

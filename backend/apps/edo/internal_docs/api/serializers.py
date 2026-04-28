@@ -13,6 +13,7 @@ from ..models import (
 
 class ApprovalChainTemplateSerializer(serializers.ModelSerializer):
     """Read-only — для встраивания в DocumentType-ответ."""
+
     class Meta:
         model = ApprovalChainTemplate
         fields = ["id", "name", "description", "steps", "is_default", "is_active"]
@@ -21,10 +22,10 @@ class ApprovalChainTemplateSerializer(serializers.ModelSerializer):
 
 class ApprovalChainTemplateAdminSerializer(serializers.ModelSerializer):
     """Полный CRUD для админки."""
+
     class Meta:
         model = ApprovalChainTemplate
-        fields = ["id", "name", "description", "steps", "is_default", "is_active",
-                  "created_at", "updated_at"]
+        fields = ["id", "name", "description", "steps", "is_default", "is_active", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def validate_steps(self, value):
@@ -46,17 +47,29 @@ class ApprovalChainTemplateAdminSerializer(serializers.ModelSerializer):
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
     """Read-only публичная версия — для каталога создания и страниц документа."""
+
     default_chain = ApprovalChainTemplateSerializer(read_only=True)
     category_display = serializers.CharField(source="get_category_display", read_only=True)
 
     class Meta:
         model = DocumentType
         fields = [
-            "code", "name", "description", "category", "category_display",
-            "icon", "field_schema", "body_template", "title_template",
+            "code",
+            "name",
+            "description",
+            "category",
+            "category_display",
+            "icon",
+            "field_schema",
+            "body_template",
+            "title_template",
             "default_chain",
-            "requires_drawn_signature", "visibility", "tenancy_override",
-            "initiator_resolver", "addressee_mode", "is_active",
+            "requires_drawn_signature",
+            "visibility",
+            "tenancy_override",
+            "initiator_resolver",
+            "addressee_mode",
+            "is_active",
         ]
         read_only_fields = fields
 
@@ -64,29 +77,45 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
 class DocumentTypeAdminSerializer(serializers.ModelSerializer):
     """Полный CRUD для админки — поля writeable, default_chain принимает PK
     при write и полный объект при read."""
+
     default_chain_detail = ApprovalChainTemplateSerializer(source="default_chain", read_only=True)
     category_display = serializers.CharField(source="get_category_display", read_only=True)
 
     class Meta:
         model = DocumentType
         fields = [
-            "code", "name", "description", "category", "category_display",
-            "icon", "field_schema", "body_template", "title_template",
-            "default_chain", "default_chain_detail",
+            "code",
+            "name",
+            "description",
+            "category",
+            "category_display",
+            "icon",
+            "field_schema",
+            "body_template",
+            "title_template",
+            "default_chain",
+            "default_chain_detail",
             "numbering_sequence",
-            "requires_drawn_signature", "visibility", "tenancy_override",
-            "initiator_resolver", "addressee_mode", "is_active",
-            "created_at", "updated_at",
+            "requires_drawn_signature",
+            "visibility",
+            "tenancy_override",
+            "initiator_resolver",
+            "addressee_mode",
+            "is_active",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at", "default_chain_detail", "category_display"]
 
     def validate_field_schema(self, value):
-        from ..services.schema import validate_field_schema as _validate
         from django.core.exceptions import ValidationError as DjangoValidationError
+
+        from ..services.schema import validate_field_schema as _validate
+
         try:
             _validate(value)
         except DjangoValidationError as e:
-            raise serializers.ValidationError(e.messages)
+            raise serializers.ValidationError(e.messages) from e
         return value
 
 
@@ -106,11 +135,20 @@ class ApprovalStepSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApprovalStep
         fields = [
-            "id", "order", "parallel_group", "role_key", "role_label",
-            "action", "action_display",
-            "approver", "original_approver",
-            "status", "status_display",
-            "decided_at", "comment", "sla_due_at",
+            "id",
+            "order",
+            "parallel_group",
+            "role_key",
+            "role_label",
+            "action",
+            "action_display",
+            "approver",
+            "original_approver",
+            "status",
+            "status_display",
+            "decided_at",
+            "comment",
+            "sla_due_at",
         ]
         read_only_fields = fields
 
@@ -122,8 +160,14 @@ class DocumentAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentAttachment
         fields = [
-            "id", "file", "file_url", "file_name", "file_size",
-            "uploaded_by", "step", "uploaded_at",
+            "id",
+            "file",
+            "file_url",
+            "file_name",
+            "file_size",
+            "uploaded_by",
+            "step",
+            "uploaded_at",
         ]
         read_only_fields = ["id", "file_url", "file_name", "file_size", "uploaded_by", "uploaded_at"]
         extra_kwargs = {
@@ -137,6 +181,7 @@ class DocumentAttachmentSerializer(serializers.ModelSerializer):
 
 class DocumentListSerializer(serializers.ModelSerializer):
     """Короткая версия для списков: «Мои документы», «Ждут меня» и т.д."""
+
     type_name = serializers.CharField(source="type.name", read_only=True)
     type_code = serializers.CharField(source="type.code", read_only=True)
     type_icon = serializers.CharField(source="type.icon", read_only=True)
@@ -149,12 +194,21 @@ class DocumentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = [
-            "id", "number", "title",
-            "type_code", "type_name", "type_icon",
-            "status", "status_display",
-            "author", "addressee",
-            "current_step_label", "current_step_approver",
-            "created_at", "submitted_at", "closed_at",
+            "id",
+            "number",
+            "title",
+            "type_code",
+            "type_name",
+            "type_icon",
+            "status",
+            "status_display",
+            "author",
+            "addressee",
+            "current_step_label",
+            "current_step_approver",
+            "created_at",
+            "submitted_at",
+            "closed_at",
         ]
         read_only_fields = fields
 
@@ -175,6 +229,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
 
 class DocumentDetailSerializer(serializers.ModelSerializer):
     """Полная версия для страницы документа."""
+
     type = DocumentTypeSerializer(read_only=True)
     author = UserLiteSerializer(read_only=True)
     addressee = UserLiteSerializer(read_only=True)
@@ -186,19 +241,40 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = [
-            "id", "number", "title",
-            "type", "author", "addressee",
-            "field_values", "field_values_display", "body_rendered",
-            "header_snapshot", "chain_snapshot",
-            "status", "status_display", "current_step",
-            "steps", "attachments",
-            "created_at", "submitted_at", "closed_at",
+            "id",
+            "number",
+            "title",
+            "type",
+            "author",
+            "addressee",
+            "field_values",
+            "field_values_display",
+            "body_rendered",
+            "header_snapshot",
+            "chain_snapshot",
+            "status",
+            "status_display",
+            "current_step",
+            "steps",
+            "attachments",
+            "created_at",
+            "submitted_at",
+            "closed_at",
         ]
         read_only_fields = [
-            "id", "number", "body_rendered", "header_snapshot",
-            "chain_snapshot", "status", "current_step",
-            "steps", "attachments", "field_values_display",
-            "created_at", "submitted_at", "closed_at",
+            "id",
+            "number",
+            "body_rendered",
+            "header_snapshot",
+            "chain_snapshot",
+            "status",
+            "current_step",
+            "steps",
+            "attachments",
+            "field_values_display",
+            "created_at",
+            "submitted_at",
+            "closed_at",
         ]
 
     def get_field_values_display(self, obj):
@@ -207,9 +283,12 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
 
 
 def _format_field_values(schema: list, values: dict) -> dict:
-    from datetime import date, datetime
+    from datetime import date
+
     from django.contrib.auth import get_user_model
+
     from apps.directory.models import Department, OrgUnit
+
     User = get_user_model()
     out: dict[str, str] = {}
 
@@ -238,7 +317,7 @@ def _format_field_values(schema: list, values: dict) -> dict:
             for row in v:
                 if not isinstance(row, dict):
                     continue
-                for col in (spec.get("columns") or []):
+                for col in spec.get("columns") or []:
                     if not isinstance(col, dict):
                         continue
                     cval = row.get(col.get("name"))
@@ -251,9 +330,7 @@ def _format_field_values(schema: list, values: dict) -> dict:
                     elif col.get("type") == "orgunit" and isinstance(cval, (int, str)) and str(cval).isdigit():
                         orgunit_ids.add(int(cval))
 
-    users_by_pk = {
-        u.pk: u for u in User.objects.filter(pk__in=user_ids | user_multi_ids)
-    }
+    users_by_pk = {u.pk: u for u in User.objects.filter(pk__in=user_ids | user_multi_ids)}
     depts_by_pk = {d.pk: d for d in Department.objects.filter(pk__in=dept_ids)}
     orgs_by_pk = {o.pk: o for o in OrgUnit.objects.filter(pk__in=orgunit_ids)}
 
@@ -274,7 +351,7 @@ def _format_field_values(schema: list, values: dict) -> dict:
 
         if ftype == "choice":
             label = v
-            for code, display in (spec.get("choices") or []):
+            for code, display in spec.get("choices") or []:
                 if code == v:
                     label = display
                     break
@@ -291,9 +368,7 @@ def _format_field_values(schema: list, values: dict) -> dict:
             try:
                 f = date.fromisoformat(str(v.get("from", ""))[:10]) if v.get("from") else None
                 t = date.fromisoformat(str(v.get("to", ""))[:10]) if v.get("to") else None
-                out[name] = " – ".join([
-                    d.strftime("%d.%m.%Y") for d in (f, t) if d
-                ])
+                out[name] = " – ".join([d.strftime("%d.%m.%Y") for d in (f, t) if d])
             except ValueError:
                 out[name] = ""
         elif ftype == "user":
@@ -393,8 +468,10 @@ def _format_table_value(columns, rows, users_by_pk, depts_by_pk, orgs_by_pk) -> 
 
 class DocumentCreateSerializer(serializers.ModelSerializer):
     """Создание черновика: автор выбирает type + заполняет field_values."""
+
     type = serializers.SlugRelatedField(
-        slug_field="code", queryset=DocumentType.objects.filter(is_active=True),
+        slug_field="code",
+        queryset=DocumentType.objects.filter(is_active=True),
     )
 
     class Meta:
@@ -409,6 +486,7 @@ class DocumentCreateSerializer(serializers.ModelSerializer):
 
 class ApprovalActionSerializer(serializers.Serializer):
     """Payload для approve / reject / request_revision."""
+
     comment = serializers.CharField(required=False, allow_blank=True, default="")
     signature_image = serializers.CharField(required=False, allow_blank=True, default="")
 

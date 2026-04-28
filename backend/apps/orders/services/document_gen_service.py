@@ -51,25 +51,29 @@ def get_order_context(order: Order, extra_data: dict | None = None) -> dict:
     # Contract data
     try:
         contract = order.contract
-        context.update({
-            "contract_number": contract.contract_number,
-            "contract_date": contract.contract_date.strftime("%d.%m.%Y") if contract.contract_date else "",
-            "contract_amount": str(contract.amount) if contract.amount else "",
-            "advance_percent": str(contract.advance_percent),
-            "intermediate_percent": str(contract.intermediate_percent),
-            "post_payment_percent": str(contract.post_payment_percent),
-            "payment_status": contract.get_status_display(),
-        })
+        context.update(
+            {
+                "contract_number": contract.contract_number,
+                "contract_date": contract.contract_date.strftime("%d.%m.%Y") if contract.contract_date else "",
+                "contract_amount": str(contract.amount) if contract.amount else "",
+                "advance_percent": str(contract.advance_percent),
+                "intermediate_percent": str(contract.intermediate_percent),
+                "post_payment_percent": str(contract.post_payment_percent),
+                "payment_status": contract.get_status_display(),
+            }
+        )
     except Order.contract.RelatedObjectDoesNotExist:
-        context.update({
-            "contract_number": "",
-            "contract_date": "",
-            "contract_amount": "",
-            "advance_percent": "",
-            "intermediate_percent": "",
-            "post_payment_percent": "",
-            "payment_status": "",
-        })
+        context.update(
+            {
+                "contract_number": "",
+                "contract_date": "",
+                "contract_amount": "",
+                "advance_percent": "",
+                "intermediate_percent": "",
+                "post_payment_percent": "",
+                "payment_status": "",
+            }
+        )
 
     # Merge extra_data (user-provided overrides)
     if extra_data:

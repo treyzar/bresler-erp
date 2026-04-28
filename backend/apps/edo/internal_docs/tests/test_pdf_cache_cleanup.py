@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 
 import pytest
-from django.conf import settings
 
 from apps.edo.internal_docs.services.pdf_export import prune_all_expired_cache
 

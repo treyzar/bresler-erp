@@ -1,3 +1,4 @@
+import contextlib
 from datetime import date
 
 from django.db.models import Max
@@ -34,6 +35,7 @@ def generate_letter_number(user) -> tuple[str, int]:
     Returns (number_str, seq_int), e.g. ("М03-25588", 25588)
     """
     import re
+
     from apps.edo.registry.models import Letter
 
     prefix = get_number_prefix(user)
@@ -47,10 +49,8 @@ def generate_letter_number(user) -> tuple[str, int]:
     for number_str in Letter.objects.values_list("number", flat=True):
         m = re.search(r"-(\d+)", number_str)
         if m:
-            try:
+            with contextlib.suppress(ValueError):
                 max_from_numbers = max(max_from_numbers, int(m.group(1)))
-            except ValueError:
-                pass
 
     seq = max(max_seq, max_from_numbers) + 1
     number = f"{prefix}{month_str}-{seq}"
@@ -64,6 +64,7 @@ def get_department_user_ids(user) -> set[int]:
         return {user.id}
 
     from apps.users.models import User
+
     colleagues = User.objects.filter(
         is_active=True,
         groups__id__in=user_group_ids,

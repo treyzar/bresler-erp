@@ -43,6 +43,7 @@ class PurchaseRequestLineFactory(DjangoModelFactory):
 
 class SupplierFactory(DjangoModelFactory):
     """OrgUnit with supplier role."""
+
     class Meta:
         model = "directory.OrgUnit"
 

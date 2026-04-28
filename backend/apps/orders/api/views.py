@@ -1,6 +1,6 @@
-from django.db import models as db_models
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.search import TrigramSimilarity
+from django.db import models as db_models
 from django.db.models.functions import Coalesce, Greatest
 from rest_framework import parsers, status, viewsets
 from rest_framework.decorators import action
@@ -11,9 +11,9 @@ from apps.core.mixins.export import ExportMixin
 from apps.core.mixins.metadata import MetadataMixin
 from apps.core.workflow import ConditionNotMet, TransitionNotAllowed, WorkflowService
 from apps.directory.models import Contact, Equipment, Facility, OrgUnit, TypeOfWork
-from apps.orders.models import Contract, DocumentTemplate, Order, OrderFile, ShipmentBatch
-from apps.orders.services.order_service import get_next_order_number
+from apps.orders.models import Contract, DocumentTemplate, Order, OrderFile
 from apps.orders.services.document_gen_service import generate_document
+from apps.orders.services.order_service import get_next_order_number
 
 from .filters import OrderFilter
 from .serializers import (
@@ -132,6 +132,7 @@ def _format_change(change):
 
     if field == "country" and (old_val is not None or new_val is not None):
         from apps.directory.models import Country
+
         ids = [v for v in (old_val, new_val) if v is not None]
         names = dict(Country.objects.filter(pk__in=ids).values_list("pk", "name"))
         old_val = names.get(old_val, old_val) if old_val is not None else None
@@ -145,9 +146,17 @@ def _format_change(change):
 
 
 _ORDER_SNAPSHOT_SCALARS = (
-    "order_type", "order_number", "tender_number", "status", "note",
-    "start_date", "ship_date",
-    "customer_org_unit_id", "intermediary_id", "designer_id", "country_id",
+    "order_type",
+    "order_number",
+    "tender_number",
+    "status",
+    "note",
+    "start_date",
+    "ship_date",
+    "customer_org_unit_id",
+    "intermediary_id",
+    "designer_id",
+    "country_id",
 )
 _ORDER_SNAPSHOT_M2M = ("contacts", "managers", "equipments", "works", "facilities", "related_orders")
 
@@ -267,10 +276,7 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
                 new_status=order.status,
             )
 
-        changed_fields = [
-            k for k in old_snapshot
-            if k != "status" and old_snapshot[k] != new_snapshot[k]
-        ]
+        changed_fields = [k for k in old_snapshot if k != "status" and old_snapshot[k] != new_snapshot[k]]
         if changed_fields:
             trigger_event(
                 "order.updated",
@@ -285,9 +291,7 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
         from apps.orders.workflows import ORDER_WORKFLOW
 
         order = self.get_object()
-        available = WorkflowService.get_available_transitions(
-            ORDER_WORKFLOW, order, user=request.user
-        )
+        available = WorkflowService.get_available_transitions(ORDER_WORKFLOW, order, user=request.user)
         return Response(available)
 
     @action(detail=True, methods=["post"])
@@ -304,9 +308,7 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
             )
 
         try:
-            WorkflowService.transition(
-                ORDER_WORKFLOW, order, to_status, user=request.user
-            )
+            WorkflowService.transition(ORDER_WORKFLOW, order, to_status, user=request.user)
         except TransitionNotAllowed as e:
             return Response({"detail": e.message}, status=status.HTTP_403_FORBIDDEN)
         except ConditionNotMet as e:
@@ -336,7 +338,7 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
 
         suggestions = []
         seen_texts = set()
-        
+
         for o in similar_orders:
             # Pick the text that actually matched best
             suggestion_text = ""
@@ -351,13 +353,15 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
                 suggestion_text = f"Заказ #{o.order_number}"
 
             if suggestion_text and suggestion_text not in seen_texts:
-                suggestions.append({
-                    "text": suggestion_text,
-                    "order_number": o.order_number,
-                    "similarity": o.max_sim,
-                })
+                suggestions.append(
+                    {
+                        "text": suggestion_text,
+                        "order_number": o.order_number,
+                        "similarity": o.max_sim,
+                    }
+                )
                 seen_texts.add(suggestion_text)
-                
+
         return Response(suggestions[:5])
 
     @action(detail=False, methods=["get"], url_path="next-number")
@@ -367,9 +371,7 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="missing-numbers")
     def missing_numbers(self, request):
         """Find gaps in order number sequence."""
-        numbers = set(
-            Order.objects.values_list("order_number", flat=True)
-        )
+        numbers = set(Order.objects.values_list("order_number", flat=True))
         if not numbers:
             return Response({"missing_formatted": [], "total": 0})
 
@@ -390,10 +392,12 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
                     start = end = n
             formatted.append(f"{start}-{end}" if start != end else str(start))
 
-        return Response({
-            "missing_formatted": formatted,
-            "total": len(missing),
-        })
+        return Response(
+            {
+                "missing_formatted": formatted,
+                "total": len(missing),
+            }
+        )
 
     @action(detail=True, methods=["get"])
     def history(self, request, order_number=None):
@@ -406,13 +410,15 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
                 diff = h.diff_against(h.prev_record)
                 for c in diff.changes:
                     changes.append(_format_change(c))
-            data.append({
-                "id": h.history_id,
-                "date": h.history_date,
-                "user": str(h.history_user) if h.history_user else None,
-                "type": h.history_type,
-                "changes": changes,
-            })
+            data.append(
+                {
+                    "id": h.history_id,
+                    "date": h.history_date,
+                    "user": str(h.history_user) if h.history_user else None,
+                    "type": h.history_type,
+                    "changes": changes,
+                }
+            )
         return Response(data)
 
     @action(
@@ -510,7 +516,6 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
-
     # ── Shipment batches ──────────────────────────────────────────
 
     @action(detail=True, methods=["get", "post"], url_path="shipments")
@@ -521,8 +526,7 @@ class OrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
             return Response(ShipmentBatchSerializer(batches, many=True).data)
 
         # POST: create new batch
-        next_num = (order.shipment_batches.aggregate(
-            m=db_models.Max("batch_number"))["m"] or 0) + 1
+        next_num = (order.shipment_batches.aggregate(m=db_models.Max("batch_number"))["m"] or 0) + 1
         serializer = ShipmentBatchSerializer(data={**request.data, "batch_number": next_num})
         serializer.is_valid(raise_exception=True)
         serializer.save(order=order)

@@ -4,6 +4,7 @@
 без объекта properties. Рендер ожидает properties.* — поэтому старые шаблоны
 падают в белый экран. Этот модуль приводит любой формат к каноничному.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -28,9 +29,26 @@ DIVIDER_DEFAULTS: dict[str, Any] = {"thickness": 1, "color": "#1a1a1a", "style":
 SIGNATURE_DEFAULTS: dict[str, Any] = {"text": "Подпись", "fontSize": 16, "color": "#1a1a1a"}
 
 _FLAT_KEYS = {
-    "content", "text", "fontSize", "align", "underline", "color", "fontFamily",
-    "src", "alt", "image", "columns", "cells", "rows", "cols", "data",
-    "borderWidth", "borderColor", "cellBg", "thickness", "style",
+    "content",
+    "text",
+    "fontSize",
+    "align",
+    "underline",
+    "color",
+    "fontFamily",
+    "src",
+    "alt",
+    "image",
+    "columns",
+    "cells",
+    "rows",
+    "cols",
+    "data",
+    "borderWidth",
+    "borderColor",
+    "cellBg",
+    "thickness",
+    "style",
 }
 
 
@@ -74,10 +92,7 @@ def normalize_element(raw: Any) -> dict[str, Any] | None:
     if not isinstance(raw, dict) or not raw.get("type"):
         return None
 
-    if isinstance(raw.get("properties"), dict):
-        props = raw["properties"]
-    else:
-        props = _hoist_flat_fields(raw)
+    props = raw["properties"] if isinstance(raw.get("properties"), dict) else _hoist_flat_fields(raw)
 
     def _to_int(v: Any, default: int) -> int:
         try:

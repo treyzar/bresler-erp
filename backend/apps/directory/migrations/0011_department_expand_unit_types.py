@@ -4,20 +4,53 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('directory', '0010_add_department_model'),
+        ("directory", "0010_add_department_model"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='department',
-            name='unit_type',
-            field=models.CharField(choices=[('management', 'Руководство'), ('division', 'Дирекция / Управление'), ('service', 'Служба'), ('department', 'Отдел'), ('bureau', 'Бюро'), ('sector', 'Сектор'), ('group', 'Группа'), ('site', 'Участок'), ('laboratory', 'Лаборатория'), ('branch', 'Филиал / Представительство'), ('other', 'Другое')], default='department', max_length=20, verbose_name='Тип'),
+            model_name="department",
+            name="unit_type",
+            field=models.CharField(
+                choices=[
+                    ("management", "Руководство"),
+                    ("division", "Дирекция / Управление"),
+                    ("service", "Служба"),
+                    ("department", "Отдел"),
+                    ("bureau", "Бюро"),
+                    ("sector", "Сектор"),
+                    ("group", "Группа"),
+                    ("site", "Участок"),
+                    ("laboratory", "Лаборатория"),
+                    ("branch", "Филиал / Представительство"),
+                    ("other", "Другое"),
+                ],
+                default="department",
+                max_length=20,
+                verbose_name="Тип",
+            ),
         ),
         migrations.AlterField(
-            model_name='historicaldepartment',
-            name='unit_type',
-            field=models.CharField(choices=[('management', 'Руководство'), ('division', 'Дирекция / Управление'), ('service', 'Служба'), ('department', 'Отдел'), ('bureau', 'Бюро'), ('sector', 'Сектор'), ('group', 'Группа'), ('site', 'Участок'), ('laboratory', 'Лаборатория'), ('branch', 'Филиал / Представительство'), ('other', 'Другое')], default='department', max_length=20, verbose_name='Тип'),
+            model_name="historicaldepartment",
+            name="unit_type",
+            field=models.CharField(
+                choices=[
+                    ("management", "Руководство"),
+                    ("division", "Дирекция / Управление"),
+                    ("service", "Служба"),
+                    ("department", "Отдел"),
+                    ("bureau", "Бюро"),
+                    ("sector", "Сектор"),
+                    ("group", "Группа"),
+                    ("site", "Участок"),
+                    ("laboratory", "Лаборатория"),
+                    ("branch", "Филиал / Представительство"),
+                    ("other", "Другое"),
+                ],
+                default="department",
+                max_length=20,
+                verbose_name="Тип",
+            ),
         ),
     ]

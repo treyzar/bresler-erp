@@ -4,7 +4,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.core.mixins.export import ExportMixin
-
 from apps.devices.models import (
     CatalogPlacement,
     ComponentType,
@@ -76,7 +75,6 @@ from .serializers import (
     VoltageClassSerializer,
 )
 
-
 # ── RZA ──────────────────────────────────────────────────────────────
 
 
@@ -124,9 +122,7 @@ class DeviceRZAViewSet(ExportMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def parameters(self, request, pk=None):
         """GET /api/devices/rza/{id}/parameters/ — assigned parameters."""
-        params = DeviceRZAParameter.objects.filter(
-            device_rza_id=pk
-        ).select_related("parameter")
+        params = DeviceRZAParameter.objects.filter(device_rza_id=pk).select_related("parameter")
         serializer = DeviceRZAParameterSerializer(params, many=True)
         return Response(serializer.data)
 
@@ -157,9 +153,7 @@ class DeviceRZAViewSet(ExportMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def components(self, request, pk=None):
         """GET /api/devices/rza/{id}/components/ — assigned components."""
-        comps = DeviceRZAComponent.objects.filter(
-            device_rza_id=pk
-        ).select_related("component__component_type")
+        comps = DeviceRZAComponent.objects.filter(device_rza_id=pk).select_related("component__component_type")
         serializer = DeviceRZAComponentSerializer(comps, many=True)
         return Response(serializer.data)
 
@@ -206,9 +200,7 @@ class ModRZAViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def parameters(self, request, pk=None):
-        params = ModRZAParameter.objects.filter(
-            mod_rza_id=pk
-        ).select_related("parameter")
+        params = ModRZAParameter.objects.filter(mod_rza_id=pk).select_related("parameter")
         serializer = ModRZAParameterSerializer(params, many=True)
         return Response(serializer.data)
 
@@ -235,9 +227,7 @@ class ModRZAViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def components(self, request, pk=None):
-        comps = ModRZAComponent.objects.filter(
-            mod_rza_id=pk
-        ).select_related("component__component_type")
+        comps = ModRZAComponent.objects.filter(mod_rza_id=pk).select_related("component__component_type")
         serializer = ModRZAComponentSerializer(comps, many=True)
         return Response(serializer.data)
 
@@ -361,6 +351,7 @@ class DeviceComponentViewSet(viewsets.ModelViewSet):
     def trigger_import(self, request):
         """POST /api/devices/components/trigger-import/ — manually trigger ProdUX sync."""
         from apps.devices.tasks import import_components
+
         result = import_components.delay()
         return Response({"task_id": result.id, "status": "queued"})
 
@@ -414,9 +405,9 @@ class ProductCategoryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def products(self, request, pk=None):
         """GET /api/devices/categories/{id}/products/ — products in category."""
-        products = Product.objects.filter(
-            catalog_placements__category_id=pk, is_active=True
-        ).select_related("product_type")
+        products = Product.objects.filter(catalog_placements__category_id=pk, is_active=True).select_related(
+            "product_type"
+        )
         page = self.paginate_queryset(products)
         if page is not None:
             serializer = ProductListSerializer(page, many=True)
@@ -466,9 +457,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def attributes(self, request, pk=None):
         """GET/POST /api/devices/products/{id}/attributes/"""
         if request.method == "GET":
-            vals = ProductAttributeValue.objects.filter(
-                product_id=pk
-            ).select_related("attribute", "option")
+            vals = ProductAttributeValue.objects.filter(product_id=pk).select_related("attribute", "option")
             serializer = ProductAttributeValueSerializer(vals, many=True)
             return Response(serializer.data)
 

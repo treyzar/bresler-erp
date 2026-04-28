@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -8,16 +8,14 @@ from apps.core.mixins.metadata import MetadataMixin
 from apps.purchasing.models import (
     PurchaseOrder,
     PurchaseOrderFile,
-    PurchaseOrderLine,
     PurchasePayment,
     PurchaseRequest,
-    PurchaseRequestLine,
     StockItem,
     StockMovement,
     StockReservation,
     SupplierConditions,
 )
-from apps.purchasing.services import stock_service, purchasing_service
+from apps.purchasing.services import purchasing_service, stock_service
 
 from .filters import (
     PurchaseOrderFilter,
@@ -40,8 +38,8 @@ from .serializers import (
     SupplierConditionsSerializer,
 )
 
-
 # ── Stock ───────────────────────────────────────────────────────
+
 
 class StockItemViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     queryset = StockItem.objects.select_related("product").all()
@@ -73,6 +71,7 @@ class StockItemViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
         if not order_id or quantity <= 0:
             return Response({"detail": "Укажите заказ и количество"}, status=status.HTTP_400_BAD_REQUEST)
         from apps.orders.models import Order
+
         try:
             order = Order.objects.get(pk=order_id)
         except Order.DoesNotExist:
@@ -106,6 +105,7 @@ class StockItemViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
 
 
 # ── Purchase Request ────────────────────────────────────────────
+
 
 class PurchaseRequestViewSet(viewsets.ModelViewSet):
     queryset = PurchaseRequest.objects.select_related("order", "created_by").prefetch_related("lines").all()
@@ -145,10 +145,10 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
 
 # ── Purchase Order ──────────────────────────────────────────────
 
+
 class PurchaseOrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
     queryset = (
-        PurchaseOrder.objects
-        .select_related("supplier", "order", "purchaser", "purchase_request")
+        PurchaseOrder.objects.select_related("supplier", "order", "purchaser", "purchase_request")
         .prefetch_related("lines", "files")
         .all()
     )
@@ -220,6 +220,7 @@ class PurchaseOrderViewSet(MetadataMixin, ExportMixin, viewsets.ModelViewSet):
 
 # ── Supplier Conditions ────────────────────────────────────────
 
+
 class SupplierConditionsViewSet(viewsets.ModelViewSet):
     queryset = SupplierConditions.objects.select_related("supplier").all()
     serializer_class = SupplierConditionsSerializer
@@ -229,12 +230,9 @@ class SupplierConditionsViewSet(viewsets.ModelViewSet):
 
 # ── Payment ─────────────────────────────────────────────────────
 
+
 class PurchasePaymentViewSet(viewsets.ModelViewSet):
-    queryset = (
-        PurchasePayment.objects
-        .select_related("purchase_order__supplier", "approved_by")
-        .all()
-    )
+    queryset = PurchasePayment.objects.select_related("purchase_order__supplier", "approved_by").all()
     serializer_class = PurchasePaymentSerializer
     permission_classes = [IsAuthenticated]
     filterset_class = PurchasePaymentFilter

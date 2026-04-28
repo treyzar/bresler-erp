@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import apiClient from "@/api/client"
-import type { ManagerStats, MyCustomer } from "@/api/usersApi"
+import type { ManagerStats } from "@/api/usersApi"
 import { usersApi } from "@/api/usersApi"
 import type { PaginatedResponse, OrgUnit } from "@/api/types"
 import { ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
@@ -63,10 +63,6 @@ export function ManagerDashboard() {
   const [selectedManager, setSelectedManager] = useState<TeamMember | null>(null)
   const [deptFilter, setDeptFilter] = useState<string>("all")
 
-  if (!canAccessDashboard()) {
-    return <Navigate to="/profile" replace />
-  }
-
   const { data: teamData, isLoading } = useQuery({
     queryKey: ["team-performance", deptFilter],
     queryFn: async () => {
@@ -75,7 +71,12 @@ export function ManagerDashboard() {
       const { data } = await apiClient.get<TeamResponse>("/users/team-performance/", { params })
       return data
     },
+    enabled: canAccessDashboard(),
   })
+
+  if (!canAccessDashboard()) {
+    return <Navigate to="/profile" replace />
+  }
 
   const team = teamData?.managers ?? []
   const departments = teamData?.departments ?? []

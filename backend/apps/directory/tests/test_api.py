@@ -136,9 +136,7 @@ class TestOrgUnitAPI:
         url = reverse("directory:orgunit-list")
         response = self.client.get(url, {"business_role": OrgUnit.BusinessRole.CUSTOMER})
         assert response.status_code == status.HTTP_200_OK
-        assert all(
-            r["business_role"] == OrgUnit.BusinessRole.CUSTOMER for r in response.data["results"]
-        )
+        assert all(r["business_role"] == OrgUnit.BusinessRole.CUSTOMER for r in response.data["results"])
 
     def test_unauthenticated(self):
         client = APIClient()

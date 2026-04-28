@@ -11,9 +11,13 @@ from apps.specs.models import CommercialOffer, OfferWorkItem, Specification, Spe
 
 def next_version(order: Order, participant: OrderParticipant) -> int:
     """Get next version number for offer by (order, participant) pair."""
-    max_ver = CommercialOffer.objects.filter(
-        order=order, participant=participant,
-    ).aggregate(m=Max("version"))["m"] or 0
+    max_ver = (
+        CommercialOffer.objects.filter(
+            order=order,
+            participant=participant,
+        ).aggregate(m=Max("version"))["m"]
+        or 0
+    )
     return max_ver + 1
 
 
@@ -44,8 +48,7 @@ def create_offer(
         date=kwargs.get("date", date.today()),
         manager=kwargs.get("manager", user),
         executor=kwargs.get("executor", user),
-        **{k: v for k, v in kwargs.items()
-           if k not in ("date", "manager", "executor")},
+        **{k: v for k, v in kwargs.items() if k not in ("date", "manager", "executor")},
     )
 
     # Auto-create empty specification

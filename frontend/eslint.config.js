@@ -19,5 +19,28 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      // React Compiler hint (eslint-plugin-react-hooks 7.x): suggests rewriting
+      // useEffect→setState patterns to avoid an extra render pass. Useful as
+      // an informational warning but not a bug — demoted from error so it
+      // doesn't block CI / `make lint`.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
+  },
+  {
+    // shadcn/ui components co-export variant helpers / hooks alongside the
+    // component — Fast Refresh warning doesn't apply to a vendored UI library.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
   },
 ])

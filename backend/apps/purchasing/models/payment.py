@@ -22,16 +22,23 @@ class PurchasePayment(BaseModel):
         verbose_name="Закупочный ордер",
     )
     amount = models.DecimalField(
-        "Сумма", max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        "Сумма",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
     )
     payment_date = models.DateField("Дата оплаты", null=True, blank=True)
     due_date = models.DateField(
-        "Срок оплаты", null=True, blank=True,
+        "Срок оплаты",
+        null=True,
+        blank=True,
         help_text="Для постоплаты — дата, к которой нужно оплатить",
     )
     status = models.CharField(
-        "Статус", max_length=20,
-        choices=Status.choices, default=Status.PENDING_APPROVAL,
+        "Статус",
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING_APPROVAL,
     )
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -42,7 +49,8 @@ class PurchasePayment(BaseModel):
         verbose_name="Согласовал",
     )
     invoice_file = models.FileField(
-        "Счёт", upload_to="purchasing/invoices/%Y/%m/",
+        "Счёт",
+        upload_to="purchasing/invoices/%Y/%m/",
         blank=True,
     )
     invoice_number = models.CharField("Номер счёта", max_length=100, blank=True)

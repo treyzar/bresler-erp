@@ -45,7 +45,9 @@ class StockMovement(BaseModel):
         verbose_name="Позиция",
     )
     movement_type = models.CharField(
-        "Тип движения", max_length=20, choices=MovementType.choices,
+        "Тип движения",
+        max_length=20,
+        choices=MovementType.choices,
     )
     quantity = models.PositiveIntegerField("Количество")
     order = models.ForeignKey(

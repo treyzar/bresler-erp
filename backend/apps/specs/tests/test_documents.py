@@ -1,11 +1,11 @@
-import pytest
 from decimal import Decimal
 from io import BytesIO
 
+import pytest
 from docx import Document
 
 from apps.specs.services import document_service
-from apps.specs.models import Specification
+
 from .factories import (
     CommercialOfferFactory,
     OfferWorkItemFactory,
@@ -51,8 +51,10 @@ class TestGenerateOfferDocx:
         offer = CommercialOfferFactory()
         spec = SpecificationFactory(offer=offer)
         SpecificationLineFactory(
-            specification=spec, name="Терминал РЗА",
-            quantity=2, unit_price=Decimal("50000"),
+            specification=spec,
+            name="Терминал РЗА",
+            quantity=2,
+            unit_price=Decimal("50000"),
         )
 
         buf = document_service.generate_offer_docx(offer)

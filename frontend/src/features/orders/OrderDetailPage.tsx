@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate, useParams } from "react-router"
 import { Pencil, ArrowLeft, Check, ArrowRight as ArrowRightIcon, FileDown } from "lucide-react"
 import { toast } from "sonner"
+import type { AxiosError } from "axios"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -113,8 +114,8 @@ export function OrderDetailPage() {
       { orderNumber: orderNum, toStatus },
       {
         onSuccess: () => toast.success("Статус изменён"),
-        onError: (err: any) => {
-          const detail = err?.response?.data?.detail || "Ошибка смены статуса"
+        onError: (err: AxiosError<{ detail?: string }>) => {
+          const detail = err.response?.data?.detail || "Ошибка смены статуса"
           toast.error(detail)
         },
       }
@@ -189,7 +190,7 @@ export function OrderDetailPage() {
             <div className="flex items-center gap-2 pt-2 border-t">
               <span className="text-sm text-muted-foreground mr-1">Действия:</span>
               <TooltipProvider>
-                {transitions.map((t: any) => {
+                {transitions.map((t) => {
                   const btn = (
                     <Button
                       key={t.to_status}

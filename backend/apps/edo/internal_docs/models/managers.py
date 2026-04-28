@@ -7,7 +7,7 @@ from django.db.models import Q
 
 
 class DocumentQuerySet(models.QuerySet):
-    def for_user(self, user) -> "DocumentQuerySet":
+    def for_user(self, user) -> DocumentQuerySet:
         """Документы, видимые конкретному пользователю.
 
         Правила:
@@ -88,7 +88,7 @@ class DocumentQuerySet(models.QuerySet):
 
         return qs
 
-    def inbox_for(self, user) -> "DocumentQuerySet":
+    def inbox_for(self, user) -> DocumentQuerySet:
         """Документы, ожидающие решения от `user`.
 
         В отличие от прежней реализации (через `current_step`), смотрим прямо
@@ -130,20 +130,19 @@ class DocumentQuerySet(models.QuerySet):
                     author_company_unit=user.company_unit_id,
                 )
 
-        return self.filter(
-            Q(status="pending") & (direct_q | group_q)
-        ).distinct()
+        return self.filter(Q(status="pending") & (direct_q | group_q)).distinct()
 
-    def drafts_of(self, user) -> "DocumentQuerySet":
+    def drafts_of(self, user) -> DocumentQuerySet:
         return self.filter(author=user, status__in=["draft", "revision_requested"])
 
-    def authored_by(self, user) -> "DocumentQuerySet":
+    def authored_by(self, user) -> DocumentQuerySet:
         return self.filter(author=user)
 
 
 def _descendant_department_ids(department) -> list[int]:
     """Возвращает id всего поддерева department, включая его самого."""
     from apps.directory.models import Department
+
     subtree = Department.get_tree(department)
     return list(subtree.values_list("pk", flat=True))
 

@@ -6,7 +6,6 @@
 
 from django.db import migrations
 
-
 TYPES_SPEC = [
     {
         "code": "memo_free",
@@ -15,13 +14,27 @@ TYPES_SPEC = [
         "category": "memo",
         "icon": "file-text",
         "field_schema": [
-            {"name": "subject", "label": "Тема", "type": "text", "required": True,
-             "placeholder": "Кратко — о чём записка"},
-            {"name": "addressee_department", "label": "Адресовано подразделению",
-             "type": "department", "required": True,
-             "filter": {"company_scope": "author"}},
-            {"name": "body", "label": "Текст записки", "type": "markdown", "required": True,
-             "placeholder": "Содержание служебной записки..."},
+            {
+                "name": "subject",
+                "label": "Тема",
+                "type": "text",
+                "required": True,
+                "placeholder": "Кратко — о чём записка",
+            },
+            {
+                "name": "addressee_department",
+                "label": "Адресовано подразделению",
+                "type": "department",
+                "required": True,
+                "filter": {"company_scope": "author"},
+            },
+            {
+                "name": "body",
+                "label": "Текст записки",
+                "type": "markdown",
+                "required": True,
+                "placeholder": "Содержание служебной записки...",
+            },
         ],
         "title_template": "Служебная записка «{{ subject }}»",
         "body_template": "{{ body|linebreaks }}",
@@ -32,10 +45,20 @@ TYPES_SPEC = [
         "prefix": "СЗ-СВОБ",
         "chain_name": "Служебка (свободная): руководитель → адресат",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "field_dept_head:addressee_department",
-             "label": "Руководитель адресата", "action": "approve", "sla_hours": 48},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "field_dept_head:addressee_department",
+                "label": "Руководитель адресата",
+                "action": "approve",
+                "sla_hours": 48,
+            },
         ],
     },
     {
@@ -45,19 +68,33 @@ TYPES_SPEC = [
         "category": "memo",
         "icon": "clock-alert",
         "field_schema": [
-            {"name": "work_type", "label": "Характер работ", "type": "choice", "required": True,
-             "choices": [["overtime", "В сверхурочное время"], ["weekend", "В выходной день"]]},
+            {
+                "name": "work_type",
+                "label": "Характер работ",
+                "type": "choice",
+                "required": True,
+                "choices": [["overtime", "В сверхурочное время"], ["weekend", "В выходной день"]],
+            },
             {"name": "overtime_date", "label": "Дата выхода", "type": "date", "required": True},
             {"name": "time_from", "label": "Время с", "type": "time", "required": True},
             {"name": "time_to", "label": "Время до", "type": "time", "required": True},
-            {"name": "responsible", "label": "Ответственный за ОТ", "type": "user", "required": True,
-             "filter": {"scope": "subtree"},
-             "help_text": "Сотрудник вашего подразделения (или вы сами)"},
-            {"name": "employees", "label": "Список сотрудников", "type": "user_multi", "required": True,
-             "filter": {"scope": "subtree"},
-             "help_text": "Сотрудники вашего подразделения и подчинённых ему секторов"},
-            {"name": "reason", "label": "Обоснование (опционально)", "type": "textarea",
-             "required": False},
+            {
+                "name": "responsible",
+                "label": "Ответственный за ОТ",
+                "type": "user",
+                "required": True,
+                "filter": {"scope": "subtree"},
+                "help_text": "Сотрудник вашего подразделения (или вы сами)",
+            },
+            {
+                "name": "employees",
+                "label": "Список сотрудников",
+                "type": "user_multi",
+                "required": True,
+                "filter": {"scope": "subtree"},
+                "help_text": "Сотрудники вашего подразделения и подчинённых ему секторов",
+            },
+            {"name": "reason", "label": "Обоснование (опционально)", "type": "textarea", "required": False},
         ],
         "title_template": (
             "Служебная записка о работе "
@@ -92,12 +129,27 @@ TYPES_SPEC = [
         "prefix": "СЗ-ПЕР",
         "chain_name": "Служебка на переработку: руководитель → рук. подразделения → бухгалтерия",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "dept_head:parent",
-             "label": "Руководитель подразделения", "action": "approve", "sla_hours": 24},
-            {"order": 3, "role_key": "group:accounting@company",
-             "label": "Бухгалтерия", "action": "approve", "sla_hours": 72},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "dept_head:parent",
+                "label": "Руководитель подразделения",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 3,
+                "role_key": "group:accounting@company",
+                "label": "Бухгалтерия",
+                "action": "approve",
+                "sla_hours": 72,
+            },
         ],
     },
     {
@@ -108,10 +160,14 @@ TYPES_SPEC = [
         "icon": "calendar-sync",
         "field_schema": [
             {"name": "dayoff_date", "label": "Дата отгула", "type": "date", "required": True},
-            {"name": "workoff_date", "label": "Дата отработки", "type": "date", "required": True,
-             "help_text": "Когда планируете отработать"},
-            {"name": "reason", "label": "Причина (опционально)", "type": "textarea",
-             "required": False},
+            {
+                "name": "workoff_date",
+                "label": "Дата отработки",
+                "type": "date",
+                "required": True,
+                "help_text": "Когда планируете отработать",
+            },
+            {"name": "reason", "label": "Причина (опционально)", "type": "textarea", "required": False},
         ],
         "title_template": 'Заявление на отгул {{ dayoff_date|date:"d.m.Y" }}',
         "body_template": (
@@ -126,10 +182,20 @@ TYPES_SPEC = [
         "prefix": "ЗАЯВ-ОТГ-ОТР",
         "chain_name": "Отгул с отработкой: руководитель → бухгалтерия (inform)",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "group:accounting@company",
-             "label": "Бухгалтерия", "action": "inform", "sla_hours": None},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "group:accounting@company",
+                "label": "Бухгалтерия",
+                "action": "inform",
+                "sla_hours": None,
+            },
         ],
     },
     {
@@ -139,10 +205,20 @@ TYPES_SPEC = [
         "category": "application",
         "icon": "mail",
         "field_schema": [
-            {"name": "subject", "label": "Тема", "type": "text", "required": True,
-             "placeholder": "Например: О переводе на другую должность"},
-            {"name": "addressee_person", "label": "Кому адресовано", "type": "user", "required": True,
-             "help_text": "Конкретный получатель заявления"},
+            {
+                "name": "subject",
+                "label": "Тема",
+                "type": "text",
+                "required": True,
+                "placeholder": "Например: О переводе на другую должность",
+            },
+            {
+                "name": "addressee_person",
+                "label": "Кому адресовано",
+                "type": "user",
+                "required": True,
+                "help_text": "Конкретный получатель заявления",
+            },
             {"name": "body", "label": "Текст заявления", "type": "markdown", "required": True},
         ],
         "title_template": "Заявление «{{ subject }}»",
@@ -154,10 +230,20 @@ TYPES_SPEC = [
         "prefix": "ЗАЯВ-СВОБ",
         "chain_name": "Заявление (свободная): руководитель → адресат",
         "chain_steps": [
-            {"order": 1, "role_key": "supervisor",
-             "label": "Непосредственный руководитель", "action": "approve", "sla_hours": 24},
-            {"order": 2, "role_key": "field_user:addressee_person",
-             "label": "Адресат заявления", "action": "approve", "sla_hours": 48},
+            {
+                "order": 1,
+                "role_key": "supervisor",
+                "label": "Непосредственный руководитель",
+                "action": "approve",
+                "sla_hours": 24,
+            },
+            {
+                "order": 2,
+                "role_key": "field_user:addressee_person",
+                "label": "Адресат заявления",
+                "action": "approve",
+                "sla_hours": 48,
+            },
         ],
     },
 ]
@@ -217,16 +303,11 @@ def backwards(apps, schema_editor):
 
     codes = [s["code"] for s in TYPES_SPEC]
     DocumentType.objects.filter(code__in=codes).delete()
-    ApprovalChainTemplate.objects.filter(
-        name__in=[s["chain_name"] for s in TYPES_SPEC]
-    ).delete()
-    NumberSequence.objects.filter(
-        name__in=[f"internal_docs_{c}" for c in codes]
-    ).delete()
+    ApprovalChainTemplate.objects.filter(name__in=[s["chain_name"] for s in TYPES_SPEC]).delete()
+    NumberSequence.objects.filter(name__in=[f"internal_docs_{c}" for c in codes]).delete()
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("internal_docs", "0001_initial"),
         ("core", "0002_seed_sequences"),

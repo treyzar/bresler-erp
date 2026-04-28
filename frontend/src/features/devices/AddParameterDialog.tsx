@@ -14,7 +14,6 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { PARAMETER_TYPES } from "@/api/types"
-import type { Parameter } from "@/api/types"
 import { deviceRZAApi } from "@/api/devicesApi"
 import { useAddDeviceParameter } from "@/api/hooks/useDevices"
 import { useQuery } from "@tanstack/react-query"

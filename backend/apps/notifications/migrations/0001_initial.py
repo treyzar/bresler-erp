@@ -6,50 +6,85 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('contenttypes', '0002_remove_content_type_name'),
+        ("contenttypes", "0002_remove_content_type_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('title', models.CharField(max_length=255, verbose_name='Заголовок')),
-                ('message', models.TextField(blank=True, max_length=500, verbose_name='Сообщение')),
-                ('category', models.CharField(choices=[('info', 'Информация'), ('success', 'Успех'), ('warning', 'Предупреждение'), ('error', 'Ошибка')], default='info', max_length=10, verbose_name='Категория')),
-                ('is_read', models.BooleanField(db_index=True, default=False, verbose_name='Прочитано')),
-                ('target_id', models.PositiveIntegerField(blank=True, null=True, verbose_name='ID объекта')),
-                ('link', models.CharField(blank=True, max_length=500, verbose_name='Ссылка')),
-                ('recipient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to=settings.AUTH_USER_MODEL, verbose_name='Получатель')),
-                ('target_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype', verbose_name='Тип объекта')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("title", models.CharField(max_length=255, verbose_name="Заголовок")),
+                ("message", models.TextField(blank=True, max_length=500, verbose_name="Сообщение")),
+                (
+                    "category",
+                    models.CharField(
+                        choices=[
+                            ("info", "Информация"),
+                            ("success", "Успех"),
+                            ("warning", "Предупреждение"),
+                            ("error", "Ошибка"),
+                        ],
+                        default="info",
+                        max_length=10,
+                        verbose_name="Категория",
+                    ),
+                ),
+                ("is_read", models.BooleanField(db_index=True, default=False, verbose_name="Прочитано")),
+                ("target_id", models.PositiveIntegerField(blank=True, null=True, verbose_name="ID объекта")),
+                ("link", models.CharField(blank=True, max_length=500, verbose_name="Ссылка")),
+                (
+                    "recipient",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notifications",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Получатель",
+                    ),
+                ),
+                (
+                    "target_type",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="contenttypes.contenttype",
+                        verbose_name="Тип объекта",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Уведомление',
-                'verbose_name_plural': 'Уведомления',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['recipient', 'is_read', '-created_at'], name='notificatio_recipie_684eac_idx'), models.Index(fields=['target_type', 'target_id'], name='notificatio_target__1f2fb1_idx')],
+                "verbose_name": "Уведомление",
+                "verbose_name_plural": "Уведомления",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(fields=["recipient", "is_read", "-created_at"], name="notificatio_recipie_684eac_idx"),
+                    models.Index(fields=["target_type", "target_id"], name="notificatio_target__1f2fb1_idx"),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='NotificationEntry',
+            name="NotificationEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('key', models.CharField(max_length=255, verbose_name='Ключ')),
-                ('uid', models.PositiveIntegerField(verbose_name='ID объекта')),
-                ('updated', models.DateTimeField(auto_now=True)),
-                ('recipient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("key", models.CharField(max_length=255, verbose_name="Ключ")),
+                ("uid", models.PositiveIntegerField(verbose_name="ID объекта")),
+                ("updated", models.DateTimeField(auto_now=True)),
+                (
+                    "recipient",
+                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+                ),
             ],
             options={
-                'verbose_name': 'Запись дедупликации',
-                'verbose_name_plural': 'Записи дедупликации',
-                'unique_together': {('key', 'uid', 'recipient')},
+                "verbose_name": "Запись дедупликации",
+                "verbose_name_plural": "Записи дедупликации",
+                "unique_together": {("key", "uid", "recipient")},
             },
         ),
     ]

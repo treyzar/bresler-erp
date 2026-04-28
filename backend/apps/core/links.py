@@ -15,15 +15,11 @@ from apps.core.models import BaseModel
 class DocumentLink(BaseModel):
     """Universal link between any two model instances."""
 
-    source_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, related_name="source_links"
-    )
+    source_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="source_links")
     source_id = models.PositiveIntegerField()
     source = GenericForeignKey("source_type", "source_id")
 
-    target_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, related_name="target_links"
-    )
+    target_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="target_links")
     target_id = models.PositiveIntegerField()
     target = GenericForeignKey("target_type", "target_id")
 

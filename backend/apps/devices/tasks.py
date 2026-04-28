@@ -119,7 +119,7 @@ def import_components(self):
 
     except requests.exceptions.RequestException as exc:
         logger.error("API request error: %s", exc)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
     except Exception:
         logger.exception("Unexpected error during import")
         raise

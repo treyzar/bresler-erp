@@ -24,7 +24,6 @@ from apps.devices.models import (
     VoltageClass,
 )
 
-
 # ── RZA ──────────────────────────────────────────────────────────────
 
 

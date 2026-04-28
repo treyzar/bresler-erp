@@ -72,8 +72,8 @@ class NamingService:
         with transaction.atomic():
             try:
                 seq = NumberSequence.objects.select_for_update().get(name=sequence_name)
-            except NumberSequence.DoesNotExist:
-                raise ValueError(f"Number sequence '{sequence_name}' not found")
+            except NumberSequence.DoesNotExist as e:
+                raise ValueError(f"Number sequence '{sequence_name}' not found") from e
 
             # Check if counter needs reset (yearly)
             if seq.reset_period == NumberSequence.ResetPeriod.YEARLY and seq.last_reset_year < today.year:

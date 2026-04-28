@@ -1,15 +1,12 @@
 """Tests for import services — event suppression during bulk import."""
 
-import io
 import pytest
-from unittest.mock import patch
-
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from apps.core.events import clear_registry, on_event, trigger_event
+from apps.core.events import clear_registry, on_event
 from apps.directory.models import Equipment
 from apps.importer.models import ImportSession
-from apps.importer.services import apply_import, parse_file, auto_map_columns, validate_data
+from apps.importer.services import apply_import
 from apps.users.tests.factories import UserFactory
 
 

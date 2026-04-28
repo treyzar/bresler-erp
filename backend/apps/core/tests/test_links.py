@@ -23,12 +23,16 @@ class TestDocumentLinkAPI:
         order2 = OrderFactory()
         client = self._auth(api_client)
 
-        resp = client.post("/api/links/", {
-            "source_model": "order",
-            "source_id": order1.pk,
-            "target_model": "order",
-            "target_id": order2.pk,
-        }, format="json")
+        resp = client.post(
+            "/api/links/",
+            {
+                "source_model": "order",
+                "source_id": order1.pk,
+                "target_model": "order",
+                "target_id": order2.pk,
+            },
+            format="json",
+        )
         assert resp.status_code == status.HTTP_201_CREATED
         assert DocumentLink.objects.count() == 1
 
@@ -39,12 +43,16 @@ class TestDocumentLinkAPI:
         ct = ContentType.objects.get_for_model(order1)
 
         DocumentLink.objects.create(
-            source_type=ct, source_id=order1.pk,
-            target_type=ct, target_id=order2.pk,
+            source_type=ct,
+            source_id=order1.pk,
+            target_type=ct,
+            target_id=order2.pk,
         )
         DocumentLink.objects.create(
-            source_type=ct, source_id=order1.pk,
-            target_type=ct, target_id=order3.pk,
+            source_type=ct,
+            source_id=order1.pk,
+            target_type=ct,
+            target_id=order3.pk,
         )
 
         client = self._auth(api_client)
@@ -59,8 +67,10 @@ class TestDocumentLinkAPI:
         order2 = OrderFactory()
         ct = ContentType.objects.get_for_model(order1)
         DocumentLink.objects.create(
-            source_type=ct, source_id=order1.pk,
-            target_type=ct, target_id=order2.pk,
+            source_type=ct,
+            source_id=order1.pk,
+            target_type=ct,
+            target_id=order2.pk,
         )
 
         client = self._auth(api_client)
@@ -74,8 +84,10 @@ class TestDocumentLinkAPI:
         order2 = OrderFactory()
         ct = ContentType.objects.get_for_model(order1)
         link = DocumentLink.objects.create(
-            source_type=ct, source_id=order1.pk,
-            target_type=ct, target_id=order2.pk,
+            source_type=ct,
+            source_id=order1.pk,
+            target_type=ct,
+            target_id=order2.pk,
         )
         client = self._auth(api_client)
         resp = client.delete(f"/api/links/{link.pk}/")
@@ -87,12 +99,24 @@ class TestDocumentLinkAPI:
         order2 = OrderFactory()
         client = self._auth(api_client)
 
-        client.post("/api/links/", {
-            "source_model": "order", "source_id": order1.pk,
-            "target_model": "order", "target_id": order2.pk,
-        }, format="json")
-        resp = client.post("/api/links/", {
-            "source_model": "order", "source_id": order1.pk,
-            "target_model": "order", "target_id": order2.pk,
-        }, format="json")
+        client.post(
+            "/api/links/",
+            {
+                "source_model": "order",
+                "source_id": order1.pk,
+                "target_model": "order",
+                "target_id": order2.pk,
+            },
+            format="json",
+        )
+        resp = client.post(
+            "/api/links/",
+            {
+                "source_model": "order",
+                "source_id": order1.pk,
+                "target_model": "order",
+                "target_id": order2.pk,
+            },
+            format="json",
+        )
         assert resp.status_code == status.HTTP_400_BAD_REQUEST

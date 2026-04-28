@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('orders', '0009_migrate_tender_status_data'),
+        ("orders", "0009_migrate_tender_status_data"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='contract',
-            name='contract_number',
-            field=models.CharField(blank=True, max_length=100, unique=True, verbose_name='Номер контракта'),
+            model_name="contract",
+            name="contract_number",
+            field=models.CharField(blank=True, max_length=100, unique=True, verbose_name="Номер контракта"),
         ),
         migrations.AlterField(
-            model_name='historicalcontract',
-            name='contract_number',
-            field=models.CharField(blank=True, db_index=True, max_length=100, verbose_name='Номер контракта'),
+            model_name="historicalcontract",
+            name="contract_number",
+            field=models.CharField(blank=True, db_index=True, max_length=100, verbose_name="Номер контракта"),
         ),
     ]

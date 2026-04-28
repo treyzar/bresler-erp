@@ -29,9 +29,18 @@ class DocumentLinkSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentLink
         fields = [
-            "id", "source_type", "source_id", "source_repr", "source_model",
-            "target_type", "target_id", "target_repr", "target_model",
-            "link_type", "note", "created_at",
+            "id",
+            "source_type",
+            "source_id",
+            "source_repr",
+            "source_model",
+            "target_type",
+            "target_id",
+            "target_repr",
+            "target_model",
+            "link_type",
+            "note",
+            "created_at",
         ]
         read_only_fields = ["id", "source_repr", "target_repr", "source_model", "target_model", "created_at"]
 
@@ -80,8 +89,8 @@ def _resolve_content_type(model_name: str) -> ContentType:
     app_label, model = MODEL_MAP[key]
     try:
         return ContentType.objects.get(app_label=app_label, model=model)
-    except ContentType.DoesNotExist:
-        raise serializers.ValidationError(f"Model not found: {model_name}")
+    except ContentType.DoesNotExist as e:
+        raise serializers.ValidationError(f"Model not found: {model_name}") from e
 
 
 class DocumentLinkViewSet(ModelViewSet):
@@ -110,10 +119,8 @@ class DocumentLinkViewSet(ModelViewSet):
                     ct = ContentType.objects.get(app_label=app_label, model=model)
                     # Return links where the object is either source OR target
                     from django.db.models import Q
-                    qs = qs.filter(
-                        Q(source_type=ct, source_id=source_id) |
-                        Q(target_type=ct, target_id=source_id)
-                    )
+
+                    qs = qs.filter(Q(source_type=ct, source_id=source_id) | Q(target_type=ct, target_id=source_id))
                 except ContentType.DoesNotExist:
                     qs = qs.none()
             else:
@@ -150,6 +157,7 @@ class NumberSequenceSerializer(serializers.ModelSerializer):
 
 class NumberSequenceViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only список секвенций — для пикеров в админке EDO."""
+
     permission_classes = [IsAuthenticated]
     serializer_class = NumberSequenceSerializer
     queryset = NumberSequence.objects.order_by("name").all()

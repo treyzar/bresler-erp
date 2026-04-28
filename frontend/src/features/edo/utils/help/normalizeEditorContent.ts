@@ -1,6 +1,6 @@
 import type { IEditorElement, TElementType } from "../types/editor.types";
 
-type AnyRecord = Record<string, any>;
+type AnyRecord = Record<string, unknown>;
 
 const TEXT_DEFAULTS = {
   fontFamily: "Inter",
@@ -22,7 +22,19 @@ const DIVIDER_DEFAULTS = { thickness: 1, color: "#1a1a1a", style: "solid" as con
 const SIGNATURE_DEFAULTS = { text: "Подпись", fontSize: 16, color: "#1a1a1a" };
 
 function hoistFlatFields(type: TElementType, el: AnyRecord): AnyRecord {
-  const { id, type: _t, x, y, width, height, zIndex, properties, ...rest } = el;
+  // Strip known top-level fields so `rest` only holds the flat properties
+  // we want to hoist into `properties`.
+  const {
+    id: _id,
+    type: _t,
+    x: _x,
+    y: _y,
+    width: _width,
+    height: _height,
+    zIndex: _zIndex,
+    properties: _properties,
+    ...rest
+  } = el;
   const props: AnyRecord = {};
 
   if ("content" in rest) props.content = rest.content ?? "";
@@ -71,11 +83,11 @@ function hoistFlatFields(type: TElementType, el: AnyRecord): AnyRecord {
   return props;
 }
 
-export function normalizeElement(raw: any): IEditorElement {
+export function normalizeElement(raw: AnyRecord): IEditorElement {
   const type = raw?.type as TElementType;
   const properties =
     raw && typeof raw.properties === "object" && raw.properties !== null
-      ? raw.properties
+      ? (raw.properties as AnyRecord)
       : hoistFlatFields(type, raw || {});
 
   return {
@@ -90,10 +102,10 @@ export function normalizeElement(raw: any): IEditorElement {
   };
 }
 
-export function normalizeEditorContent(list: any[] | undefined | null): IEditorElement[] {
+export function normalizeEditorContent(list: unknown): IEditorElement[] {
   if (!Array.isArray(list)) return [];
   return list
-    .filter((el) => el && typeof el === "object" && el.type)
+    .filter((el): el is AnyRecord => !!el && typeof el === "object" && "type" in el)
     .map(normalizeElement);
 }
 

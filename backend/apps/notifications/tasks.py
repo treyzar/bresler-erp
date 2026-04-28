@@ -27,11 +27,15 @@ def check_order_deadlines():
     ]
 
     # 1. Overdue orders (ship_date < today)
-    overdue_orders = Order.objects.filter(
-        status__in=active_statuses,
-        ship_date__lt=today,
-        ship_date__isnull=False,
-    ).select_related("customer_org_unit").prefetch_related("managers")
+    overdue_orders = (
+        Order.objects.filter(
+            status__in=active_statuses,
+            ship_date__lt=today,
+            ship_date__isnull=False,
+        )
+        .select_related("customer_org_unit")
+        .prefetch_related("managers")
+    )
 
     overdue_count = 0
     for order in overdue_orders:
@@ -51,11 +55,15 @@ def check_order_deadlines():
 
     # 2. Approaching deadline (ship_date within 3 days)
     deadline_soon = today + timedelta(days=3)
-    approaching_orders = Order.objects.filter(
-        status__in=active_statuses,
-        ship_date__range=(today, deadline_soon),
-        ship_date__isnull=False,
-    ).select_related("customer_org_unit").prefetch_related("managers")
+    approaching_orders = (
+        Order.objects.filter(
+            status__in=active_statuses,
+            ship_date__range=(today, deadline_soon),
+            ship_date__isnull=False,
+        )
+        .select_related("customer_org_unit")
+        .prefetch_related("managers")
+    )
 
     approaching_count = 0
     for order in approaching_orders:
@@ -104,13 +112,9 @@ def cleanup_old_notifications():
 
     cutoff = timezone.now() - timedelta(days=90)
 
-    deleted_notif, _ = Notification.objects.filter(
-        is_read=True, created_at__lt=cutoff
-    ).delete()
+    deleted_notif, _ = Notification.objects.filter(is_read=True, created_at__lt=cutoff).delete()
 
-    deleted_entries, _ = NotificationEntry.objects.filter(
-        updated__lt=cutoff
-    ).delete()
+    deleted_entries, _ = NotificationEntry.objects.filter(updated__lt=cutoff).delete()
 
     logger.info(
         "Cleanup: %d notifications, %d dedup entries deleted",

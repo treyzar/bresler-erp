@@ -117,7 +117,7 @@ class DocumentType(models.Model):
         "Шаблон заголовка",
         max_length=500,
         blank=True,
-        help_text='Например: Служебная записка «{{ subject }}»',
+        help_text="Например: Служебная записка «{{ subject }}»",
     )
     default_chain = models.ForeignKey(
         ApprovalChainTemplate,

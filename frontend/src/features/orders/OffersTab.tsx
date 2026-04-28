@@ -4,7 +4,6 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import type { OrderParticipantEntry, CommercialOfferListItem, ShipmentBatch } from "@/api/types"
 import { OFFER_STATUSES, PAYMENT_TERMS } from "@/api/types"
@@ -28,7 +27,7 @@ interface OffersTabProps {
   shipmentBatches?: ShipmentBatch[]
 }
 
-export function OffersTab({ orderId, orderNumber, participants, shipmentBatches }: OffersTabProps) {
+export function OffersTab({ orderId, participants, shipmentBatches }: OffersTabProps) {
   const { data, isLoading } = useOfferList(orderId)
   const deleteMutation = useDeleteOffer(orderId)
   const copyMutation = useCopyOffer(orderId)

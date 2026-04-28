@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react"
 import { Link, useParams, useNavigate } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import type { AxiosError } from "axios"
 import {
   ChevronLeft, CheckCircle, XCircle, RotateCcw, FileText,
   Clock, CheckCheck, AlertCircle, Loader2, Trash2, Send, Download,
@@ -68,8 +69,8 @@ export function DocumentDetailPage() {
     refetchInterval: 20_000,
     refetchOnWindowFocus: true,
     // Не зацикливаем 401/403/404 — это не транзиентные ошибки, ретрай только усугубит.
-    retry: (failureCount, error: any) => {
-      const status = error?.response?.status
+    retry: (failureCount, error) => {
+      const status = (error as AxiosError)?.response?.status
       if (status === 401 || status === 403 || status === 404) return false
       return failureCount < 2
     },
@@ -85,27 +86,32 @@ export function DocumentDetailPage() {
     mutationFn: (payload: { comment: string; signature_image?: string }) =>
       internalDocsApi.approveDocument(docId, payload),
     onSuccess: () => { toast.success("Согласовано"); invalidate() },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
   const reject = useMutation({
     mutationFn: (comment: string) => internalDocsApi.rejectDocument(docId, comment),
     onSuccess: () => { toast.success("Документ отклонён"); invalidate() },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
   const revision = useMutation({
     mutationFn: (comment: string) => internalDocsApi.requestRevision(docId, comment),
     onSuccess: () => { toast.success("Отправлено на правки"); invalidate() },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
   const submit = useMutation({
     mutationFn: () => internalDocsApi.submitDocument(docId),
     onSuccess: () => { toast.success("Отправлено на согласование"); invalidate() },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
   const cancel = useMutation({
     mutationFn: () => internalDocsApi.deleteDocument(docId),
     onSuccess: () => { toast.success("Документ отменён"); navigate("/edo/my") },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
 
   const [comment, setComment] = useState("")
@@ -175,8 +181,9 @@ export function DocumentDetailPage() {
                   a.click()
                   document.body.removeChild(a)
                   URL.revokeObjectURL(url)
-                } catch (e: any) {
-                  toast.error(e?.response?.data?.detail ?? "Ошибка генерации PDF")
+                } catch (e) {
+                  const err = e as AxiosError<{ detail?: string }>
+                  toast.error(err.response?.data?.detail ?? "Ошибка генерации PDF")
                 }
               }}
             >
@@ -400,7 +407,8 @@ function FieldsSummary({
       setIsEditing(false)
       onSaved()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка сохранения"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка сохранения"),
   })
 
   const handleSave = () => {
@@ -495,8 +503,9 @@ function AttachmentsCard({
       await internalDocsApi.uploadAttachment(doc.id, f)
       toast.success("Файл загружен")
       onChanged()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Ошибка загрузки")
+    } catch (err) {
+      const e = err as AxiosError<{ detail?: string }>
+      toast.error(e.response?.data?.detail ?? "Ошибка загрузки")
     } finally {
       setUploading(false)
       if (fileInput.current) fileInput.current.value = ""
@@ -593,9 +602,17 @@ function DelegateButton({
     if (!open) return
     // Делегируем коллегам по своей компании — за пределы юрлица обычно
     // делегировать не имеет смысла, и список из 400+ человек неудобен.
+    interface UserRow {
+      id: number
+      first_name?: string
+      last_name?: string
+      patronymic?: string
+      username: string
+      position?: string
+    }
     api.get("/users/", { params: { page_size: 500, in_my_company: true } }).then((r) => {
-      const raw = r.data?.results ?? r.data ?? []
-      setOptions(raw.map((u: any) => ({
+      const raw: UserRow[] = r.data?.results ?? r.data ?? []
+      setOptions(raw.map((u) => ({
         id: u.id,
         name: [u.last_name, u.first_name, u.patronymic].filter(Boolean).join(" ") || u.username,
         position: u.position ?? "",
@@ -611,7 +628,8 @@ function DelegateButton({
       setToUserId(null)
       onDelegated()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
 
   return (

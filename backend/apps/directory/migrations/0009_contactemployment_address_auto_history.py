@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('directory', '0008_rename_contactemployment_index'),
+        ("directory", "0008_rename_contactemployment_index"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='contactemployment',
-            name='address',
-            field=models.TextField(blank=True, verbose_name='Адрес'),
+            model_name="contactemployment",
+            name="address",
+            field=models.TextField(blank=True, verbose_name="Адрес"),
         ),
     ]

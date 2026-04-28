@@ -1,8 +1,8 @@
 from django.db import models
 
-from .rza import DeviceRZA, ModRZA
-from .parameters import Parameter
 from .components import DeviceComponent
+from .parameters import Parameter
+from .rza import DeviceRZA, ModRZA
 
 
 class DeviceRZAParameter(models.Model):
@@ -20,9 +20,7 @@ class DeviceRZAParameter(models.Model):
         related_name="device_rza_assignments",
         verbose_name="Параметр",
     )
-    price = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0, verbose_name="Цена"
-    )
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Цена")
 
     class Meta:
         unique_together = ("device_rza", "parameter")
@@ -48,9 +46,7 @@ class ModRZAParameter(models.Model):
         related_name="mod_rza_assignments",
         verbose_name="Параметр",
     )
-    price = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0, verbose_name="Цена"
-    )
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Цена")
 
     class Meta:
         unique_together = ("mod_rza", "parameter")
@@ -76,9 +72,7 @@ class DeviceRZAComponent(models.Model):
         related_name="device_rza_assignments",
         verbose_name="Компонент",
     )
-    price = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0, verbose_name="Цена"
-    )
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Цена")
 
     class Meta:
         unique_together = ("device_rza", "component")
@@ -104,9 +98,7 @@ class ModRZAComponent(models.Model):
         related_name="mod_rza_assignments",
         verbose_name="Компонент",
     )
-    price = models.DecimalField(
-        max_digits=15, decimal_places=2, default=0, verbose_name="Цена"
-    )
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Цена")
 
     class Meta:
         unique_together = ("mod_rza", "component")

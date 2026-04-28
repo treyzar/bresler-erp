@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import io
 import logging
 import re
@@ -58,10 +59,8 @@ def _add_text_run(paragraph, text: str, props: dict) -> None:
         run.underline = True
     font_size = props.get("fontSize")
     if font_size:
-        try:
+        with contextlib.suppress(TypeError, ValueError):
             run.font.size = Pt(float(font_size))
-        except (TypeError, ValueError):
-            pass
     font_family = props.get("fontFamily")
     if font_family:
         run.font.name = str(font_family)
@@ -190,4 +189,4 @@ class DocxBuilderService:
 
         except Exception as e:
             logger.error("DocxBuilder Service Error: %s", e, exc_info=True)
-            raise RuntimeError(f"Failed to build DOCX: {str(e)}")
+            raise RuntimeError(f"Failed to build DOCX: {str(e)}") from e

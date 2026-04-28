@@ -9,11 +9,8 @@ from apps.directory.models import (
     Contact,
     ContactEmployment,
     Country,
-    DeliveryType,
-    Equipment,
     Facility,
     OrgUnit,
-    TypeOfWork,
 )
 
 from .factories import (
@@ -419,8 +416,9 @@ class TestFacility:
         assert facility.history.count() == 2
 
     def test_org_unit_protect(self):
+        from django.db.models.deletion import ProtectedError
         facility = FacilityFactory()
-        with pytest.raises(Exception):
+        with pytest.raises(ProtectedError):
             facility.org_unit.delete()
 
     def test_ordering(self):

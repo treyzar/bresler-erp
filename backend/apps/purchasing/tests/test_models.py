@@ -1,12 +1,13 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from apps.purchasing.models import (
     PurchaseOrder,
     PurchasePayment,
     PurchaseRequest,
-    StockItem,
 )
+
 from .factories import (
     PurchaseOrderFactory,
     PurchaseOrderLineFactory,

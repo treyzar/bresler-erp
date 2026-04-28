@@ -1,6 +1,6 @@
 from django.db import models
 from django.http import HttpResponse
-from rest_framework import viewsets, status
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,11 +15,10 @@ from apps.specs.models import (
     Specification,
     SpecificationLine,
 )
-from apps.specs.services import offer_service, specification_service, document_service
+from apps.specs.services import document_service, offer_service, specification_service
 
 from .filters import CommercialOfferFilter
 from .serializers import (
-    CalculationLineSerializer,
     CommercialOfferCreateSerializer,
     CommercialOfferDetailSerializer,
     CommercialOfferListSerializer,
@@ -27,7 +26,6 @@ from .serializers import (
     OfferWorkItemSerializer,
     ParticipantContactSerializer,
     SpecificationFillSerializer,
-    SpecificationLineSerializer,
     SpecificationSerializer,
 )
 
@@ -43,7 +41,10 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = CommercialOffer.objects.select_related(
-            "participant__org_unit", "manager", "executor", "based_on",
+            "participant__org_unit",
+            "manager",
+            "executor",
+            "based_on",
         ).prefetch_related("work_items__work_type")
 
         # Scope to order if nested under /api/orders/{order_pk}/offers/
@@ -99,7 +100,8 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
             if not offer.work_items.exists():
                 for wt in offer.order.works.all():
                     OfferWorkItem.objects.get_or_create(
-                        offer=offer, work_type=wt,
+                        offer=offer,
+                        work_type=wt,
                         defaults={"included": True},
                     )
             items = offer.work_items.select_related("work_type").all()
@@ -109,9 +111,7 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
         for item_data in request.data:
             item_id = item_data.get("id")
             if item_id:
-                offer.work_items.filter(id=item_id).update(**{
-                    k: v for k, v in item_data.items() if k != "id"
-                })
+                offer.work_items.filter(id=item_id).update(**{k: v for k, v in item_data.items() if k != "id"})
         items = offer.work_items.select_related("work_type").all()
         return Response(OfferWorkItemSerializer(items, many=True).data)
 
@@ -128,7 +128,7 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
         # PATCH: update lines
         lines_data = request.data.get("lines", [])
         # Remove lines not in request
-        incoming_ids = {l.get("id") for l in lines_data if l.get("id")}
+        incoming_ids = {line.get("id") for line in lines_data if line.get("id")}
         spec.lines.exclude(id__in=incoming_ids).delete()
 
         readonly_fields = {"id", "total_price", "product_name"}
@@ -138,7 +138,8 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
                 line_data.pop(rf, None)
             if line_id:
                 SpecificationLine.objects.filter(
-                    id=line_id, specification=spec,
+                    id=line_id,
+                    specification=spec,
                 ).update(**line_data)
                 # Re-save to trigger total_price calculation
                 for line in SpecificationLine.objects.filter(id=line_id):
@@ -160,7 +161,8 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
 
         if serializer.validated_data["source_type"] == "products":
             specification_service.fill_from_products(
-                spec, serializer.validated_data["product_ids"],
+                spec,
+                serializer.validated_data["product_ids"],
             )
         elif serializer.validated_data["source_type"] == "offer":
             source_offer = CommercialOffer.objects.get(
@@ -182,7 +184,14 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
 
         # PATCH: update defaults + lines
         # Update defaults
-        for field in ("default_overhead_percent", "default_project_coeff", "default_discount_coeff", "delivery_price", "delivery_pricing_mode", "note"):
+        for field in (
+            "default_overhead_percent",
+            "default_project_coeff",
+            "default_discount_coeff",
+            "delivery_price",
+            "delivery_pricing_mode",
+            "note",
+        ):
             if field in request.data:
                 setattr(calc, field, request.data[field])
         calc.save()
@@ -190,13 +199,18 @@ class CommercialOfferViewSet(viewsets.ModelViewSet):
         # Update lines if provided
         lines_data = request.data.get("lines")
         if lines_data is not None:
-            incoming_ids = {l.get("id") for l in lines_data if l.get("id")}
+            incoming_ids = {line.get("id") for line in lines_data if line.get("id")}
             calc.lines.exclude(id__in=incoming_ids).delete()
 
             readonly_fields = {
-                "id", "price_with_overhead", "estimated_price",
-                "discounted_price", "total_price", "product_name",
-                "device_rza_name", "mod_rza_name",
+                "id",
+                "price_with_overhead",
+                "estimated_price",
+                "discounted_price",
+                "total_price",
+                "product_name",
+                "device_rza_name",
+                "mod_rza_name",
             }
             for line_data in lines_data:
                 line_id = line_data.pop("id", None)

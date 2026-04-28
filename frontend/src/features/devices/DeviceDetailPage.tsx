@@ -5,7 +5,7 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
@@ -14,11 +14,8 @@ import {
   useDeviceModifications,
   useDeviceParameters,
   useDeviceComponents,
-  useCreateModRZA,
   useDeleteModRZA,
-  useAddDeviceParameter,
   useRemoveDeviceParameter,
-  useAddDeviceComponent,
   useRemoveDeviceComponent,
 } from "@/api/hooks/useDevices"
 import type { ModRZA, DeviceRZAParameter, DeviceRZAComponent } from "@/api/types"
@@ -44,7 +41,6 @@ export function DeviceDetailPage() {
   const [deleteParamItem, setDeleteParamItem] = useState<DeviceRZAParameter | null>(null)
   const [deleteCompItem, setDeleteCompItem] = useState<DeviceRZAComponent | null>(null)
 
-  const createModMutation = useCreateModRZA()
   const deleteModMutation = useDeleteModRZA()
   const removeParamMutation = useRemoveDeviceParameter()
   const removeCompMutation = useRemoveDeviceComponent()

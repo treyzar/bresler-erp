@@ -6,7 +6,6 @@ import type { User } from "@/api/types"
 
 export function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
   const logout = useAuthStore((s) => s.logout)
 
@@ -17,7 +16,7 @@ export function ProtectedRoute() {
         .then((res) => setUser(res.data))
         .catch(() => logout())
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, setUser, logout])
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />

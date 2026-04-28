@@ -4,20 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('internal_docs', '0009_seed_phase2_types'),
+        ("internal_docs", "0009_seed_phase2_types"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='approvalstep',
-            name='sla_breached_at',
-            field=models.DateTimeField(blank=True, help_text='Заполняется Celery Beat-задачей check_sla_breaches при первом обнаружении просрочки', null=True, verbose_name='SLA нарушен (зафиксировано)'),
+            model_name="approvalstep",
+            name="sla_breached_at",
+            field=models.DateTimeField(
+                blank=True,
+                help_text="Заполняется Celery Beat-задачей check_sla_breaches при первом обнаружении просрочки",
+                null=True,
+                verbose_name="SLA нарушен (зафиксировано)",
+            ),
         ),
         migrations.AddField(
-            model_name='historicalapprovalstep',
-            name='sla_breached_at',
-            field=models.DateTimeField(blank=True, help_text='Заполняется Celery Beat-задачей check_sla_breaches при первом обнаружении просрочки', null=True, verbose_name='SLA нарушен (зафиксировано)'),
+            model_name="historicalapprovalstep",
+            name="sla_breached_at",
+            field=models.DateTimeField(
+                blank=True,
+                help_text="Заполняется Celery Beat-задачей check_sla_breaches при первом обнаружении просрочки",
+                null=True,
+                verbose_name="SLA нарушен (зафиксировано)",
+            ),
         ),
     ]

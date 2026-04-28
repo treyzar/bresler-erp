@@ -39,4 +39,4 @@ def run_event_handler(self, handler_path: str, kwargs: dict):
             handler_path,
             event_name,
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

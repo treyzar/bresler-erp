@@ -7,7 +7,7 @@ import type { ListParams } from "@/api/types"
  * Returns current values, setter, reset, active filter detection, and
  * a params object ready to pass to API calls.
  */
-export function useAutoFilters(filters: FilterMeta[] | undefined) {
+export function useAutoFilters(_filters: FilterMeta[] | undefined) {
   const [values, setValues] = useState<Record<string, string>>({})
 
   const setValue = useCallback((name: string, value: string) => {

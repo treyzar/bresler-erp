@@ -1,9 +1,8 @@
 """Tests for notification services."""
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
 
-from apps.notifications.models import Notification, NotificationEntry
+from apps.notifications.models import NotificationEntry
 from apps.notifications.services import (
     create_notification,
     get_unread_count,

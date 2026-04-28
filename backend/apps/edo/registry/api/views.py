@@ -47,11 +47,7 @@ class LetterViewSet(viewsets.ModelViewSet):
         return perms
 
     def get_queryset(self):
-        return (
-            Letter.objects.select_related("executor", "created_by")
-            .prefetch_related("files")
-            .all()
-        )
+        return Letter.objects.select_related("executor", "created_by").prefetch_related("files").all()
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -100,9 +96,7 @@ class LetterViewSet(viewsets.ModelViewSet):
         except LetterFile.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         response = FileResponse(letter_file.file.open("rb"), as_attachment=True)
-        response["Content-Disposition"] = (
-            f'attachment; filename="{os.path.basename(letter_file.file_name)}"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="{os.path.basename(letter_file.file_name)}"'
         return response
 
     @action(detail=True, methods=["get"])

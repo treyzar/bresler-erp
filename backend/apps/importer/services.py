@@ -226,6 +226,7 @@ def apply_import(session: ImportSession) -> dict:
 
     # Trigger notification
     from apps.core.events import trigger_event
+
     trigger_event("import.completed", instance=session, user=session.user)
 
     logger.info("Import complete: %d success, %d errors", success, session.error_count)
@@ -275,7 +276,7 @@ def _read_xlsx_rows(file) -> list[dict]:
     result = []
     for row_values in rows_iter:
         row_dict = {}
-        for col_name, value in zip(header, row_values):
+        for col_name, value in zip(header, row_values, strict=False):
             row_dict[col_name] = str(value).strip() if value is not None else ""
         result.append(row_dict)
 
@@ -315,11 +316,13 @@ def _validate_row(mapped_row: dict, required_fields: set, model_class, row_num: 
     for field in required_fields:
         value = mapped_row.get(field, "")
         if not value or (isinstance(value, str) and not value.strip()):
-            errors.append({
-                "row": row_num,
-                "field": field,
-                "message": f"Обязательное поле '{field}' пустое",
-            })
+            errors.append(
+                {
+                    "row": row_num,
+                    "field": field,
+                    "message": f"Обязательное поле '{field}' пустое",
+                }
+            )
     return errors
 
 

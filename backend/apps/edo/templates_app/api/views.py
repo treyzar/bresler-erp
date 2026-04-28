@@ -1,37 +1,34 @@
 # apps/templates_app/views.py
 
-import io
-import re
 import json
-import uuid
 import logging
-from typing import Any, Dict
+import re
+from typing import Any
 
 from django.conf import settings
-from django.http import HttpResponse, FileResponse
-from django.core.files.base import ContentFile
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import PermissionDenied
-from rest_framework import viewsets, status
+from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from docxtpl import DocxTemplate
-
-from ..models.models import Template, TemplateVersion, ShareLink
-from ..services.pdf_export import PDFExportService
+from ..models.models import ShareLink, Template, TemplateVersion
 from ..services.docx_builder import DocxBuilderService
 from ..services.html_renderer import render_editor_content_html
+from ..services.pdf_export import PDFExportService
 from .serializers import (
-    TemplateSerializer, TemplateListSerializer,
-    TemplateVersionSerializer, ShareLinkSerializer, RenderSerializer
+    RenderSerializer,
+    ShareLinkSerializer,
+    TemplateListSerializer,
+    TemplateSerializer,
+    TemplateVersionSerializer,
 )
 
 # Настройка логгера
 logger = logging.getLogger(__name__)
 
-CURRENT_USER_ID = getattr(settings, 'CURRENT_USER_ID', 1)
+CURRENT_USER_ID = getattr(settings, "CURRENT_USER_ID", 1)
 
 
 def _get_base_url_from_request(request) -> str:
@@ -45,11 +42,11 @@ def _get_base_url_from_request(request) -> str:
 def _safe_filename(name: str, default: str = "document") -> str:
     """Очищает имя файла от недопустимых символов"""
     name = (name or default).strip()
-    name = re.sub(r'["\r\n<>:"/\\|?*]', '', name)
+    name = re.sub(r'["\r\n<>:"/\\|?*]', "", name)
     return name or default
 
 
-def _apply_placeholders_html(html_content: str, values: Dict[str, Any]) -> str:
+def _apply_placeholders_html(html_content: str, values: dict[str, Any]) -> str:
     """Fallback: подстановка в готовый HTML (для legacy-шаблонов без editor_content)."""
     result = html_content or ""
     for key, value in (values or {}).items():
@@ -66,8 +63,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
-        from django.shortcuts import get_object_or_404
-        obj = get_object_or_404(Template, pk=self.kwargs['pk'])
+        obj = get_object_or_404(Template, pk=self.kwargs["pk"])
         self.check_object_permissions(self.request, obj)
         return obj
 
@@ -78,16 +74,16 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         scope = self.request.query_params.get("scope", "all")
-        
+
         # Базовая фильтрация по мягкому удалению
         base_qs = Template.objects.filter(is_deleted=False)
-        
+
         if scope == "public":
             return base_qs.filter(visibility="PUBLIC").order_by("-updated_at")
-        
+
         if scope == "my":
             return base_qs.filter(owner_id=CURRENT_USER_ID).order_by("-updated_at")
-        
+
         if scope == "shared":
             all_templates = base_qs.exclude(owner_id=CURRENT_USER_ID)
             ids = [t.id for t in all_templates if CURRENT_USER_ID in (t.allowed_users or [])]
@@ -95,10 +91,9 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
         all_templates = base_qs.all()
         ids = [
-            t.id for t in all_templates
-            if t.visibility == "PUBLIC"
-            or t.owner_id == CURRENT_USER_ID
-            or CURRENT_USER_ID in (t.allowed_users or [])
+            t.id
+            for t in all_templates
+            if t.visibility == "PUBLIC" or t.owner_id == CURRENT_USER_ID or CURRENT_USER_ID in (t.allowed_users or [])
         ]
         return base_qs.filter(id__in=ids).order_by("-updated_at")
 
@@ -117,14 +112,14 @@ class TemplateViewSet(viewsets.ModelViewSet):
         old_editor = instance.editor_content
         old_docx = instance.docx_file.name if instance.docx_file else None
 
-        serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
+        serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get("partial", False))
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
         new_html = instance.html_content
         new_editor = instance.editor_content
         new_docx = instance.docx_file.name if instance.docx_file else None
-        
+
         if old_html != new_html or old_docx != new_docx or old_editor != new_editor:
             version_count = instance.versions.count()
             TemplateVersion.objects.create(
@@ -139,22 +134,19 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        
-        # Проверка на владельца (даже для superuser, так как CURRENT_USER_ID 
+
+        # Проверка на владельца (даже для superuser, так как CURRENT_USER_ID
         # будет сравниваться с owner_id объекта)
         if instance.owner_id != CURRENT_USER_ID:
-            return Response(
-                {"error": "Удаление разрешено только владельцу шаблона."}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
+            return Response({"error": "Удаление разрешено только владельцу шаблона."}, status=status.HTTP_403_FORBIDDEN)
+
         # Мягкое удаление
         instance.is_deleted = True
-        instance.save(update_fields=['is_deleted'])
-        
+        instance.save(update_fields=["is_deleted"])
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['GET'], url_path='download-source')
+    @action(detail=True, methods=["GET"], url_path="download-source")
     def download_source(self, request, pk=None):
         """Скачать файл шаблона в указанном формате."""
         template = Template.objects.get(pk=pk)
@@ -163,30 +155,30 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
         # Параметр называется `fmt`, а не `format`, потому что `format` —
         # зарезервированное имя в DRF content-negotiation и ломает роутинг в 404.
-        req_format = request.query_params.get('fmt', '').lower()
+        req_format = request.query_params.get("fmt", "").lower()
         if not req_format:
             req_format = template.template_type.lower()
 
         filename = _safe_filename(template.title)
 
-        if req_format == 'pdf':
+        if req_format == "pdf":
             html = template.html_content or "<html><body><p>Empty Template</p></body></html>"
             try:
                 pdf_bytes = PDFExportService.generate(html)
-                response = HttpResponse(pdf_bytes, content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
+                response = HttpResponse(pdf_bytes, content_type="application/pdf")
+                response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
                 return response
             except Exception as e:
                 logger.error(f"PDF source download failed: {e}", exc_info=True)
                 return Response({"error": f"PDF generation failed: {str(e)}"}, status=500)
 
-        elif req_format == 'html':
+        elif req_format == "html":
             html = template.html_content or ""
-            response = HttpResponse(html, content_type='text/html; charset=utf-8')
-            response['Content-Disposition'] = f'attachment; filename="{filename}.html"'
+            response = HttpResponse(html, content_type="text/html; charset=utf-8")
+            response["Content-Disposition"] = f'attachment; filename="{filename}.html"'
             return response
 
-        elif req_format == 'json':
+        elif req_format == "json":
             export_data = {
                 "template_id": template.id,
                 "title": template.title,
@@ -195,19 +187,18 @@ class TemplateViewSet(viewsets.ModelViewSet):
                 "html_content": template.html_content or "",
             }
             json_str = json.dumps(export_data, ensure_ascii=False, indent=2)
-            
-            response = HttpResponse(json_str, content_type='application/json; charset=utf-8')
-            response['Content-Disposition'] = f'attachment; filename="{filename}.json"'
+
+            response = HttpResponse(json_str, content_type="application/json; charset=utf-8")
+            response["Content-Disposition"] = f'attachment; filename="{filename}.json"'
             return response
 
-        elif req_format == 'docx':
+        elif req_format == "docx":
             try:
                 docx_bytes = DocxBuilderService.build_from_json(template.editor_content)
                 response = HttpResponse(
-                    docx_bytes,
-                    content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    docx_bytes, content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
-                response['Content-Disposition'] = f'attachment; filename="{filename}.docx"'
+                response["Content-Disposition"] = f'attachment; filename="{filename}.docx"'
                 return response
             except Exception as e:
                 logger.error(f"DOCX source download failed: {e}", exc_info=True)
@@ -221,7 +212,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
         logger.info("=" * 50)
         logger.info(f"=== RENDER START === Template ID: {pk}")
         logger.info(f"Request data: {request.data}")
-        
+
         try:
             template = self.get_object()
             logger.info(f"Template: {template.title}")
@@ -229,7 +220,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
             logger.info(f"Has docx_file: {bool(template.docx_file)}")
             logger.info(f"Has html_content: {bool(template.html_content)}")
             logger.info(f"html_content length: {len(template.html_content or '')}")
-            
+
             if not template.is_accessible_by(CURRENT_USER_ID):
                 logger.warning("Access denied")
                 return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
@@ -238,12 +229,12 @@ class TemplateViewSet(viewsets.ModelViewSet):
             if not serializer.is_valid():
                 logger.error(f"Serializer errors: {serializer.errors}")
                 return Response(serializer.errors, status=400)
-            
+
             values = serializer.validated_data.get("values", {})
             logger.info(f"Values to render: {values}")
 
             return render_template(request, template, values)
-            
+
         except Exception as e:
             logger.error(f"RENDER ERROR: {type(e).__name__}: {e}", exc_info=True)
             return Response({"error": str(e)}, status=500)
@@ -281,7 +272,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
         template.editor_content = version.editor_content
         if version.docx_file:
             template.docx_file = version.docx_file
-        
+
         template.save()
         serializer = self.get_serializer(template)
         return Response(serializer.data)
@@ -304,17 +295,17 @@ class TemplateViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=201)
 
 
-def render_template(request, template: Template, values: Dict[str, Any]):
+def render_template(request, template: Template, values: dict[str, Any]):
     """Основная логика генерации документа с данными."""
     logger.info("=== render_template START ===")
     logger.info(f"Template: {template.title}, Type: {template.template_type}")
-    
+
     # 1. Генерируем DOCX через DocxBuilderService (Spatial Sorting)
     if template.template_type == "DOCX":
         logger.info("Rendering DOCX template via DocxBuilderService...")
         try:
             docx_bytes = DocxBuilderService.build_from_json(template.editor_content, values)
-            
+
             filename = _safe_filename(template.title) + ".docx"
             response = HttpResponse(
                 docx_bytes,
@@ -367,14 +358,16 @@ def share_info(request, token):
         return Response({"error": "Link expired or usage limit reached."}, status=403)
 
     template = share_link.template
-    return Response({
-        "id": template.id,
-        "title": template.title,
-        "description": template.description,
-        "template_type": template.template_type,
-        "placeholders": template.get_placeholders(),
-        "share_link": ShareLinkSerializer(share_link).data,
-    })
+    return Response(
+        {
+            "id": template.id,
+            "title": template.title,
+            "description": template.description,
+            "template_type": template.template_type,
+            "placeholders": template.get_placeholders(),
+            "share_link": ShareLinkSerializer(share_link).data,
+        }
+    )
 
 
 @api_view(["POST"])
@@ -393,7 +386,7 @@ def share_render(request, token):
     serializer = RenderSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=400)
-    
+
     values = serializer.validated_data.get("values", {})
 
     try:

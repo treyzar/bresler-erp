@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router"
-import { Bell, Check, CheckCheck, Info, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Bell, CheckCheck, Info, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"

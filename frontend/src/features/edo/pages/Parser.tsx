@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import type { AxiosError } from "axios";
 import { parserApi } from "../api/client";
 import type { ParsedDocument } from "../api/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,20 +56,20 @@ const ParserPage: React.FC<Props> = ({ onResultChange }) => {
     try {
       const res = await parserApi.parse(file);
       setDoc(res);
-      const elements = (res as any).editor_elements;
 
       setTimeout(() => {
         navigate("/edo/builder", {
           state: {
-            importedElements: elements,
-            importedMetadata: (res as any).editor_metadata,
+            importedElements: res.editor_elements,
+            importedMetadata: res.editor_metadata,
             prefillText: res.extracted_text,
             title: res.original_filename,
           },
         });
       }, 500);
-    } catch (e: any) {
-      const msg = e?.response?.data?.error || "Не удалось распарсить документ";
+    } catch (e) {
+      const err = e as AxiosError<{ error?: string }>
+      const msg = err.response?.data?.error || "Не удалось распарсить документ";
       setErr(msg);
       console.error(e);
     } finally {

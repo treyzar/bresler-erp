@@ -12,5 +12,5 @@ class BaseModel(models.Model):
 
 
 # Import concrete models so Django discovers them for migrations
-from apps.core.naming import NumberSequence  # noqa: F401, E402
 from apps.core.links import DocumentLink  # noqa: F401, E402
+from apps.core.naming import NumberSequence  # noqa: F401, E402

@@ -5,12 +5,10 @@ create → submit → render → approve. Проверяем, что seed-дан
 
 import pytest
 from django.contrib.auth.models import Group
-from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.directory.models import Department, OrgUnit
 from apps.edo.internal_docs.models import Document, DocumentType
-from apps.edo.internal_docs.services import document_service as svc
 from apps.users.tests.factories import UserFactory
 
 
@@ -32,21 +30,32 @@ def accounting_group(db):
 def mvp_users(org_tree, accounting_group):
     """Минимальный состав: автор, рук. сектора, рук. отдела, бухгалтер."""
     author = UserFactory(
-        last_name="Авторов", first_name="А", patronymic="А",
-        company_unit=org_tree["company"], department_unit=org_tree["sector"],
+        last_name="Авторов",
+        first_name="А",
+        patronymic="А",
+        company_unit=org_tree["company"],
+        department_unit=org_tree["sector"],
     )
     sector_head = UserFactory(
-        last_name="Зеленко", first_name="З", patronymic="З",
-        company_unit=org_tree["company"], department_unit=org_tree["sector"],
+        last_name="Зеленко",
+        first_name="З",
+        patronymic="З",
+        company_unit=org_tree["company"],
+        department_unit=org_tree["sector"],
         is_department_head=True,
     )
     dept_head = UserFactory(
-        last_name="Директоров", first_name="Д", patronymic="Д",
-        company_unit=org_tree["company"], department_unit=org_tree["dept"],
+        last_name="Директоров",
+        first_name="Д",
+        patronymic="Д",
+        company_unit=org_tree["company"],
+        department_unit=org_tree["dept"],
         is_department_head=True,
     )
     accountant = UserFactory(
-        last_name="Бухгалтерова", first_name="Б", patronymic="Б",
+        last_name="Бухгалтерова",
+        first_name="Б",
+        patronymic="Б",
         company_unit=org_tree["company"],
     )
     accountant.groups.add(accounting_group)
@@ -70,7 +79,7 @@ def seeded_types(django_db_setup, django_db_blocker):
         existing = set(DocumentType.objects.filter(code__in=codes).values_list("code", flat=True))
         missing = set(codes) - existing
         if missing:
-            from apps.edo.internal_docs.migrations.v0002 import TYPES_SPEC  # runtime import
+            pass  # runtime import
             # Если вдруг импорт не сработал, пропустим — сид уже должен был пройти.
     return True
 
@@ -80,10 +89,14 @@ def seeded_types(django_db_setup, django_db_blocker):
 
 def _create_and_submit(api: APIClient, author, doc_type: str, field_values: dict) -> Document:
     api.force_authenticate(author)
-    r = api.post("/api/edo/internal/documents/", {
-        "type": doc_type,
-        "field_values": field_values,
-    }, format="json")
+    r = api.post(
+        "/api/edo/internal/documents/",
+        {
+            "type": doc_type,
+            "field_values": field_values,
+        },
+        format="json",
+    )
     assert r.status_code == 201, r.data
     doc_id = r.data["id"]
     r2 = api.post(f"/api/edo/internal/documents/{doc_id}/submit/")
@@ -98,7 +111,9 @@ def _create_and_submit(api: APIClient, author, doc_type: str, field_values: dict
 def test_memo_free_flow(org_tree, mvp_users):
     api = APIClient()
     doc = _create_and_submit(
-        api, mvp_users["author"], "memo_free",
+        api,
+        mvp_users["author"],
+        "memo_free",
         {
             "subject": "Тестовая служебка",
             "addressee_department": org_tree["dept"].pk,
@@ -121,7 +136,9 @@ def test_memo_free_approve_closes_if_dedupe(org_tree, mvp_users):
     """Если адресовано своему же отделу — второй шаг сворачивается, остаётся один."""
     api = APIClient()
     doc = _create_and_submit(
-        api, mvp_users["author"], "memo_free",
+        api,
+        mvp_users["author"],
+        "memo_free",
         {
             "subject": "Свой отдел",
             "addressee_department": org_tree["sector"].pk,  # свой сектор
@@ -148,12 +165,18 @@ def test_memo_overtime_flow(org_tree, mvp_users):
     шагов: supervisor → dept_head:parent → accounting@company (approve)."""
     api = APIClient()
     extra_emp = UserFactory(
-        last_name="Сотрудников", first_name="С", patronymic="С", position="Инженер",
-        company_unit=org_tree["company"], department_unit=org_tree["sector"],
+        last_name="Сотрудников",
+        first_name="С",
+        patronymic="С",
+        position="Инженер",
+        company_unit=org_tree["company"],
+        department_unit=org_tree["sector"],
     )
     # Автор — sector_head (он department_head=True, удовлетворяет initiator_resolver).
     doc = _create_and_submit(
-        api, mvp_users["sector_head"], "memo_overtime",
+        api,
+        mvp_users["sector_head"],
+        "memo_overtime",
         {
             "work_type": "overtime",
             "overtime_date": "2026-05-15",
@@ -177,17 +200,21 @@ def test_memo_overtime_requires_department_head(mvp_users):
     """Обычный сотрудник не может создать memo_overtime."""
     api = APIClient()
     api.force_authenticate(mvp_users["author"])  # не head
-    r = api.post("/api/edo/internal/documents/", {
-        "type": "memo_overtime",
-        "field_values": {
-            "work_type": "overtime",
-            "overtime_date": "2026-05-15",
-            "time_from": "18:00",
-            "time_to": "22:00",
-            "responsible": mvp_users["sector_head"].pk,
-            "employees": [mvp_users["author"].pk],
+    r = api.post(
+        "/api/edo/internal/documents/",
+        {
+            "type": "memo_overtime",
+            "field_values": {
+                "work_type": "overtime",
+                "overtime_date": "2026-05-15",
+                "time_from": "18:00",
+                "time_to": "22:00",
+                "responsible": mvp_users["sector_head"].pk,
+                "employees": [mvp_users["author"].pk],
+            },
         },
-    }, format="json")
+        format="json",
+    )
     assert r.status_code == 403
 
 
@@ -195,7 +222,9 @@ def test_memo_overtime_requires_department_head(mvp_users):
 def test_memo_overtime_weekend_choice(mvp_users):
     api = APIClient()
     doc = _create_and_submit(
-        api, mvp_users["sector_head"], "memo_overtime",
+        api,
+        mvp_users["sector_head"],
+        "memo_overtime",
         {
             "work_type": "weekend",
             "overtime_date": "2026-05-16",
@@ -215,7 +244,9 @@ def test_memo_overtime_weekend_choice(mvp_users):
 def test_app_dayoff_workoff_flow(mvp_users):
     api = APIClient()
     doc = _create_and_submit(
-        api, mvp_users["author"], "app_dayoff_workoff",
+        api,
+        mvp_users["author"],
+        "app_dayoff_workoff",
         {
             "dayoff_date": "2026-05-20",
             "workoff_date": "2026-05-22",
@@ -243,7 +274,9 @@ def test_app_dayoff_workoff_flow(mvp_users):
 def test_app_free_flow(mvp_users):
     api = APIClient()
     doc = _create_and_submit(
-        api, mvp_users["author"], "app_free",
+        api,
+        mvp_users["author"],
+        "app_free",
         {
             "subject": "Перевод на удалёнку",
             "addressee_person": mvp_users["dept_head"].pk,
@@ -279,10 +312,14 @@ def test_pdf_endpoint_requires_submitted_document(mvp_users):
     """PDF работает только для отправленных документов (есть body_rendered)."""
     api = APIClient()
     api.force_authenticate(mvp_users["author"])
-    r = api.post("/api/edo/internal/documents/", {
-        "type": "app_dayoff_workoff",
-        "field_values": {"dayoff_date": "2026-05-01", "workoff_date": "2026-05-02"},
-    }, format="json")
+    r = api.post(
+        "/api/edo/internal/documents/",
+        {
+            "type": "app_dayoff_workoff",
+            "field_values": {"dayoff_date": "2026-05-01", "workoff_date": "2026-05-02"},
+        },
+        format="json",
+    )
     assert r.status_code == 201
     doc_id = r.data["id"]
 
@@ -298,12 +335,13 @@ def test_pdf_endpoint_requires_submitted_document(mvp_users):
 def test_reject_closes_document(mvp_users):
     api = APIClient()
     doc = _create_and_submit(
-        api, mvp_users["author"], "app_dayoff_workoff",
+        api,
+        mvp_users["author"],
+        "app_dayoff_workoff",
         {"dayoff_date": "2026-05-01", "workoff_date": "2026-05-02"},
     )
     api.force_authenticate(mvp_users["sector_head"])
-    r = api.post(f"/api/edo/internal/documents/{doc.pk}/reject/",
-                 {"comment": "Не одобряю"}, format="json")
+    r = api.post(f"/api/edo/internal/documents/{doc.pk}/reject/", {"comment": "Не одобряю"}, format="json")
     assert r.status_code == 200
     doc.refresh_from_db()
     assert doc.status == "rejected"
@@ -313,22 +351,27 @@ def test_reject_closes_document(mvp_users):
 def test_revision_sends_back_to_author_and_resubmit(mvp_users):
     api = APIClient()
     doc = _create_and_submit(
-        api, mvp_users["author"], "app_dayoff_workoff",
+        api,
+        mvp_users["author"],
+        "app_dayoff_workoff",
         {"dayoff_date": "2026-05-01", "workoff_date": "2026-05-02"},
     )
 
     api.force_authenticate(mvp_users["sector_head"])
-    r = api.post(f"/api/edo/internal/documents/{doc.pk}/request-revision/",
-                 {"comment": "Поправьте даты"}, format="json")
+    r = api.post(
+        f"/api/edo/internal/documents/{doc.pk}/request-revision/", {"comment": "Поправьте даты"}, format="json"
+    )
     assert r.status_code == 200
     doc.refresh_from_db()
     assert doc.status == "revision_requested"
 
     # Автор правит и повторно submit
     api.force_authenticate(mvp_users["author"])
-    r = api.patch(f"/api/edo/internal/documents/{doc.pk}/",
-                  {"field_values": {"dayoff_date": "2026-05-03", "workoff_date": "2026-05-04"}},
-                  format="json")
+    r = api.patch(
+        f"/api/edo/internal/documents/{doc.pk}/",
+        {"field_values": {"dayoff_date": "2026-05-03", "workoff_date": "2026-05-04"}},
+        format="json",
+    )
     assert r.status_code == 200
     r = api.post(f"/api/edo/internal/documents/{doc.pk}/submit/")
     assert r.status_code == 200

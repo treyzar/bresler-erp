@@ -3,15 +3,15 @@ import { useQuery } from "@tanstack/react-query"
 import { BarChart3, PieChart, TrendingUp, AlertTriangle, CreditCard, Users } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import apiClient from "@/api/client"
-import { ReportView } from "./ReportView"
+import { ReportView, type ReportFilter, type ReportColumn, type ReportChart } from "./ReportView"
 
 interface ReportMeta {
   name: string
   title: string
   description: string
-  filters: any[]
-  columns: any[]
-  chart: any
+  filters: ReportFilter[]
+  columns: ReportColumn[]
+  chart: ReportChart | null
 }
 
 const reportIcons: Record<string, typeof BarChart3> = {

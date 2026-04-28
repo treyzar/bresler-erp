@@ -17,7 +17,10 @@ def org_tree(db):
       └─ Department "Отдел проектирования" (department)
     """
     company = OrgUnit.add_root(
-        name="Релесофт", unit_type="company", business_role="internal", is_legal_entity=True,
+        name="Релесофт",
+        unit_type="company",
+        business_role="internal",
+        is_legal_entity=True,
     )
     service = Department.add_root(name="Служба РЗА", unit_type="service", company=company)
     dept1 = service.add_child(name="Отдел РЗА 1", unit_type="department", company=company)
@@ -101,10 +104,13 @@ def test_resolve_supervisor_skips_self(org_tree):
 def test_resolve_supervisor_falls_through_to_company_head(org_tree):
     """Если дерево подразделений не содержит head — ищем директора на уровне company."""
     director = UserFactory(
-        company_unit=org_tree["company"], department_unit=None, is_department_head=True,
+        company_unit=org_tree["company"],
+        department_unit=None,
+        is_department_head=True,
     )
     employee = UserFactory(
-        company_unit=org_tree["company"], department_unit=org_tree["sector"],
+        company_unit=org_tree["company"],
+        department_unit=org_tree["sector"],
     )
     assert employee.resolve_supervisor().pk == director.pk
 
@@ -135,8 +141,10 @@ def test_legacy_fields_synced_from_company_unit_only(org_tree):
 def test_legacy_fields_preserved_without_fks():
     """Без FK сигнал не трогает — legacy-значения остаются."""
     user = UserFactory(
-        company_unit=None, department_unit=None,
-        department="Старый отдел", company="Старая компания",
+        company_unit=None,
+        department_unit=None,
+        department="Старый отдел",
+        company="Старая компания",
     )
     user.refresh_from_db()
     assert user.department == "Старый отдел"

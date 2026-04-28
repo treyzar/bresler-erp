@@ -30,11 +30,7 @@ class OrdersByStatusReport(BaseReport):
         if filters.get("date_to"):
             qs = qs.filter(created_at__date__lte=filters["date_to"])
 
-        data = (
-            qs.values("status")
-            .annotate(count=Count("id"), total_amount=Sum("contract__amount"))
-            .order_by("-count")
-        )
+        data = qs.values("status").annotate(count=Count("id"), total_amount=Sum("contract__amount")).order_by("-count")
         return [
             {
                 "status": row["status"],

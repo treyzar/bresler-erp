@@ -15,9 +15,7 @@ class WorkflowService:
     """Execute and validate workflow transitions."""
 
     @staticmethod
-    def get_available_transitions(
-        workflow: WorkflowConfig, instance, user=None
-    ) -> list[dict]:
+    def get_available_transitions(workflow: WorkflowConfig, instance, user=None) -> list[dict]:
         """
         Get transitions available for the current status and user.
         Returns list of {to_status, label, color} dicts for the frontend.
@@ -39,20 +37,20 @@ class WorkflowService:
                 except ConditionNotMet as e:
                     blocked_reason = e.message
 
-            available.append({
-                "to_status": t.to_status,
-                "label": t.label,
-                "color": t.color,
-                "blocked": bool(blocked_reason),
-                "blocked_reason": blocked_reason,
-            })
+            available.append(
+                {
+                    "to_status": t.to_status,
+                    "label": t.label,
+                    "color": t.color,
+                    "blocked": bool(blocked_reason),
+                    "blocked_reason": blocked_reason,
+                }
+            )
 
         return available
 
     @staticmethod
-    def transition(
-        workflow: WorkflowConfig, instance, to_status: str, user=None
-    ):
+    def transition(workflow: WorkflowConfig, instance, to_status: str, user=None):
         """
         Execute a status transition with full validation.
 

@@ -86,7 +86,8 @@ class DepartmentAdmin(TreeAdmin):
         if db_field.name == "company":
             # В выпадающем списке — только наши юрлица (business_role='internal').
             kwargs["queryset"] = OrgUnit.objects.filter(
-                business_role="internal", is_active=True,
+                business_role="internal",
+                is_active=True,
             ).order_by("name")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 

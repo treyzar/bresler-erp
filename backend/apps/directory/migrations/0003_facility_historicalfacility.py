@@ -5,49 +5,51 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('directory', '0002_initial'),
+        ("directory", "0002_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Facility',
+            name="Facility",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=255, verbose_name='Название')),
-                ('address', models.TextField(blank=True, verbose_name='Адрес')),
-                ('description', models.TextField(blank=True, verbose_name='Описание')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Активен')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=255, verbose_name="Название")),
+                ("address", models.TextField(blank=True, verbose_name="Адрес")),
+                ("description", models.TextField(blank=True, verbose_name="Описание")),
+                ("is_active", models.BooleanField(default=True, verbose_name="Активен")),
             ],
             options={
-                'verbose_name': 'Объект',
-                'verbose_name_plural': 'Объекты',
-                'ordering': ['name'],
+                "verbose_name": "Объект",
+                "verbose_name_plural": "Объекты",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='HistoricalFacility',
+            name="HistoricalFacility",
             fields=[
-                ('id', models.BigIntegerField(auto_created=True, blank=True, db_index=True, verbose_name='ID')),
-                ('created_at', models.DateTimeField(blank=True, editable=False)),
-                ('updated_at', models.DateTimeField(blank=True, editable=False)),
-                ('name', models.CharField(max_length=255, verbose_name='Название')),
-                ('address', models.TextField(blank=True, verbose_name='Адрес')),
-                ('description', models.TextField(blank=True, verbose_name='Описание')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Активен')),
-                ('history_id', models.AutoField(primary_key=True, serialize=False)),
-                ('history_date', models.DateTimeField(db_index=True)),
-                ('history_change_reason', models.CharField(max_length=100, null=True)),
-                ('history_type', models.CharField(choices=[('+', 'Created'), ('~', 'Changed'), ('-', 'Deleted')], max_length=1)),
+                ("id", models.BigIntegerField(auto_created=True, blank=True, db_index=True, verbose_name="ID")),
+                ("created_at", models.DateTimeField(blank=True, editable=False)),
+                ("updated_at", models.DateTimeField(blank=True, editable=False)),
+                ("name", models.CharField(max_length=255, verbose_name="Название")),
+                ("address", models.TextField(blank=True, verbose_name="Адрес")),
+                ("description", models.TextField(blank=True, verbose_name="Описание")),
+                ("is_active", models.BooleanField(default=True, verbose_name="Активен")),
+                ("history_id", models.AutoField(primary_key=True, serialize=False)),
+                ("history_date", models.DateTimeField(db_index=True)),
+                ("history_change_reason", models.CharField(max_length=100, null=True)),
+                (
+                    "history_type",
+                    models.CharField(choices=[("+", "Created"), ("~", "Changed"), ("-", "Deleted")], max_length=1),
+                ),
             ],
             options={
-                'verbose_name': 'historical Объект',
-                'verbose_name_plural': 'historical Объекты',
-                'ordering': ('-history_date', '-history_id'),
-                'get_latest_by': ('history_date', 'history_id'),
+                "verbose_name": "historical Объект",
+                "verbose_name_plural": "historical Объекты",
+                "ordering": ("-history_date", "-history_id"),
+                "get_latest_by": ("history_date", "history_id"),
             },
             bases=(simple_history.models.HistoricalChanges, models.Model),
         ),

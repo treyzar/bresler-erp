@@ -36,7 +36,7 @@ import type {
 interface Props {
   selected: IEditorElement | null;
   onUpdateEl: (id: string, upd: Partial<IEditorElement>) => void;
-  onUpdateProps: (id: string, p: any) => void;
+  onUpdateProps: (id: string, p: Record<string, unknown>) => void;
   onDelete: (id: string) => void;
   onMoveLayer: (id: string, d: "front" | "back") => void;
   onEditSignature?: (id: string) => void;
@@ -261,7 +261,7 @@ const PropertiesPanel: React.FC<Props> = ({
 /* ========== TEXT PROPS (ОБНОВЛЁННЫЙ) ========== */
 const TextProps: React.FC<{
   el: IEditorElement;
-  onUpdate: (id: string, p: any) => void;
+  onUpdate: (id: string, p: Record<string, unknown>) => void;
 }> = ({ el, onUpdate }) => {
   const p = el.properties as ITextProperties;
   const [tempFontSize, setTempFontSize] = useState<string | undefined>();
@@ -575,7 +575,7 @@ const TextProps: React.FC<{
 
 const ImageProps: React.FC<{
   el: IEditorElement;
-  onUpdate: (id: string, p: any) => void;
+  onUpdate: (id: string, p: Record<string, unknown>) => void;
 }> = ({ el, onUpdate }) => {
   const p = el.properties as IImageProperties;
   return (
@@ -598,7 +598,7 @@ const ImageProps: React.FC<{
 
 const TableProps: React.FC<{
   el: IEditorElement;
-  onUpdate: (id: string, p: any) => void;
+  onUpdate: (id: string, p: Record<string, unknown>) => void;
 }> = ({ el, onUpdate }) => {
   const p = el.properties as ITableProperties;
   const isNew = !!(p.cells && p.columns);
@@ -715,7 +715,9 @@ const TableProps: React.FC<{
                 <select
                   className="h-7 w-full rounded-md border border-input bg-transparent px-2 py-0 text-xs shadow-sm"
                   value={currentStyle.fontWeight || "normal"}
-                  onChange={(e) => updateCellStyle({ fontWeight: e.target.value as any })}
+                  onChange={(e) =>
+                    updateCellStyle({ fontWeight: e.target.value as "normal" | "bold" })
+                  }
                 >
                   <option value="normal">Нет</option>
                   <option value="bold">Да</option>
@@ -759,7 +761,7 @@ const TableProps: React.FC<{
 
 const SignatureProps: React.FC<{
   el: IEditorElement;
-  onUpdate: (id: string, p: any) => void;
+  onUpdate: (id: string, p: Record<string, unknown>) => void;
   onEdit?: (id: string) => void;
 }> = ({ el, onUpdate, onEdit }) => {
   const p = el.properties as ISignatureProperties & { image?: string };
@@ -830,7 +832,7 @@ const SignatureProps: React.FC<{
 
 const DividerProps: React.FC<{
   el: IEditorElement;
-  onUpdate: (id: string, p: any) => void;
+  onUpdate: (id: string, p: Record<string, unknown>) => void;
 }> = ({ el, onUpdate }) => {
   const p = el.properties as IDividerProperties;
 

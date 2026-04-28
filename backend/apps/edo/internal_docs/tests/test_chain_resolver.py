@@ -16,7 +16,9 @@ from apps.users.tests.factories import UserFactory
 def tree(db):
     """Релесофт → Служба РЗА → Отдел 1 → Сектор А (+ Сектор Б), Отдел 2."""
     company = OrgUnit.add_root(
-        name="Релесофт", unit_type="company", business_role="internal",
+        name="Релесофт",
+        unit_type="company",
+        business_role="internal",
     )
     service = Department.add_root(name="Служба РЗА", unit_type="service", company=company)
     dept1 = service.add_child(name="Отдел РЗА 1", unit_type="department", company=company)
@@ -24,8 +26,12 @@ def tree(db):
     sector_b = dept1.add_child(name="Сектор Б", unit_type="sector", company=company)
     dept2 = service.add_child(name="Отдел РЗА 2", unit_type="department", company=company)
     return {
-        "company": company, "service": service, "dept1": dept1,
-        "sector_a": sector_a, "sector_b": sector_b, "dept2": dept2,
+        "company": company,
+        "service": service,
+        "dept1": dept1,
+        "sector_a": sector_a,
+        "sector_b": sector_b,
+        "dept2": dept2,
     }
 
 
@@ -43,6 +49,7 @@ def accounting_group(db):
 
 
 # ---------- author / supervisor / fixed_user ----------
+
 
 @pytest.mark.django_db
 def test_author_returns_self(tree):
@@ -86,6 +93,7 @@ def test_fixed_user_bad_id_raises():
 
 # ---------- dept_head ----------
 
+
 @pytest.mark.django_db
 def test_dept_head_self(tree):
     head = UserFactory(department_unit=tree["sector_a"], is_department_head=True)
@@ -120,10 +128,13 @@ def test_dept_head_walks_up_if_no_head_in_target(tree):
 def test_dept_head_falls_back_to_company_head(tree):
     """Если поднялись до корня Department — fallback на company_head."""
     director = UserFactory(
-        company_unit=tree["company"], department_unit=None, is_department_head=True,
+        company_unit=tree["company"],
+        department_unit=None,
+        is_department_head=True,
     )
     emp = UserFactory(
-        company_unit=tree["company"], department_unit=tree["sector_a"],
+        company_unit=tree["company"],
+        department_unit=tree["sector_a"],
     )
     # В дереве Department никого нет; резолвер дойдёт до root и пойдёт на company.
     assert resolve("dept_head:up(10)", emp).pk == director.pk
@@ -151,10 +162,13 @@ def test_dept_head_bad_args_raises(tree):
 
 # ---------- company_head ----------
 
+
 @pytest.mark.django_db
 def test_company_head(tree):
     director = UserFactory(
-        company_unit=tree["company"], department_unit=None, is_department_head=True,
+        company_unit=tree["company"],
+        department_unit=None,
+        is_department_head=True,
     )
     emp = UserFactory(company_unit=tree["company"], department_unit=tree["sector_a"])
     assert resolve("company_head", emp).pk == director.pk
@@ -165,7 +179,9 @@ def test_company_head_ignores_heads_of_subdepartments(tree):
     """Heads сабдепартментов (depth >= 2) НЕ должны подбираться как company_head —
     fallback идёт только на корневые (depth=1) Department."""
     UserFactory(
-        company_unit=tree["company"], department_unit=tree["dept1"], is_department_head=True,
+        company_unit=tree["company"],
+        department_unit=tree["dept1"],
+        is_department_head=True,
     )
     emp = UserFactory(company_unit=tree["company"], department_unit=tree["sector_a"])
     assert resolve("company_head", emp) is None
@@ -178,7 +194,8 @@ def test_company_head_fallback_to_root_department_head(tree):
     # `tree["service"]` — это root Department (depth=1).
     director_in_root = UserFactory(
         last_name="Директоров",
-        company_unit=tree["company"], department_unit=tree["service"],
+        company_unit=tree["company"],
+        department_unit=tree["service"],
         is_department_head=True,
     )
     emp = UserFactory(company_unit=tree["company"], department_unit=tree["sector_a"])
@@ -191,11 +208,14 @@ def test_company_head_primary_wins_over_fallback(tree):
     выбирается тот, что без department_unit (primary)."""
     primary = UserFactory(
         last_name="Главный",
-        company_unit=tree["company"], department_unit=None, is_department_head=True,
+        company_unit=tree["company"],
+        department_unit=None,
+        is_department_head=True,
     )
     UserFactory(
         last_name="ГлаваСлужбы",
-        company_unit=tree["company"], department_unit=tree["service"],
+        company_unit=tree["company"],
+        department_unit=tree["service"],
         is_department_head=True,
     )
     emp = UserFactory(company_unit=tree["company"], department_unit=tree["sector_a"])
@@ -210,7 +230,8 @@ def test_dept_head_type_finds_nearest_ancestor_of_type(tree):
     """
     head_service = UserFactory(
         last_name="ГлаваСлужбы",
-        department_unit=tree["service"], is_department_head=True,
+        department_unit=tree["service"],
+        is_department_head=True,
     )
     emp = UserFactory(department_unit=tree["sector_a"])
     assert resolve("dept_head_type:service", emp).pk == head_service.pk
@@ -222,15 +243,19 @@ def test_dept_head_type_picks_closest_when_multiple(tree):
     # Дерево tree: service(service) → dept1(department) → sector_a(sector).
     # Добавим ещё один уровень "department" под sector_a (искусственно).
     sub_dept = tree["sector_a"].add_child(
-        name="Подотдел", unit_type="department", company=tree["company"],
+        name="Подотдел",
+        unit_type="department",
+        company=tree["company"],
     )
     head_close = UserFactory(
         last_name="Близкий",
-        department_unit=sub_dept, is_department_head=True,
+        department_unit=sub_dept,
+        is_department_head=True,
     )
     UserFactory(  # head того же типа на dept1, но он дальше — не должен быть выбран
         last_name="Дальний",
-        department_unit=tree["dept1"], is_department_head=True,
+        department_unit=tree["dept1"],
+        is_department_head=True,
     )
     emp = UserFactory(department_unit=sub_dept)
     # emp в подотделе с unit_type=department; ищем dept_head_type:department —
@@ -266,7 +291,8 @@ def test_unresolved_step_error_message_has_hint(tree):
     # Нет ни одного company_head в этом дереве → step упадёт с подсказкой.
     emp = UserFactory(
         last_name="Тестов",
-        company_unit=tree["company"], department_unit=tree["sector_a"],
+        company_unit=tree["company"],
+        department_unit=tree["sector_a"],
     )
     chain_steps = [
         {"order": 1, "role_key": "company_head", "label": "Директор", "action": "approve"},
@@ -280,6 +306,7 @@ def test_unresolved_step_error_message_has_hint(tree):
 
 
 # ---------- group / group_head ----------
+
 
 @pytest.mark.django_db
 def test_group_picks_any_active_member(tree, accounting_group):
@@ -338,6 +365,7 @@ def test_group_head_only_with_is_department_head(tree, accounting_group):
 
 # ---------- field_user / field_dept_head ----------
 
+
 @pytest.mark.django_db
 def test_field_user_reads_from_field_values():
     target = UserFactory()
@@ -363,13 +391,15 @@ def test_field_dept_head(tree):
     head = UserFactory(department_unit=tree["dept2"], is_department_head=True)
     author = UserFactory(department_unit=tree["sector_a"])
     got = resolve(
-        "field_dept_head:target", author,
+        "field_dept_head:target",
+        author,
         field_values={"target": tree["dept2"].pk},
     )
     assert got.pk == head.pk
 
 
 # ---------- unknown role_key ----------
+
 
 @pytest.mark.django_db
 def test_unknown_role_key_raises():
@@ -379,6 +409,7 @@ def test_unknown_role_key_raises():
 
 
 # ---------- build_approval_steps ----------
+
 
 @pytest.mark.django_db
 def test_build_chain_resolves_and_orders(tree, accounting_group):
@@ -443,7 +474,7 @@ def test_build_chain_dedupes_same_approver(tree):
 @pytest.mark.django_db
 def test_build_chain_parallel_group_not_deduped(tree, accounting_group):
     """Шаги в параллельной группе не подлежат дедупу."""
-    boss = UserFactory(department_unit=tree["dept1"], is_department_head=True)
+    UserFactory(department_unit=tree["dept1"], is_department_head=True)
     author = UserFactory(department_unit=tree["sector_a"])
     steps = [
         {"order": 1, "role_key": "supervisor", "label": "A", "action": "approve", "parallel_group": "g1"},

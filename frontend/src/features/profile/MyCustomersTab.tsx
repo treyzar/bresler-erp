@@ -14,7 +14,7 @@ import {
 import apiClient from "@/api/client"
 import type { PaginatedResponse, OrgUnit } from "@/api/types"
 import { ORG_UNIT_BUSINESS_ROLES } from "@/api/types"
-import { usersApi, type MyCustomer } from "@/api/usersApi"
+import { usersApi } from "@/api/usersApi"
 import { useDebounce } from "@/hooks/useDebounce"
 
 export function MyCustomersTab() {

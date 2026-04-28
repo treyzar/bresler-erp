@@ -176,7 +176,7 @@ function convertLegacyDataTable(element: IEditorElement): TiptapTable | null {
 
   const rows: TiptapTableRow[] = props.data.map((rowData) => ({
     type: 'tableRow',
-    content: rowData.map((cellText, cIdx) => {
+    content: rowData.map((cellText) => {
       const cell: TiptapTableCell = {
         type: 'tableCell',
         content: [createCellParagraph(cellText || '')],

@@ -26,9 +26,7 @@ def HasModuleAccess(module: str) -> type:
                 return False
             if request.user.is_superuser:
                 return True
-            return request.user.groups.filter(
-                profile__allowed_modules__contains=[module]
-            ).exists()
+            return request.user.groups.filter(profile__allowed_modules__contains=[module]).exists()
 
     _HasModuleAccess.__name__ = f"HasModuleAccess_{module}"
     return _HasModuleAccess

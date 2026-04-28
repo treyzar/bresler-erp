@@ -17,9 +17,15 @@ class OfferWorkItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OfferWorkItem
         fields = (
-            "id", "work_type", "work_type_name",
-            "included", "days", "specialists", "trips",
-            "unit_price", "pricing_mode",
+            "id",
+            "work_type",
+            "work_type_name",
+            "included",
+            "days",
+            "specialists",
+            "trips",
+            "unit_price",
+            "pricing_mode",
         )
 
 
@@ -28,17 +34,30 @@ class SpecificationLineSerializer(serializers.ModelSerializer):
     device_rza_name = serializers.CharField(source="device_rza.rza_name", read_only=True, default=None)
     mod_rza_name = serializers.CharField(source="mod_rza.mod_name", read_only=True, default=None)
     shipment_batch_number = serializers.IntegerField(
-        source="shipment_batch.batch_number", read_only=True, default=None,
+        source="shipment_batch.batch_number",
+        read_only=True,
+        default=None,
     )
 
     class Meta:
         model = SpecificationLine
         fields = (
-            "id", "line_number", "product", "product_name",
-            "device_rza", "device_rza_name", "mod_rza", "mod_rza_name",
-            "name", "quantity",
-            "unit_price", "total_price", "delivery_date",
-            "shipment_batch", "shipment_batch_number", "note",
+            "id",
+            "line_number",
+            "product",
+            "product_name",
+            "device_rza",
+            "device_rza_name",
+            "mod_rza",
+            "mod_rza_name",
+            "name",
+            "quantity",
+            "unit_price",
+            "total_price",
+            "delivery_date",
+            "shipment_batch",
+            "shipment_batch_number",
+            "note",
         )
         read_only_fields = ("id", "total_price")
 
@@ -49,24 +68,37 @@ class SpecificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Specification
         fields = (
-            "id", "total_amount", "total_amount_with_vat", "lines",
+            "id",
+            "total_amount",
+            "total_amount_with_vat",
+            "lines",
         )
         read_only_fields = ("id", "total_amount", "total_amount_with_vat")
 
 
 class CommercialOfferListSerializer(serializers.ModelSerializer):
     participant_name = serializers.CharField(
-        source="participant.org_unit.name", read_only=True,
+        source="participant.org_unit.name",
+        read_only=True,
     )
     manager_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CommercialOffer
         fields = (
-            "id", "offer_number", "version", "status", "date",
-            "valid_until", "participant", "participant_name",
-            "manager", "manager_name", "vat_rate",
-            "payment_terms", "total_amount",
+            "id",
+            "offer_number",
+            "version",
+            "status",
+            "date",
+            "valid_until",
+            "participant",
+            "participant_name",
+            "manager",
+            "manager_name",
+            "vat_rate",
+            "payment_terms",
+            "total_amount",
         )
 
     def get_manager_name(self, obj) -> str:
@@ -83,7 +115,8 @@ class CommercialOfferListSerializer(serializers.ModelSerializer):
 
 class CommercialOfferDetailSerializer(serializers.ModelSerializer):
     participant_name = serializers.CharField(
-        source="participant.org_unit.name", read_only=True,
+        source="participant.org_unit.name",
+        read_only=True,
     )
     manager_name = serializers.SerializerMethodField()
     executor_name = serializers.SerializerMethodField()
@@ -92,30 +125,56 @@ class CommercialOfferDetailSerializer(serializers.ModelSerializer):
     specification = SpecificationSerializer(read_only=True)
     shipment_condition_text = serializers.CharField(read_only=True)
     based_on_number = serializers.CharField(
-        source="based_on.offer_number", read_only=True, default=None,
+        source="based_on.offer_number",
+        read_only=True,
+        default=None,
     )
 
     class Meta:
         model = CommercialOffer
         fields = (
-            "id", "offer_number", "version", "status", "date",
-            "valid_days", "valid_until",
-            "order", "participant", "participant_name",
-            "manager", "manager_name", "executor", "executor_name",
+            "id",
+            "offer_number",
+            "version",
+            "status",
+            "date",
+            "valid_days",
+            "valid_until",
+            "order",
+            "participant",
+            "participant_name",
+            "manager",
+            "manager_name",
+            "executor",
+            "executor_name",
             "order_managers",
-            "based_on", "based_on_number",
-            "vat_rate", "payment_terms",
-            "advance_percent", "pre_shipment_percent", "post_payment_percent",
-            "manufacturing_period", "warranty_months",
-            "delivery_included", "delivery_city",
-            "additional_conditions", "is_template",
+            "based_on",
+            "based_on_number",
+            "vat_rate",
+            "payment_terms",
+            "advance_percent",
+            "pre_shipment_percent",
+            "post_payment_percent",
+            "manufacturing_period",
+            "warranty_months",
+            "delivery_included",
+            "delivery_city",
+            "additional_conditions",
+            "is_template",
             "shipment_condition_text",
-            "work_items", "specification",
-            "created_at", "updated_at",
+            "work_items",
+            "specification",
+            "created_at",
+            "updated_at",
         )
         read_only_fields = (
-            "id", "offer_number", "version", "valid_until",
-            "shipment_condition_text", "created_at", "updated_at",
+            "id",
+            "offer_number",
+            "version",
+            "valid_until",
+            "shipment_condition_text",
+            "created_at",
+            "updated_at",
         )
 
     def get_manager_name(self, obj) -> str:
@@ -132,12 +191,20 @@ class CommercialOfferCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommercialOffer
         fields = (
-            "participant", "date", "valid_days",
-            "manager", "executor",
-            "vat_rate", "payment_terms",
-            "advance_percent", "pre_shipment_percent", "post_payment_percent",
-            "manufacturing_period", "warranty_months",
-            "delivery_included", "delivery_city",
+            "participant",
+            "date",
+            "valid_days",
+            "manager",
+            "executor",
+            "vat_rate",
+            "payment_terms",
+            "advance_percent",
+            "pre_shipment_percent",
+            "post_payment_percent",
+            "manufacturing_period",
+            "warranty_months",
+            "delivery_included",
+            "delivery_city",
             "additional_conditions",
         )
 
@@ -153,9 +220,12 @@ class ParticipantContactSerializer(serializers.ModelSerializer):
 
 class SpecificationFillSerializer(serializers.Serializer):
     """Serializer for fill specification from products or another offer."""
+
     source_type = serializers.ChoiceField(choices=["products", "offer"])
     product_ids = serializers.ListField(
-        child=serializers.IntegerField(), required=False, default=[],
+        child=serializers.IntegerField(),
+        required=False,
+        default=[],
     )
     source_offer_id = serializers.IntegerField(required=False)
 
@@ -168,13 +238,30 @@ class CalculationLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = CalculationLine
         fields = (
-            "id", "line_number", "product", "product_name",
-            "device_rza", "device_rza_name", "mod_rza", "mod_rza_name",
-            "name", "quantity",
-            "is_optional", "option_type", "pricing_mode", "parent_line",
-            "base_price", "overhead_type", "overhead_percent",
-            "price_with_overhead", "project_coeff", "estimated_price",
-            "discount_coeff", "discounted_price", "total_price", "note",
+            "id",
+            "line_number",
+            "product",
+            "product_name",
+            "device_rza",
+            "device_rza_name",
+            "mod_rza",
+            "mod_rza_name",
+            "name",
+            "quantity",
+            "is_optional",
+            "option_type",
+            "pricing_mode",
+            "parent_line",
+            "base_price",
+            "overhead_type",
+            "overhead_percent",
+            "price_with_overhead",
+            "project_coeff",
+            "estimated_price",
+            "discount_coeff",
+            "discounted_price",
+            "total_price",
+            "note",
         )
         read_only_fields = ("id", "price_with_overhead", "estimated_price", "discounted_price", "total_price")
 
@@ -186,18 +273,23 @@ class OfferCalculationSerializer(serializers.ModelSerializer):
     class Meta:
         model = OfferCalculation
         fields = (
-            "id", "default_overhead_percent", "default_project_coeff",
+            "id",
+            "default_overhead_percent",
+            "default_project_coeff",
             "default_discount_coeff",
-            "delivery_price", "delivery_pricing_mode",
-            "note", "lines", "total",
+            "delivery_price",
+            "delivery_pricing_mode",
+            "note",
+            "lines",
+            "total",
         )
         read_only_fields = ("id",)
 
     def get_total(self, obj) -> dict:
         lines = obj.lines.all()
-        total_base = sum(l.base_price * l.quantity for l in lines)
-        total_estimated = sum(l.estimated_price * l.quantity for l in lines)
-        total_discounted = sum(l.total_price for l in lines)
+        total_base = sum(line.base_price * line.quantity for line in lines)
+        total_estimated = sum(line.estimated_price * line.quantity for line in lines)
+        total_discounted = sum(line.total_price for line in lines)
         return {
             "base": str(total_base),
             "estimated": str(total_estimated),

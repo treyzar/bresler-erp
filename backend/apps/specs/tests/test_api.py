@@ -1,17 +1,18 @@
-import pytest
 from decimal import Decimal
 
+import pytest
 from django.urls import reverse
 from rest_framework import status
 
 from apps.orders.tests.factories import OrderFactory, OrderParticipantFactory
-from apps.users.tests.factories import UserFactory
 from apps.specs.models import CommercialOffer
+from apps.users.tests.factories import UserFactory
+
 from .factories import (
     CommercialOfferFactory,
+    ParticipantContactFactory,
     SpecificationFactory,
     SpecificationLineFactory,
-    ParticipantContactFactory,
 )
 
 
@@ -36,15 +37,18 @@ class TestCommercialOfferAPI:
         p = OrderParticipantFactory(order=order, order_index=1)
 
         url = reverse("order-offers-list", kwargs={"order_pk": order.pk})
-        resp = authenticated_client.post(url, {
-            "participant": p.pk,
-            "date": "2026-04-01",
-            "valid_days": 30,
-            "vat_rate": "20.00",
-            "payment_terms": "50_50",
-            "manufacturing_period": "60-90",
-            "warranty_months": 60,
-        })
+        resp = authenticated_client.post(
+            url,
+            {
+                "participant": p.pk,
+                "date": "2026-04-01",
+                "valid_days": 30,
+                "vat_rate": "20.00",
+                "payment_terms": "50_50",
+                "manufacturing_period": "60-90",
+                "warranty_months": 60,
+            },
+        )
 
         assert resp.status_code == status.HTTP_201_CREATED
         offer = CommercialOffer.objects.filter(order=order).first()
@@ -70,7 +74,9 @@ class TestCommercialOfferAPI:
         p = OrderParticipantFactory(order=order, order_index=1)
         mgr = UserFactory()
         source = CommercialOfferFactory(
-            order=order, participant=p, manager=mgr,
+            order=order,
+            participant=p,
+            manager=mgr,
             warranty_months=36,
         )
         SpecificationFactory(offer=source)
@@ -87,16 +93,22 @@ class TestCommercialOfferAPI:
         offer = CommercialOfferFactory(manager=mgr)
         spec = SpecificationFactory(offer=offer)
         line = SpecificationLineFactory(
-            specification=spec, name="Терминал",
-            quantity=1, unit_price=Decimal("50000"),
+            specification=spec,
+            name="Терминал",
+            quantity=1,
+            unit_price=Decimal("50000"),
         )
 
         url = reverse("offers-specification", kwargs={"pk": offer.pk})
-        resp = authenticated_client.patch(url, {
-            "lines": [
-                {"id": line.id, "quantity": 3, "unit_price": "50000.00", "name": "Терминал", "line_number": 1},
-            ]
-        }, format="json")
+        resp = authenticated_client.patch(
+            url,
+            {
+                "lines": [
+                    {"id": line.id, "quantity": 3, "unit_price": "50000.00", "name": "Терминал", "line_number": 1},
+                ]
+            },
+            format="json",
+        )
 
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["total_amount"] == "150000.00"
@@ -123,7 +135,8 @@ class TestParticipantContactAPI:
 
         url = reverse("participant-contacts-list", kwargs={"participant_pk": p.pk})
         resp = authenticated_client.post(
-            url, {"participant": p.pk, "contact": contact.pk, "is_primary": True},
+            url,
+            {"participant": p.pk, "contact": contact.pk, "is_primary": True},
         )
 
         assert resp.status_code == status.HTTP_201_CREATED

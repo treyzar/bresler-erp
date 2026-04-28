@@ -30,21 +30,31 @@ class OfferCalculation(BaseModel):
     )
     default_overhead_percent = models.DecimalField(
         "НР по умолчанию, %",
-        max_digits=5, decimal_places=2, default=15,
+        max_digits=5,
+        decimal_places=2,
+        default=15,
     )
     default_project_coeff = models.DecimalField(
         "Проектный коэффициент по умолчанию",
-        max_digits=6, decimal_places=4, default=1,
+        max_digits=6,
+        decimal_places=4,
+        default=1,
     )
     default_discount_coeff = models.DecimalField(
         "Скидочный коэффициент по умолчанию",
-        max_digits=6, decimal_places=4, default=1,
+        max_digits=6,
+        decimal_places=4,
+        default=1,
     )
     delivery_price = models.DecimalField(
-        "Стоимость доставки", max_digits=14, decimal_places=2, default=0,
+        "Стоимость доставки",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
     delivery_pricing_mode = models.CharField(
-        "Режим доставки", max_length=20,
+        "Режим доставки",
+        max_length=20,
         choices=[("separate", "Отдельная строка"), ("included", "Включено в стоимость")],
         default="separate",
     )
@@ -88,16 +98,25 @@ class CalculationLine(BaseModel):
     )
     line_number = models.PositiveIntegerField("№ п/п")
     product = models.ForeignKey(
-        "devices.Product", on_delete=models.SET_NULL,
-        null=True, blank=True, verbose_name="Продукт",
+        "devices.Product",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Продукт",
     )
     device_rza = models.ForeignKey(
-        "devices.DeviceRZA", on_delete=models.SET_NULL,
-        null=True, blank=True, verbose_name="Устройство РЗА",
+        "devices.DeviceRZA",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Устройство РЗА",
     )
     mod_rza = models.ForeignKey(
-        "devices.ModRZA", on_delete=models.SET_NULL,
-        null=True, blank=True, verbose_name="Модификация",
+        "devices.ModRZA",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Модификация",
     )
     name = models.CharField("Наименование", max_length=500)
     quantity = models.PositiveIntegerField("Количество", default=1)
@@ -105,48 +124,81 @@ class CalculationLine(BaseModel):
     # Option fields
     is_optional = models.BooleanField("Опция", default=False)
     option_type = models.CharField(
-        "Тип опции", max_length=20,
-        choices=OptionType.choices, default=OptionType.NONE,
+        "Тип опции",
+        max_length=20,
+        choices=OptionType.choices,
+        default=OptionType.NONE,
     )
     pricing_mode = models.CharField(
-        "Режим ценообразования", max_length=20,
-        choices=PricingMode.choices, default=PricingMode.SEPARATE,
+        "Режим ценообразования",
+        max_length=20,
+        choices=PricingMode.choices,
+        default=PricingMode.SEPARATE,
     )
     parent_line = models.ForeignKey(
-        "self", on_delete=models.SET_NULL,
-        null=True, blank=True, related_name="option_lines",
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="option_lines",
         verbose_name="Родительская позиция",
         help_text="Если pricing_mode=included, цена прибавляется к этой позиции",
     )
 
     # Pricing
     base_price = models.DecimalField(
-        "Базовая цена", max_digits=14, decimal_places=2, default=0,
+        "Базовая цена",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
     overhead_type = models.CharField(
-        "Тип НР", max_length=20,
-        choices=OverheadType.choices, default=OverheadType.EQUIPMENT,
+        "Тип НР",
+        max_length=20,
+        choices=OverheadType.choices,
+        default=OverheadType.EQUIPMENT,
     )
     overhead_percent = models.DecimalField(
-        "НР, %", max_digits=5, decimal_places=2, default=15,
+        "НР, %",
+        max_digits=5,
+        decimal_places=2,
+        default=15,
     )
     price_with_overhead = models.DecimalField(
-        "Цена с НР", max_digits=14, decimal_places=2, default=0,
+        "Цена с НР",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
     project_coeff = models.DecimalField(
-        "Проектный К", max_digits=6, decimal_places=4, default=1,
+        "Проектный К",
+        max_digits=6,
+        decimal_places=4,
+        default=1,
     )
     estimated_price = models.DecimalField(
-        "Сметная цена", max_digits=14, decimal_places=2, default=0,
+        "Сметная цена",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
     discount_coeff = models.DecimalField(
-        "Скидочный К", max_digits=6, decimal_places=4, default=1,
+        "Скидочный К",
+        max_digits=6,
+        decimal_places=4,
+        default=1,
     )
     discounted_price = models.DecimalField(
-        "Цена со скидкой", max_digits=14, decimal_places=2, default=0,
+        "Цена со скидкой",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
     total_price = models.DecimalField(
-        "Итого (кол-во × цена со скидкой)", max_digits=14, decimal_places=2, default=0,
+        "Итого (кол-во × цена со скидкой)",
+        max_digits=14,
+        decimal_places=2,
+        default=0,
     )
     note = models.CharField("Примечание", max_length=255, blank=True, default="")
 
@@ -160,6 +212,7 @@ class CalculationLine(BaseModel):
 
     def save(self, **kwargs):
         from decimal import Decimal
+
         bp = Decimal(str(self.base_price))
         oh = Decimal(str(self.overhead_percent))
         pk = Decimal(str(self.project_coeff))

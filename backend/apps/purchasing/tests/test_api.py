@@ -2,6 +2,8 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.purchasing.models import PurchasePayment, PurchaseRequest
+from apps.users.tests.factories import UserFactory
+
 from .factories import (
     PurchaseOrderFactory,
     PurchaseOrderLineFactory,
@@ -11,7 +13,6 @@ from .factories import (
     StockItemFactory,
     SupplierConditionsFactory,
 )
-from apps.users.tests.factories import UserFactory
 
 
 @pytest.fixture
@@ -61,6 +62,7 @@ class TestStockAPI:
 
     def test_reserve_and_unreserve(self, authenticated_client):
         from apps.orders.tests.factories import OrderFactory
+
         item = StockItemFactory(quantity=100)
         order = OrderFactory()
         resp = authenticated_client.post(

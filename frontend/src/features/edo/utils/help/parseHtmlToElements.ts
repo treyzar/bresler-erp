@@ -683,7 +683,11 @@ export function parseHtmlToElements(html: string): IEditorElement[] {
       }
 
       if (isLikelyTextNode(node)) {
-        const textProps = extractTextProperties(node) as any;
+        const textProps = extractTextProperties(node) as Record<string, unknown> & {
+          content?: string
+          fontSize?: number
+          lineHeight?: number
+        }
         if (textProps.content) {
           const fallbackHeight = Math.max(
             DEFAULT_TEXT_HEIGHT,

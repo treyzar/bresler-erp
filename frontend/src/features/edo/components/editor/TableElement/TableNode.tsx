@@ -1,12 +1,17 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { TableContextMenu } from "./TableContextMenu";
 import { generateId } from "../../../utils/help/generateID";
+import type {
+  IEditorElement,
+  ITableCell,
+  ITableProperties,
+} from "../../../utils/types/editor.types";
 
 interface TableNodeProps {
-  element: any; 
+  element: IEditorElement;
   isSelected: boolean;
   isEditing?: boolean;
-  onUpdateProp: (id: string, props: any) => void;
+  onUpdateProp: (id: string, props: Record<string, unknown>) => void;
 }
 
 export const TableNode: React.FC<TableNodeProps> = ({
@@ -15,16 +20,16 @@ export const TableNode: React.FC<TableNodeProps> = ({
   isEditing = false,
   onUpdateProp,
 }) => {
-  const props = element.properties;
+  const props = element.properties as ITableProperties;
   const isNewStructure = !!(props.cells && props.columns);
   
   const [resizingCol, setResizingCol] = useState<number | null>(null);
 
   const handleAddRow = () => {
-    if (!isNewStructure) return;
+    if (!props.cells || !props.columns) return;
     const newCells = [...props.cells];
     const numCols = props.columns.length;
-    const newRow = Array.from({ length: numCols }).map(() => ({
+    const newRow: ITableCell[] = Array.from({ length: numCols }).map(() => ({
       id: generateId(),
       content: "",
       rowSpan: 1,
@@ -35,37 +40,37 @@ export const TableNode: React.FC<TableNodeProps> = ({
   };
 
   const handleAddCol = () => {
-    if (!isNewStructure) return;
+    if (!props.cells || !props.columns) return;
     const newColumns = [...props.columns, { width: 100 }];
-    const newCells = props.cells.map((row: any[]) => [
+    const newCells = props.cells.map((row): ITableCell[] => [
       ...row,
       { id: generateId(), content: "", rowSpan: 1, colSpan: 1 },
     ]);
-    onUpdateProp(element.id, { 
+    onUpdateProp(element.id, {
       columns: newColumns,
-      cells: newCells 
+      cells: newCells,
     });
   };
 
   const handleDeleteRow = () => {
-    if (!isNewStructure || props.cells.length <= 1) return;
+    if (!props.cells || props.cells.length <= 1) return;
     const newCells = [...props.cells];
     newCells.pop();
     onUpdateProp(element.id, { cells: newCells });
   };
 
   const handleDeleteCol = () => {
-    if (!isNewStructure || props.columns.length <= 1) return;
+    if (!props.cells || !props.columns || props.columns.length <= 1) return;
     const newColumns = [...props.columns];
     newColumns.pop();
-    const newCells = props.cells.map((row: any[]) => {
+    const newCells = props.cells.map((row) => {
       const newRow = [...row];
       newRow.pop();
       return newRow;
     });
-    onUpdateProp(element.id, { 
+    onUpdateProp(element.id, {
       columns: newColumns,
-      cells: newCells 
+      cells: newCells,
     });
   };
 
@@ -74,7 +79,7 @@ export const TableNode: React.FC<TableNodeProps> = ({
   };
 
   const handleResizeStart = (e: React.MouseEvent, idx: number) => {
-    if (!isNewStructure) return;
+    if (!props.columns) return;
     e.preventDefault();
     e.stopPropagation();
     setResizingCol(idx);
@@ -85,7 +90,8 @@ export const TableNode: React.FC<TableNodeProps> = ({
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
       const newWidth = Math.max(50, startWidth + delta);
-      
+
+      if (!props.columns) return;
       const newColumns = [...props.columns];
       newColumns[idx] = { ...newColumns[idx], width: newWidth };
       onUpdateProp(element.id, { columns: newColumns });
@@ -149,14 +155,14 @@ export const TableNode: React.FC<TableNodeProps> = ({
           }}
         >
           <colgroup>
-            {props.columns.map((col: any, idx: number) => (
+            {props.columns!.map((col, idx) => (
               <col key={idx} style={{ width: col.width }} />
             ))}
           </colgroup>
           <tbody>
-            {props.cells.map((row: any[], rIdx: number) => (
+            {props.cells!.map((row, rIdx) => (
               <tr key={rIdx}>
-                {row.map((cell: any, cIdx: number) => {
+                {row.map((cell, cIdx) => {
                   if (!cell) return null;
                   return (
                     <td

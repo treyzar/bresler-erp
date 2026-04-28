@@ -1,6 +1,6 @@
 import pytest
 
-from apps.orders.models import Contract, Order
+from apps.orders.models import Contract
 from apps.orders.services.contract_service import get_or_create_contract, update_contract
 from apps.orders.services.order_service import create_order, get_next_order_number
 

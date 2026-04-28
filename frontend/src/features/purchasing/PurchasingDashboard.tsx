@@ -279,7 +279,7 @@ export function PurchasingDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {forecast.map((f, i) => (
+                    {forecast.map((f) => (
                       <TableRow key={`${f.year}-${f.is_forecast}`} className={f.is_forecast ? "bg-blue-50 dark:bg-blue-950/20" : ""}>
                         <TableCell className="font-medium">
                           {f.year}

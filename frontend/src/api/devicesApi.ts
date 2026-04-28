@@ -1,7 +1,6 @@
 import apiClient from "./client"
 import { createDirectoryApi } from "./directoryApi"
 import type {
-  BaseEntity,
   ComponentType,
   DeviceComponent,
   DeviceRZA,

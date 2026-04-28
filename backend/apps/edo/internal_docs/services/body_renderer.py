@@ -65,6 +65,7 @@ def _parse_time(val: Any) -> time | None:
 
 def _resolve_user(val: Any):
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
     if val in (None, "", []):
         return None
@@ -79,6 +80,7 @@ def _resolve_users(val: Any) -> list:
     if not isinstance(val, (list, tuple)):
         return []
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
     pks = []
     for item in val:
@@ -95,6 +97,7 @@ def _resolve_users(val: Any) -> list:
 
 def _resolve_orgunit(val: Any):
     from apps.directory.models import OrgUnit
+
     if val in (None, "", []):
         return None
     try:
@@ -106,6 +109,7 @@ def _resolve_orgunit(val: Any):
 
 def _resolve_department(val: Any):
     from apps.directory.models import Department
+
     if val in (None, "", []):
         return None
     try:

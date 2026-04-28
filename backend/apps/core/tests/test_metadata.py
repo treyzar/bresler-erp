@@ -131,7 +131,9 @@ class TestOrgUnitMetaEndpoint:
         assert "business_role" in filter_names
         assert "is_active" in filter_names
         assert "country" in filter_names
-        assert "parent" in filter_names
+        # `parent` is intentionally hidden via meta_hidden_filters — the frontend
+        # uses tree navigation instead of a parent filter input.
+        assert "parent" not in filter_names
 
     def test_meta_choice_fields(self, api_client):
         """unit_type and business_role should have choices from model."""

@@ -10,7 +10,6 @@ from apps.core.naming import NumberSequence
 from apps.directory.models import Department, OrgUnit
 from apps.edo.internal_docs.models import (
     ApprovalChainTemplate,
-    ApprovalStep,
     Document,
     DocumentType,
 )
@@ -33,7 +32,9 @@ def author(org):
 @pytest.fixture
 def supervisor(org):
     return UserFactory(
-        last_name="Петров", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Петров",
+        company_unit=org["company"],
+        department_unit=org["dept"],
         is_department_head=True,
     )
 
@@ -54,10 +55,14 @@ def memo_type(db):
         steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"}],
     )
     return DocumentType.objects.create(
-        code="bulk_memo", name="Bulk memo", category="memo",
+        code="bulk_memo",
+        name="Bulk memo",
+        category="memo",
         field_schema=[{"name": "subject", "type": "text"}],
-        title_template="{{ subject }}", body_template="{{ subject }}",
-        default_chain=chain, numbering_sequence=seq,
+        title_template="{{ subject }}",
+        body_template="{{ subject }}",
+        default_chain=chain,
+        numbering_sequence=seq,
     )
 
 
@@ -97,6 +102,7 @@ def test_force_cancel_after_first_approve(memo_type, author, supervisor, admin_u
 @pytest.mark.django_db
 def test_force_cancel_requires_reason(memo_type, author, supervisor, admin_user):
     from django.core.exceptions import ValidationError
+
     doc = _make_pending_doc(memo_type, author, 1)
     with pytest.raises(ValidationError):
         svc.force_cancel(doc, admin_user, reason="")
@@ -122,8 +128,7 @@ def test_bulk_cancel_endpoint_admin_only(memo_type, author, supervisor):
     doc = _make_pending_doc(memo_type, author, 1)
     client = APIClient()
     client.force_authenticate(author)
-    r = client.post("/api/edo/internal/admin/bulk-cancel/",
-                    {"document_ids": [doc.pk], "reason": "test"}, format="json")
+    r = client.post("/api/edo/internal/admin/bulk-cancel/", {"document_ids": [doc.pk], "reason": "test"}, format="json")
     assert r.status_code == 403
 
 
@@ -168,11 +173,9 @@ def test_bulk_cancel_reports_skipped_for_closed(memo_type, author, supervisor, a
 def test_bulk_cancel_validates_payload(admin_user):
     client = APIClient()
     client.force_authenticate(admin_user)
-    r = client.post("/api/edo/internal/admin/bulk-cancel/",
-                    {"document_ids": [], "reason": "x"}, format="json")
+    r = client.post("/api/edo/internal/admin/bulk-cancel/", {"document_ids": [], "reason": "x"}, format="json")
     assert r.status_code == 400
-    r = client.post("/api/edo/internal/admin/bulk-cancel/",
-                    {"document_ids": [1], "reason": ""}, format="json")
+    r = client.post("/api/edo/internal/admin/bulk-cancel/", {"document_ids": [1], "reason": ""}, format="json")
     assert r.status_code == 400
 
 
@@ -193,6 +196,7 @@ def test_bulk_remind_sends_to_active_approvers(memo_type, author, supervisor, ad
     assert doc.pk in r.data["reminded"]
 
     from apps.notifications.models import Notification
+
     notifs = Notification.objects.filter(recipient=supervisor)
     assert any("Напоминание" in n.title for n in notifs)
 
@@ -203,8 +207,7 @@ def test_bulk_remind_skips_closed(memo_type, author, supervisor, admin_user):
     svc.approve(doc, supervisor, comment="ok")
     client = APIClient()
     client.force_authenticate(admin_user)
-    r = client.post("/api/edo/internal/admin/bulk-remind/",
-                    {"document_ids": [doc.pk]}, format="json")
+    r = client.post("/api/edo/internal/admin/bulk-remind/", {"document_ids": [doc.pk]}, format="json")
     assert r.status_code == 200
     assert r.data["reminded"] == []
     assert any(s["id"] == doc.pk for s in r.data["skipped"])

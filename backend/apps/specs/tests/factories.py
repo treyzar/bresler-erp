@@ -1,16 +1,17 @@
-import factory
 from datetime import date
 from decimal import Decimal
 
+import factory
+
 from apps.orders.tests.factories import OrderFactory, OrderParticipantFactory
-from apps.users.tests.factories import UserFactory
 from apps.specs.models import (
     CommercialOffer,
     OfferWorkItem,
+    ParticipantContact,
     Specification,
     SpecificationLine,
-    ParticipantContact,
 )
+from apps.users.tests.factories import UserFactory
 
 
 class CommercialOfferFactory(factory.django.DjangoModelFactory):

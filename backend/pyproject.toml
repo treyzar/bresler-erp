@@ -4,7 +4,20 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",
+    # Django/DRF naming idioms ruff's PEP8-N rules don't understand:
+    "N806",  # Variable in function should be lowercase — used for Django model rebinds (`User = type(self)`) and local UPPER_CASE constants
+    "N818",  # Exception name should end in `Error` — Django itself uses ObjectDoesNotExist, ValidationError, etc. without a uniform suffix
+    "N801",  # Class name should use CapWords — `suppress_events` is a context-manager class invoked function-style
+    "N802",  # Function name should be lowercase — DRF permission classes (`HasModuleAccess`) follow CamelCase
+    "N817",  # CamelCase imported as acronym — short aliases like `Decimal as D` for arithmetic-heavy code
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Migrations get model classes via `apps.get_model(...)` and bind them to
+# variables named after the model — that's the canonical Django pattern.
+"**/migrations/*.py" = ["N803", "N806"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "config"]

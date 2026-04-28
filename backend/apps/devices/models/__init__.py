@@ -1,16 +1,3 @@
-from .rza import DeviceRZA, ModRZA, VoltageClass
-from .parameters import (
-    CompositeParameterField,
-    CompositeParameterTemplate,
-    Parameter,
-    ParameterValue,
-)
-from .components import (
-    ComponentType,
-    ComponentVisual,
-    DeviceComponent,
-    TerminalLayout,
-)
 from .catalog import (
     CatalogPlacement,
     Product,
@@ -23,12 +10,25 @@ from .catalog import (
     RZASpec,
     TypicalScheme,
 )
+from .components import (
+    ComponentType,
+    ComponentVisual,
+    DeviceComponent,
+    TerminalLayout,
+)
 from .junctions import (
     DeviceRZAComponent,
     DeviceRZAParameter,
     ModRZAComponent,
     ModRZAParameter,
 )
+from .parameters import (
+    CompositeParameterField,
+    CompositeParameterTemplate,
+    Parameter,
+    ParameterValue,
+)
+from .rza import DeviceRZA, ModRZA, VoltageClass
 
 __all__ = [
     # RZA

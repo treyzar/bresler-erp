@@ -1,6 +1,5 @@
 from django.db import migrations
 
-
 GROUPS_WITH_DEVICES = ["admin", "otm", "projects", "procurement"]
 
 
@@ -21,7 +20,6 @@ def remove_devices_module(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("users", "0003_seed_groups"),
     ]

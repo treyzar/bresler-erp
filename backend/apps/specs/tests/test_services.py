@@ -1,11 +1,12 @@
-import pytest
-from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from apps.orders.tests.factories import OrderFactory, OrderParticipantFactory
-from apps.users.tests.factories import UserFactory
-from apps.specs.models import CommercialOffer, Specification, SpecificationLine
+from apps.specs.models import Specification
 from apps.specs.services import offer_service, specification_service
+from apps.users.tests.factories import UserFactory
+
 from .factories import (
     CommercialOfferFactory,
     SpecificationFactory,
@@ -57,7 +58,9 @@ class TestOfferService:
         user = UserFactory()
 
         source = offer_service.create_offer(
-            order, p1, user,
+            order,
+            p1,
+            user,
             warranty_months=36,
             delivery_included=True,
             delivery_city="Челябинск",
@@ -65,7 +68,9 @@ class TestOfferService:
         # Add spec lines to source
         SpecificationLineFactory(
             specification=source.specification,
-            name="Терминал", quantity=2, unit_price=Decimal("50000"),
+            name="Терминал",
+            quantity=2,
+            unit_price=Decimal("50000"),
         )
         source.specification.recalculate()
 
@@ -101,12 +106,16 @@ class TestSpecificationService:
 
         pt = ProductType.objects.create(name="Терминал")
         p1 = Product.objects.create(
-            name="Бреслер-0107", internal_code="BR-0107",
-            product_type=pt, base_price=Decimal("75000"),
+            name="Бреслер-0107",
+            internal_code="BR-0107",
+            product_type=pt,
+            base_price=Decimal("75000"),
         )
         p2 = Product.objects.create(
-            name="Бреслер-0207", internal_code="BR-0207",
-            product_type=pt, base_price=Decimal("120000"),
+            name="Бреслер-0207",
+            internal_code="BR-0207",
+            product_type=pt,
+            base_price=Decimal("120000"),
         )
 
         offer = CommercialOfferFactory()

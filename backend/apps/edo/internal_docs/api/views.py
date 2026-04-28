@@ -34,14 +34,20 @@ User = get_user_model()
 
 class DocumentTypeViewSet(viewsets.ReadOnlyModelViewSet):
     """Каталог активных типов документов (для выбора при создании)."""
+
     serializer_class = DocumentTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = "code"
 
     def get_queryset(self):
-        qs = DocumentType.objects.filter(is_active=True).select_related(
-            "default_chain", "numbering_sequence",
-        ).order_by("category", "name")
+        qs = (
+            DocumentType.objects.filter(is_active=True)
+            .select_related(
+                "default_chain",
+                "numbering_sequence",
+            )
+            .order_by("category", "name")
+        )
 
         user = self.request.user
         is_admin = user.groups.filter(name="admin").exists()
@@ -69,6 +75,7 @@ def _can_approve(step, user) -> bool:
 
 class DocumentViewSet(viewsets.ModelViewSet):
     """CRUD + экшены жизненного цикла документа."""
+
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
@@ -80,26 +87,34 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # inbox использует специальный queryset, который учитывает коллективные
         # шаги (group:NAME[@company]) — иначе видно только лично назначенных
         # как approver, а коллективные шаги обходят стороной всю группу.
-        if tab == "inbox":
-            qs = Document.objects.inbox_for(user)
-        else:
-            qs = Document.objects.for_user(user)
+        qs = Document.objects.inbox_for(user) if tab == "inbox" else Document.objects.for_user(user)
 
         qs = qs.select_related(
-            "type", "author", "addressee", "current_step",
+            "type",
+            "author",
+            "addressee",
+            "current_step",
             "current_step__approver",
         )
 
         if tab == "outbox":
-            qs = qs.filter(author=user, status__in=[
-                Document.Status.PENDING, Document.Status.REVISION_REQUESTED,
-            ])
+            qs = qs.filter(
+                author=user,
+                status__in=[
+                    Document.Status.PENDING,
+                    Document.Status.REVISION_REQUESTED,
+                ],
+            )
         elif tab == "drafts":
             qs = qs.filter(author=user, status=Document.Status.DRAFT)
         elif tab == "archive":
-            qs = qs.filter(status__in=[
-                Document.Status.APPROVED, Document.Status.REJECTED, Document.Status.CANCELLED,
-            ])
+            qs = qs.filter(
+                status__in=[
+                    Document.Status.APPROVED,
+                    Document.Status.REJECTED,
+                    Document.Status.CANCELLED,
+                ]
+            )
 
         status_filter = self.request.query_params.get("status")
         if status_filter:
@@ -112,6 +127,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         search = self.request.query_params.get("search")
         if search:
             from django.db.models import Q
+
             qs = qs.filter(Q(number__icontains=search) | Q(title__icontains=search))
 
         return qs.distinct().order_by("-created_at")
@@ -185,7 +201,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
         ser.is_valid(raise_exception=True)
         try:
             svc.approve(
-                doc, request.user,
+                doc,
+                request.user,
                 comment=ser.validated_data.get("comment", ""),
                 signature_image=ser.validated_data.get("signature_image", ""),
             )
@@ -263,6 +280,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         from ..services.pdf_export import export_pdf
+
         try:
             pdf_bytes = export_pdf(doc)
         except Exception as e:
@@ -291,6 +309,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Нет прав прикреплять файлы"}, status=status.HTTP_403_FORBIDDEN)
         step = doc.current_step if is_approver else None
         from ..models import DocumentAttachment
+
         att = DocumentAttachment.objects.create(
             document=doc,
             file=f,
@@ -340,29 +359,31 @@ def email_action(request, token: str):
 
     if step.status != ApprovalStep.Status.PENDING:
         return Response(
-            {"detail": f"Шаг уже закрыт (статус: {step.get_status_display()}). "
-                       "Перейдите в систему, если хотите посмотреть документ."},
+            {
+                "detail": f"Шаг уже закрыт (статус: {step.get_status_display()}). "
+                "Перейдите в систему, если хотите посмотреть документ."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if request.method == "GET":
         # Лёгкая «карточка» для подтверждающей страницы.
-        return Response({
-            "action": action,
-            "document": {
-                "id": document.pk,
-                "number": document.number,
-                "title": document.title,
-                "author": (document.author.get_full_name() or document.author.username),
-            },
-            "step": {
-                "id": step.pk,
-                "role_label": step.role_label,
-                "approver": (
-                    step.approver.get_full_name() if step.approver else None
-                ),
-            },
-        })
+        return Response(
+            {
+                "action": action,
+                "document": {
+                    "id": document.pk,
+                    "number": document.number,
+                    "title": document.title,
+                    "author": (document.author.get_full_name() or document.author.username),
+                },
+                "step": {
+                    "id": step.pk,
+                    "role_label": step.role_label,
+                    "approver": (step.approver.get_full_name() if step.approver else None),
+                },
+            }
+        )
 
     # POST — выполняем действие. Используем подписанного approver'а как
     # пользователя для service-функции (учитываем substitute/delegate).
@@ -384,19 +405,20 @@ def email_action(request, token: str):
                 )
             svc.reject(document, step.approver, comment=comment)
         else:
-            return Response({"detail": f"Неизвестное действие: {action}"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": f"Неизвестное действие: {action}"}, status=status.HTTP_400_BAD_REQUEST)
     except PermissionDenied as e:
         return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
     except (svc.DocumentServiceError, ValidationError) as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     document.refresh_from_db()
-    return Response({
-        "ok": True,
-        "action": action,
-        "document_status": document.status,
-    })
+    return Response(
+        {
+            "ok": True,
+            "action": action,
+            "document_status": document.status,
+        }
+    )
 
 
 # ===================== Админ-CRUD для типов и цепочек =====================
@@ -404,6 +426,7 @@ def email_action(request, token: str):
 
 class _IsEDOAdmin(permissions.BasePermission):
     """Только пользователи в группе `admin` могут писать справочники EDO."""
+
     message = "Доступ только для группы admin."
 
     def has_permission(self, request, view):
@@ -416,6 +439,7 @@ class _IsEDOAdmin(permissions.BasePermission):
 
 class AdminDocumentTypeViewSet(viewsets.ModelViewSet):
     """Полный CRUD типов документов — только для группы `admin`."""
+
     serializer_class = DocumentTypeAdminSerializer
     permission_classes = [_IsEDOAdmin]
     lookup_field = "code"
@@ -424,6 +448,7 @@ class AdminDocumentTypeViewSet(viewsets.ModelViewSet):
 
 class AdminApprovalChainTemplateViewSet(viewsets.ModelViewSet):
     """Полный CRUD цепочек согласования — только для группы `admin`."""
+
     serializer_class = ApprovalChainTemplateAdminSerializer
     permission_classes = [_IsEDOAdmin]
     queryset = ApprovalChainTemplate.objects.all()
@@ -474,8 +499,7 @@ def bulk_cancel(request):
     ids = request.data.get("document_ids") or []
     reason = (request.data.get("reason") or "").strip()
     if not isinstance(ids, list) or not ids:
-        return Response({"detail": "document_ids — обязательный непустой список"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "document_ids — обязательный непустой список"}, status=status.HTTP_400_BAD_REQUEST)
     if not reason:
         return Response({"detail": "Причина обязательна"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -499,7 +523,9 @@ def export_archive_zip(request):
     Query: ?from=YYYY-MM-DD&to=YYYY-MM-DD[&status=approved,rejected]
     """
     from datetime import date
+
     from django.http import HttpResponse
+
     from ..services.zip_archive import build_archive
 
     try:
@@ -544,8 +570,7 @@ def bulk_remind(request):
     ids = request.data.get("document_ids") or []
     message = (request.data.get("message") or "").strip()
     if not isinstance(ids, list) or not ids:
-        return Response({"detail": "document_ids — обязательный непустой список"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "document_ids — обязательный непустой список"}, status=status.HTTP_400_BAD_REQUEST)
 
     sent, skipped = [], []
     for doc in Document.objects.filter(pk__in=ids).select_related("current_step", "current_step__approver"):
@@ -577,4 +602,3 @@ def bulk_remind(request):
             )
         sent.append(doc.pk)
     return Response({"reminded": sent, "skipped": skipped})
-

@@ -105,9 +105,9 @@ export const ordersApi = {
   },
 
   transitions: async (orderNumber: number) => {
-    const { data } = await apiClient.get<{ to_status: string; label: string; color: string }[]>(
-      `/orders/${orderNumber}/transitions/`
-    )
+    const { data } = await apiClient.get<
+      { to_status: string; label: string; color: string; blocked: boolean; blocked_reason: string }[]
+    >(`/orders/${orderNumber}/transitions/`)
     return data
   },
 

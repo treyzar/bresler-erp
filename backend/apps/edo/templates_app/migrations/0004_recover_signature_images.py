@@ -25,7 +25,6 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("templates_app", "0003_normalize_editor_content"),
     ]

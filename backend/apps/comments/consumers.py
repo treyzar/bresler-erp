@@ -32,8 +32,12 @@ class CommentsConsumer(AsyncWebsocketConsumer):
 
     async def comment_event(self, event):
         """Forward broadcast (type=comment.event) to the connected client."""
-        await self.send(text_data=json.dumps({
-            "type": "comment",
-            "event": event["event"],
-            "comment_id": event["comment_id"],
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "comment",
+                    "event": event["event"],
+                    "comment_id": event["comment_id"],
+                }
+            )
+        )

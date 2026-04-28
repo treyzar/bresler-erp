@@ -5,6 +5,7 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import type { AxiosError, AxiosResponse } from "axios"
 import {
   ChevronLeft, AlertTriangle, Clock, BarChart3,
   Bell, Trash2, Loader2, Download,
@@ -96,13 +97,14 @@ export function AdminReportsPage() {
       document_ids: Array.from(selected),
       message: comment,
     }),
-    onSuccess: (r: any) => {
+    onSuccess: (r: AxiosResponse<{ reminded: unknown[] }>) => {
       toast.success(`Напоминания отправлены: ${r.data.reminded.length}`)
       closeDialog()
       setSelected(new Set())
       qc.invalidateQueries({ queryKey: ["edo-report"] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
 
   const cancel = useMutation({
@@ -110,13 +112,14 @@ export function AdminReportsPage() {
       document_ids: Array.from(selected),
       reason: comment,
     }),
-    onSuccess: (r: any) => {
+    onSuccess: (r: AxiosResponse<{ cancelled: unknown[]; skipped: unknown[] }>) => {
       toast.success(`Отменено: ${r.data.cancelled.length}; пропущено: ${r.data.skipped.length}`)
       closeDialog()
       setSelected(new Set())
       qc.invalidateQueries({ queryKey: ["edo-report"] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Ошибка"),
+    onError: (e: AxiosError<{ detail?: string }>) =>
+      toast.error(e.response?.data?.detail ?? "Ошибка"),
   })
 
   const { data: breaches, isLoading: l2 } = useQuery({
@@ -395,8 +398,9 @@ function ArchiveExportCard() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       toast.success(`Архив скачан${summary ? ` (${summary})` : ""}`)
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail ?? "Ошибка экспорта")
+    } catch (e) {
+      const err = e as AxiosError<{ detail?: string }>
+      toast.error(err.response?.data?.detail ?? "Ошибка экспорта")
     } finally {
       setBusy(false)
     }

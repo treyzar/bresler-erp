@@ -1,8 +1,8 @@
 """Тесты жизненного цикла документа: create → submit → approve/reject/etc."""
 
 import pytest
-from django.core.exceptions import PermissionDenied, ValidationError
 from django.contrib.auth.models import Group
+from django.core.exceptions import PermissionDenied, ValidationError
 
 from apps.core.naming import NumberSequence
 from apps.directory.models import Department, OrgUnit
@@ -33,13 +33,14 @@ def accounting_group(db):
 @pytest.fixture
 def memo_type(db, org):
     seq = NumberSequence.objects.create(
-        name="test-memo", prefix="СЗ", pattern="{prefix}-{YYYY}-{####}",
+        name="test-memo",
+        prefix="СЗ",
+        pattern="{prefix}-{YYYY}-{####}",
     )
     chain = ApprovalChainTemplate.objects.create(
         name="Простая цепочка",
         steps=[
-            {"order": 1, "role_key": "supervisor", "label": "Руководитель",
-             "action": "approve", "sla_hours": 24},
+            {"order": 1, "role_key": "supervisor", "label": "Руководитель", "action": "approve", "sla_hours": 24},
         ],
     )
     return DocumentType.objects.create(
@@ -57,8 +58,11 @@ def memo_type(db, org):
 @pytest.fixture
 def author(db, org):
     u = UserFactory(
-        last_name="Иванов", first_name="И", patronymic="И",
-        company_unit=org["company"], department_unit=org["sector"],
+        last_name="Иванов",
+        first_name="И",
+        patronymic="И",
+        company_unit=org["company"],
+        department_unit=org["sector"],
     )
     return u
 
@@ -66,19 +70,25 @@ def author(db, org):
 @pytest.fixture
 def supervisor(db, org):
     return UserFactory(
-        last_name="Петров", first_name="П", patronymic="П",
-        company_unit=org["company"], department_unit=org["sector"],
+        last_name="Петров",
+        first_name="П",
+        patronymic="П",
+        company_unit=org["company"],
+        department_unit=org["sector"],
         is_department_head=True,
     )
 
 
 # ---------- create_draft / update_draft ----------
 
+
 @pytest.mark.django_db
 def test_create_draft(memo_type, author):
     doc = svc.create_draft(
-        author=author, doc_type=memo_type,
-        field_values={"subject": "Привет"}, title="",
+        author=author,
+        doc_type=memo_type,
+        field_values={"subject": "Привет"},
+        title="",
     )
     assert doc.status == Document.Status.DRAFT
     assert doc.pk is not None
@@ -99,8 +109,10 @@ def test_update_draft_preserves_addressee(memo_type, author):
     """addressee не сбрасывается, если его не передали в update_draft."""
     addressee = UserFactory(last_name="Адресатов")
     doc = svc.create_draft(
-        author=author, doc_type=memo_type,
-        field_values={"subject": "A"}, addressee=addressee,
+        author=author,
+        doc_type=memo_type,
+        field_values={"subject": "A"},
+        addressee=addressee,
     )
     svc.update_draft(doc, title="Новое")
     doc.refresh_from_db()
@@ -112,8 +124,10 @@ def test_update_draft_can_clear_addressee(memo_type, author):
     """Явная передача addressee=None очищает поле."""
     addressee = UserFactory(last_name="Адресатов")
     doc = svc.create_draft(
-        author=author, doc_type=memo_type,
-        field_values={"subject": "A"}, addressee=addressee,
+        author=author,
+        doc_type=memo_type,
+        field_values={"subject": "A"},
+        addressee=addressee,
     )
     svc.update_draft(doc, addressee=None)
     doc.refresh_from_db()
@@ -129,6 +143,7 @@ def test_cannot_update_non_draft(memo_type, author, supervisor):
 
 
 # ---------- submit ----------
+
 
 @pytest.mark.django_db
 def test_submit_happy_path(memo_type, author, supervisor):
@@ -188,6 +203,7 @@ def test_resubmit_after_revision(memo_type, author, supervisor):
 
 
 # ---------- approve ----------
+
 
 @pytest.mark.django_db
 def test_approve_single_step_closes_document(memo_type, author, supervisor):
@@ -258,6 +274,7 @@ def test_inform_step_auto_completed(memo_type, author, supervisor, org, accounti
 
 # ---------- reject / request_revision ----------
 
+
 @pytest.mark.django_db
 def test_reject_closes_document(memo_type, author, supervisor):
     doc = svc.create_draft(author=author, doc_type=memo_type, field_values={"subject": "x"})
@@ -287,6 +304,7 @@ def test_request_revision_sends_back_to_author(memo_type, author, supervisor):
 
 
 # ---------- delegate ----------
+
 
 @pytest.mark.django_db
 def test_delegate(memo_type, author, supervisor, org):
@@ -322,6 +340,7 @@ def test_cannot_delegate_to_self(memo_type, author, supervisor):
 
 
 # ---------- cancel ----------
+
 
 @pytest.mark.django_db
 def test_cancel_draft(memo_type, author):

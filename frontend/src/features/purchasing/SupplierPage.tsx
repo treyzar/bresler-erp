@@ -13,7 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { purchasingApi } from "@/api/purchasingApi"
-import type { SupplierConditionsType, PurchaseOrderListItem } from "@/api/types"
+import type { SupplierConditionsType } from "@/api/types"
 import { PURCHASE_ORDER_STATUSES } from "@/api/types"
 import { useDebounce } from "@/hooks/useDebounce"
 

@@ -4,6 +4,7 @@ from django.db import migrations
 def _normalize(editor_content):
     # Локальный импорт, чтобы миграция была самодостаточной даже при переименовании сервиса.
     from apps.edo.templates_app.services.normalization import normalize_editor_content
+
     return normalize_editor_content(editor_content)
 
 
@@ -30,7 +31,6 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("templates_app", "0002_template_is_deleted"),
     ]

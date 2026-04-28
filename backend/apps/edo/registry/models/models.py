@@ -4,8 +4,19 @@ from django.db import models
 from simple_history.models import HistoricalRecords
 
 ALLOWED_FILE_TYPES = {
-    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-    "zip", "rar", "txt", "jpg", "jpeg", "png",
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "zip",
+    "rar",
+    "txt",
+    "jpg",
+    "jpeg",
+    "png",
 }
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 

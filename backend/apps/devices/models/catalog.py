@@ -13,6 +13,7 @@ def _make_slug(val: str) -> str:
     """Генерация slug из кириллицы/латиницы."""
     try:
         from unidecode import unidecode
+
         return slugify(unidecode(val or ""))
     except ImportError:
         return slugify(val or "")
@@ -39,12 +40,8 @@ class ProductCategory(MP_Node):
     }
 
     name = models.CharField(max_length=350, verbose_name="Название")
-    short_name = models.CharField(
-        max_length=150, blank=True, default="", verbose_name="Сокращённое название"
-    )
-    slug = models.SlugField(
-        max_length=350, unique=True, db_index=True, blank=True, verbose_name="Слаг"
-    )
+    short_name = models.CharField(max_length=150, blank=True, default="", verbose_name="Сокращённое название")
+    slug = models.SlugField(max_length=350, unique=True, db_index=True, blank=True, verbose_name="Слаг")
     description = models.TextField(blank=True, default="", verbose_name="Описание")
     is_active = models.BooleanField(default=True, verbose_name="Активна")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
@@ -88,12 +85,8 @@ class ProductType(BaseModel):
     """Тип продукта (терминал, шкаф, модуль и т.д.)."""
 
     name = models.CharField(max_length=150, verbose_name="Тип продукта")
-    code = models.CharField(
-        max_length=150, blank=True, default="", verbose_name="Код типа"
-    )
-    mark = models.CharField(
-        max_length=150, blank=True, default="", verbose_name="Обозначение"
-    )
+    code = models.CharField(max_length=150, blank=True, default="", verbose_name="Код типа")
+    mark = models.CharField(max_length=150, blank=True, default="", verbose_name="Обозначение")
     description = models.TextField(blank=True, default="", verbose_name="Описание")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
@@ -124,36 +117,18 @@ class Product(BaseModel):
         verbose_name="Тип продукта",
     )
     name = models.CharField(max_length=350, verbose_name="Наименование")
-    internal_code = models.CharField(
-        max_length=120, unique=True, db_index=True, verbose_name="Артикул/код"
-    )
-    slug = models.SlugField(
-        max_length=350, unique=True, db_index=True, blank=True, verbose_name="Слаг"
-    )
+    internal_code = models.CharField(max_length=120, unique=True, db_index=True, verbose_name="Артикул/код")
+    slug = models.SlugField(max_length=350, unique=True, db_index=True, blank=True, verbose_name="Слаг")
     uom = models.CharField(max_length=32, default="шт", verbose_name="Ед. изм.")
-    base_price = models.DecimalField(
-        max_digits=14, decimal_places=2, default=Decimal("0.00"), verbose_name="Цена"
-    )
-    currency = models.CharField(
-        max_length=3, choices=CURRENCY_CHOICES, default="RUB", verbose_name="Валюта"
-    )
-    vat_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal("20.00"), verbose_name="НДС, %"
-    )
+    base_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"), verbose_name="Цена")
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="RUB", verbose_name="Валюта")
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("20.00"), verbose_name="НДС, %")
     price_with_vat = models.BooleanField(default=True, verbose_name="Цена с НДС")
-    track_serial = models.BooleanField(
-        default=True, verbose_name="Требует серийный учёт"
-    )
+    track_serial = models.BooleanField(default=True, verbose_name="Требует серийный учёт")
     is_active = models.BooleanField(default=True, db_index=True, verbose_name="Активно")
-    is_spare_part = models.BooleanField(
-        default=False, verbose_name="ЗИП"
-    )
-    valid_from = models.DateField(
-        blank=True, null=True, verbose_name="Действует с"
-    )
-    valid_to = models.DateField(
-        blank=True, null=True, verbose_name="Действует по"
-    )
+    is_spare_part = models.BooleanField(default=False, verbose_name="ЗИП")
+    valid_from = models.DateField(blank=True, null=True, verbose_name="Действует с")
+    valid_to = models.DateField(blank=True, null=True, verbose_name="Действует по")
 
     history = HistoricalRecords()
 
@@ -212,9 +187,7 @@ class RZASpec(BaseModel):
 
     def clean(self):
         if self.mod_rza and self.mod_rza.device_rza_id != self.device_rza_id:
-            raise ValidationError(
-                "Модификация не принадлежит указанному функциональному коду."
-            )
+            raise ValidationError("Модификация не принадлежит указанному функциональному коду.")
 
 
 class CatalogPlacement(models.Model):
@@ -269,16 +242,10 @@ class ProductBOMLine(BaseModel):
         related_name="used_in_boms",
         verbose_name="Компонент",
     )
-    role = models.CharField(
-        max_length=32, choices=ROLE_CHOICES, default="MISC", verbose_name="Роль"
-    )
+    role = models.CharField(max_length=32, choices=ROLE_CHOICES, default="MISC", verbose_name="Роль")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Количество")
-    slot_label = models.CharField(
-        max_length=120, blank=True, default="", verbose_name="Слот/место"
-    )
-    track_serial_override = models.BooleanField(
-        null=True, blank=True, verbose_name="Серийный учёт (override)"
-    )
+    slot_label = models.CharField(max_length=120, blank=True, default="", verbose_name="Слот/место")
+    track_serial_override = models.BooleanField(null=True, blank=True, verbose_name="Серийный учёт (override)")
 
     class Meta:
         verbose_name = "Строка состава изделия"
@@ -318,12 +285,8 @@ class ProductAttribute(BaseModel):
 
     code = models.CharField(max_length=100, unique=True, verbose_name="Код атрибута")
     name = models.CharField(max_length=200, verbose_name="Название атрибута")
-    unit = models.CharField(
-        max_length=50, blank=True, default="", verbose_name="Ед. измерения"
-    )
-    value_type = models.CharField(
-        max_length=20, choices=VALUE_TYPES, default="string", verbose_name="Тип значения"
-    )
+    unit = models.CharField(max_length=50, blank=True, default="", verbose_name="Ед. измерения")
+    value_type = models.CharField(max_length=20, choices=VALUE_TYPES, default="string", verbose_name="Тип значения")
 
     class Meta:
         ordering = ["name"]
@@ -381,12 +344,8 @@ class ProductAttributeValue(BaseModel):
         related_name="values",
         verbose_name="Опция",
     )
-    value_string = models.CharField(
-        max_length=500, blank=True, null=True, verbose_name="Строка"
-    )
-    value_decimal = models.DecimalField(
-        max_digits=20, decimal_places=6, blank=True, null=True, verbose_name="Число"
-    )
+    value_string = models.CharField(max_length=500, blank=True, null=True, verbose_name="Строка")
+    value_decimal = models.DecimalField(max_digits=20, decimal_places=6, blank=True, null=True, verbose_name="Число")
     value_bool = models.BooleanField(blank=True, null=True, verbose_name="Да/нет")
 
     class Meta:
@@ -442,9 +401,7 @@ class TypicalScheme(BaseModel):
     """Типовая схема."""
 
     name = models.CharField(max_length=350, verbose_name="Название")
-    image = models.FileField(
-        upload_to="typical_schemes/", blank=True, null=True, verbose_name="Изображение"
-    )
+    image = models.FileField(upload_to="typical_schemes/", blank=True, null=True, verbose_name="Изображение")
     description = models.TextField(blank=True, default="", verbose_name="Описание")
 
     class Meta:

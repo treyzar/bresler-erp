@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from datetime import date, timedelta
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -40,7 +40,9 @@ def author(org):
 @pytest.fixture
 def supervisor(org):
     return UserFactory(
-        last_name="Петров", company_unit=org["company"], department_unit=org["dept"],
+        last_name="Петров",
+        company_unit=org["company"],
+        department_unit=org["dept"],
         is_department_head=True,
     )
 
@@ -61,10 +63,14 @@ def memo_type(db):
         steps=[{"order": 1, "role_key": "supervisor", "label": "Рук.", "action": "approve"}],
     )
     return DocumentType.objects.create(
-        code="zip_memo", name="Zip memo", category="memo",
+        code="zip_memo",
+        name="Zip memo",
+        category="memo",
         field_schema=[{"name": "subject", "type": "text"}],
-        title_template="{{ subject }}", body_template="{{ subject }}",
-        default_chain=chain, numbering_sequence=seq,
+        title_template="{{ subject }}",
+        body_template="{{ subject }}",
+        default_chain=chain,
+        numbering_sequence=seq,
     )
 
 
@@ -83,8 +89,7 @@ def test_archive_includes_index_and_metadata(memo_type, author, supervisor):
     doc = _make_pending_doc(memo_type, author)
     today = timezone.localdate()
 
-    with patch("apps.edo.internal_docs.services.zip_archive.export_pdf",
-               return_value=b"fake-pdf-bytes"):
+    with patch("apps.edo.internal_docs.services.zip_archive.export_pdf", return_value=b"fake-pdf-bytes"):
         data, summary = build_archive(today - timedelta(days=1), today + timedelta(days=1))
 
     assert summary["total"] == 1
@@ -125,12 +130,13 @@ def test_archive_filters_by_date(memo_type, author, supervisor):
 def test_archive_filters_by_status(memo_type, author, supervisor):
     today = timezone.localdate()
     doc1 = _make_pending_doc(memo_type, author, idx=1)
-    doc2 = _make_pending_doc(memo_type, author, idx=2)
+    _make_pending_doc(memo_type, author, idx=2)
     svc.approve(doc1, supervisor, comment="ok")  # approved
 
     with patch("apps.edo.internal_docs.services.zip_archive.export_pdf", return_value=b"x"):
         _data, summary = build_archive(
-            today - timedelta(days=1), today + timedelta(days=1),
+            today - timedelta(days=1),
+            today + timedelta(days=1),
             status_filter=["approved"],
         )
 
@@ -143,8 +149,7 @@ def test_archive_handles_pdf_failure(memo_type, author, supervisor):
     today = timezone.localdate()
     _make_pending_doc(memo_type, author)
 
-    with patch("apps.edo.internal_docs.services.zip_archive.export_pdf",
-               side_effect=RuntimeError("playwright down")):
+    with patch("apps.edo.internal_docs.services.zip_archive.export_pdf", side_effect=RuntimeError("playwright down")):
         data, summary = build_archive(today - timedelta(days=1), today + timedelta(days=1))
 
     assert summary["pdf_failed"] == 1

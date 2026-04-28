@@ -18,10 +18,8 @@ class ComponentService:
         qs = DeviceComponent.objects.filter(is_active=True).select_related("component_type")
         if search:
             from django.db.models import Q
-            qs = qs.filter(
-                Q(component_name__icontains=search)
-                | Q(component_type__name__icontains=search)
-            )
+
+            qs = qs.filter(Q(component_name__icontains=search) | Q(component_type__name__icontains=search))
         return qs
 
     @staticmethod
@@ -45,16 +43,13 @@ class ComponentService:
         """
         comp_type, _ = ComponentType.objects.get_or_create(name=component_type_name)
 
-        existing = DeviceComponent.objects.filter(
-            produx_id=produx_id, is_active=True
-        ).first()
+        existing = DeviceComponent.objects.filter(produx_id=produx_id, is_active=True).first()
 
         if existing:
             data_changed = (
                 existing.component_type.name != comp_type.name
                 or existing.component_name != component_name
-                or (existing.additional_data or {}).get("import_params")
-                != (additional_data or {}).get("import_params")
+                or (existing.additional_data or {}).get("import_params") != (additional_data or {}).get("import_params")
             )
             if data_changed:
                 existing.is_active = False

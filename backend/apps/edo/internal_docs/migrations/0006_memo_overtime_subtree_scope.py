@@ -15,16 +15,18 @@ def forwards(apps, schema_editor):
     if dt is None:
         return
     new_schema = []
-    for spec in (dt.field_schema or []):
+    for spec in dt.field_schema or []:
         if not isinstance(spec, dict):
             new_schema.append(spec)
             continue
         if spec.get("name") == "responsible":
-            spec = {**spec, "filter": {"scope": "subtree"},
-                    "help_text": "Сотрудник вашего подразделения (или вы сами)"}
+            spec = {**spec, "filter": {"scope": "subtree"}, "help_text": "Сотрудник вашего подразделения (или вы сами)"}
         elif spec.get("name") == "employees":
-            spec = {**spec, "filter": {"scope": "subtree"},
-                    "help_text": "Сотрудники вашего подразделения и подчинённых ему секторов"}
+            spec = {
+                **spec,
+                "filter": {"scope": "subtree"},
+                "help_text": "Сотрудники вашего подразделения и подчинённых ему секторов",
+            }
         new_schema.append(spec)
     dt.field_schema = new_schema
     dt.save(update_fields=["field_schema"])
@@ -35,6 +37,5 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("internal_docs", "0005_memo_overtime_accounting_approve")]
     operations = [migrations.RunPython(forwards, backwards)]

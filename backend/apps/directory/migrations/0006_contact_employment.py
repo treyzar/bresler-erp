@@ -10,7 +10,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("directory", "0005_historicalcity_historicalcontact_historicalcountry_and_more"),
     ]
@@ -27,18 +26,24 @@ class Migration(migrations.Migration):
                 ("end_date", models.DateField(blank=True, null=True, verbose_name="Окончание")),
                 ("is_current", models.BooleanField(default=False, verbose_name="Текущая")),
                 ("note", models.CharField(blank=True, max_length=500, verbose_name="Комментарий")),
-                ("contact", models.ForeignKey(
-                    on_delete=django.db.models.deletion.CASCADE,
-                    related_name="employments",
-                    to="directory.contact",
-                    verbose_name="Контакт",
-                )),
-                ("org_unit", models.ForeignKey(
-                    on_delete=django.db.models.deletion.CASCADE,
-                    related_name="employments",
-                    to="directory.orgunit",
-                    verbose_name="Организация",
-                )),
+                (
+                    "contact",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="employments",
+                        to="directory.contact",
+                        verbose_name="Контакт",
+                    ),
+                ),
+                (
+                    "org_unit",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="employments",
+                        to="directory.orgunit",
+                        verbose_name="Организация",
+                    ),
+                ),
             ],
             options={
                 "verbose_name": "Место работы контакта",

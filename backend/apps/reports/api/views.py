@@ -12,6 +12,7 @@ from apps.reports.registry import discover, get_all_reports, get_report
 
 class ReportListView(APIView):
     """GET /api/reports/ — list all available reports."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -25,6 +26,7 @@ class ReportDetailView(APIView):
 
     Add ?format=xlsx to download as Excel.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, name):
@@ -55,14 +57,16 @@ class ReportDetailView(APIView):
         page_data = data[start:end]
 
         meta = report.get_meta()
-        return Response({
-            "meta": meta,
-            "data": page_data,
-            "count": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": (total + page_size - 1) // page_size if page_size else 1,
-        })
+        return Response(
+            {
+                "meta": meta,
+                "data": page_data,
+                "count": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": (total + page_size - 1) // page_size if page_size else 1,
+            }
+        )
 
     @staticmethod
     def _export_xlsx(report, data):

@@ -15,7 +15,7 @@ export interface BlockPosition {
 
 export interface Block {
   type: BlockType;
-  content: any;
+  content: unknown;
   style?: BlockStyle;
   position?: BlockPosition;
 }
