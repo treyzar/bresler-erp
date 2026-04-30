@@ -1,5 +1,8 @@
 from django.contrib.auth.models import AbstractUser, Group
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
+from simple_history.models import HistoricalRecords
 
 from .modules import all_module_slugs
 
@@ -226,3 +229,133 @@ class User(AbstractUser):
         if not sub or not sub.is_active:
             return None
         return sub
+
+
+class Assignment(models.Model):
+    """Штатное назначение пользователя: (компания, подразделение, должность).
+
+    Один User может иметь несколько Assignment'ов:
+    - совмещение в нескольких подразделениях одной компании;
+    - работа в нескольких юрлицах группы;
+    - руководитель двух разных отделов одновременно (`is_head=True` × N).
+
+    Ровно один Assignment у пользователя помечается `is_primary=True` —
+    это «основное место работы», по нему рендерятся PDF-шаблоны вне EDO,
+    подставляется default-контекст в формы.
+
+    EDO-документ создаётся в контексте конкретного Assignment автора:
+    `Document.author_assignment` фиксируется на submit и определяет, чьим
+    «руководителем» считать `dept_head:self`, чьей компанией — `company_head` и т.д.
+
+    История назначений сохраняется через `simple_history` — увольнение
+    реализуется выставлением `is_active=False`, не удалением.
+    """
+
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="assignments",
+        verbose_name="Сотрудник",
+    )
+    company = models.ForeignKey(
+        "directory.OrgUnit",
+        on_delete=models.PROTECT,
+        related_name="assignments",
+        verbose_name="Компания",
+        help_text="Юрлицо (OrgUnit с business_role='internal')",
+    )
+    department = models.ForeignKey(
+        "directory.Department",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="assignments",
+        verbose_name="Подразделение",
+        help_text="Пусто — сотрудник на уровне компании (например, ген.директор)",
+    )
+    position = models.CharField(
+        "Должность",
+        max_length=150,
+        blank=True,
+        help_text="Текстовое название должности в этом назначении",
+    )
+    is_head = models.BooleanField(
+        "Руководитель",
+        default=False,
+        help_text="Руководитель этого department (или company, если department пуст)",
+    )
+    is_primary = models.BooleanField(
+        "Основное место",
+        default=False,
+        help_text="Ровно одно у пользователя; используется как default-контекст",
+    )
+    is_active = models.BooleanField(
+        "Активно",
+        default=True,
+        help_text="False = архивная запись (увольнение/перевод). Не удаляется, "
+        "чтобы не ломать исторические ссылки из EDO-документов.",
+    )
+    from_date = models.DateField("Действует с", null=True, blank=True)
+    to_date = models.DateField("Действует по", null=True, blank=True)
+    note = models.TextField("Примечание", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "Назначение"
+        verbose_name_plural = "Назначения"
+        ordering = ["user", "-is_primary", "company__name", "department__name"]
+        constraints = [
+            # Ровно одно is_primary=True на пользователя.
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=Q(is_primary=True),
+                name="uniq_primary_assignment_per_user",
+            ),
+            # Уникальность (user, company, department) — нельзя два раза в одной паре.
+            # PostgreSQL трактует NULL как отдельные значения, поэтому делим на два
+            # частичных индекса: для не-NULL department и для NULL department.
+            models.UniqueConstraint(
+                fields=["user", "company", "department"],
+                condition=Q(department__isnull=False),
+                name="uniq_user_company_department",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "company"],
+                condition=Q(department__isnull=True),
+                name="uniq_user_company_no_department",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "is_primary"]),
+            models.Index(fields=["company"]),
+            models.Index(fields=["department"]),
+            models.Index(fields=["is_head"]),
+        ]
+
+    def __str__(self):
+        parts = [self.user.get_full_name() or self.user.username, "—"]
+        if self.position:
+            parts.append(self.position + ",")
+        if self.department_id:
+            parts.append(self.department.name)
+        else:
+            parts.append(self.company.name)
+        return " ".join(parts)
+
+    def clean(self):
+        super().clean()
+        if self.department_id and self.company_id:
+            dept_company_id = self.department.company_id
+            if dept_company_id != self.company_id:
+                raise ValidationError(
+                    {
+                        "department": (
+                            f"Подразделение принадлежит компании id={dept_company_id}, "
+                            f"а в назначении указана компания id={self.company_id}. "
+                            "Подразделение должно быть внутри своей компании."
+                        ),
+                    },
+                )
