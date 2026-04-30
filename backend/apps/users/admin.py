@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
+from django.forms.models import ModelChoiceIteratorValue
 
 from apps.directory.models import Department, OrgUnit
 
@@ -39,6 +40,60 @@ class GroupProfileInline(admin.StackedInline):
     fields = ("description", "allowed_modules")
 
 
+class CompanyAwareDepartmentSelect(forms.Select):
+    """`<select>` для Department, добавляющий `data-company-id` на каждый
+    `<option>`. Используется парой с `assignment_cascade.js`, который при
+    смене company скрывает департаменты других компаний.
+    """
+
+    def __init__(self, attrs=None, choices=(), department_to_company=None):
+        super().__init__(attrs, choices)
+        self.department_to_company = department_to_company or {}
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        raw = value.value if isinstance(value, ModelChoiceIteratorValue) else value
+        if raw:
+            try:
+                cid = self.department_to_company.get(int(raw))
+            except (TypeError, ValueError):
+                cid = None
+            if cid:
+                option["attrs"]["data-company-id"] = str(cid)
+        return option
+
+
+def _apply_assignment_field_filters(modeladmin, db_field, formfield):
+    """Общий хелпер для AssignmentInline и AssignmentAdmin: фильтрует company
+    до internal-only и оборачивает department в CompanyAwareDepartmentSelect
+    с маппингом для каскадного фильтра.
+    """
+    if formfield is None:
+        return formfield
+
+    if db_field.name == "department":
+        formfield.label_from_instance = lambda obj: f"{obj.company.name} / {obj.name}"
+        mapping = dict(formfield.queryset.values_list("pk", "company_id"))
+        outer = formfield.widget
+        # admin оборачивает widget в RelatedFieldWidgetWrapper(orig_widget, ...)
+        if hasattr(outer, "widget"):
+            old = outer.widget
+            new_select = CompanyAwareDepartmentSelect(
+                attrs=getattr(old, "attrs", None) or {},
+                choices=old.choices if hasattr(old, "choices") else formfield.choices,
+                department_to_company=mapping,
+            )
+            outer.widget = new_select
+        else:
+            old = outer
+            formfield.widget = CompanyAwareDepartmentSelect(
+                attrs=getattr(old, "attrs", None) or {},
+                choices=old.choices if hasattr(old, "choices") else formfield.choices,
+                department_to_company=mapping,
+            )
+    return formfield
+
+
 class AssignmentInline(admin.TabularInline):
     """Штатные назначения пользователя.
 
@@ -61,8 +116,26 @@ class AssignmentInline(admin.TabularInline):
         "to_date",
         "note",
     )
-    autocomplete_fields = ("company", "department")
+    autocomplete_fields = ()  # не используем — нужно фильтровать company по business_role
     show_change_link = True
+
+    class Media:
+        js = ("admin/js/assignment_cascade.js",)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "company":
+            kwargs["queryset"] = OrgUnit.objects.filter(
+                business_role="internal",
+                is_active=True,
+            ).order_by("name")
+        elif db_field.name == "department":
+            kwargs["queryset"] = (
+                Department.objects.filter(is_active=True)
+                .select_related("company")
+                .order_by("company__name", "name")
+            )
+        formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        return _apply_assignment_field_filters(self, db_field, formfield)
 
 
 @admin.register(User)
@@ -164,7 +237,10 @@ class AssignmentAdmin(admin.ModelAdmin):
         "user__last_name",
         "position",
     )
-    autocomplete_fields = ("user", "company", "department")
+    autocomplete_fields = ("user",)  # company/department идут обычными Select'ами с каскадом
+
+    class Media:
+        js = ("admin/js/assignment_cascade.js",)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "company":
@@ -178,7 +254,8 @@ class AssignmentAdmin(admin.ModelAdmin):
                 .select_related("company")
                 .order_by("company__name", "name")
             )
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+        formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        return _apply_assignment_field_filters(self, db_field, formfield)
 
 
 admin.site.unregister(Group)
