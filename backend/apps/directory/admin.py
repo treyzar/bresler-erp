@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.db.models import Q
 from treebeard.admin import TreeAdmin
 from treebeard.forms import MoveNodeForm, movenodeform_factory
 
@@ -69,12 +71,55 @@ class OrgUnitAdmin(TreeAdmin):
     search_fields = ("name", "full_name", "inn", "external_code")
 
 
-_DepartmentAdminForm = movenodeform_factory(Department, form=SafeMoveNodeForm)
+_DepartmentBaseForm = movenodeform_factory(Department, form=SafeMoveNodeForm)
+
+
+class DepartmentAdminForm(_DepartmentBaseForm):
+    """Расширение формы Department: двухпанельный пикер сотрудников.
+
+    Backs to `User.department_unit` (reverse FK). Семантика как у обычного
+    M2M-пикера: пользователь в правой колонке → его `department_unit`
+    выставляется в этот Department; убрали → `department_unit=None`.
+    Пользователи вне queryset (неактивные и не состоящие сейчас в этом
+    подразделении) не трогаются — на них этот виджет не влияет.
+    """
+
+    employees = forms.ModelMultipleChoiceField(
+        queryset=None,
+        required=False,
+        label="Сотрудники подразделения",
+        help_text=(
+            "Стрелками перенесите пользователей вправо, чтобы прикрепить их "
+            "к этому подразделению. Снятие галочки очищает User.department_unit "
+            "(Компания подтянется автоматически из подразделения при сохранении)."
+        ),
+        widget=FilteredSelectMultiple("Сотрудники", is_stacked=False),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.users.models import User as UserModel
+
+        if self.instance and self.instance.pk:
+            qs = UserModel.objects.filter(
+                Q(is_active=True) | Q(department_unit=self.instance),
+            ).distinct()
+            self.fields["employees"].initial = list(
+                UserModel.objects.filter(department_unit=self.instance).values_list(
+                    "pk", flat=True,
+                ),
+            )
+        else:
+            qs = UserModel.objects.filter(is_active=True)
+
+        self.fields["employees"].queryset = qs.order_by(
+            "last_name", "first_name", "username",
+        )
 
 
 @admin.register(Department)
 class DepartmentAdmin(TreeAdmin):
-    form = _DepartmentAdminForm
+    form = DepartmentAdminForm
     list_display = ("name", "unit_type", "company", "is_active")
     list_filter = ("unit_type", "company", "is_active")
     search_fields = ("name", "full_name")
@@ -90,6 +135,40 @@ class DepartmentAdmin(TreeAdmin):
                 is_active=True,
             ).order_by("name")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        from apps.users.models import User as UserModel
+
+        instance = form.instance
+        if not instance.pk:
+            return
+        selected = form.cleaned_data.get("employees")
+        if selected is None:
+            return
+
+        selected_pks = set(selected.values_list("pk", flat=True))
+        # Универсум — те, кого виджет реально показывал. Только их и трогаем.
+        universe_pks = set(
+            form.fields["employees"].queryset.values_list("pk", flat=True),
+        )
+        current_pks = set(
+            UserModel.objects.filter(
+                department_unit=instance, pk__in=universe_pks,
+            ).values_list("pk", flat=True),
+        )
+
+        to_add = selected_pks - current_pks
+        to_remove = current_pks - selected_pks
+
+        # save() (а не bulk update()) — чтобы pre_save signal синхронизировал
+        # legacy-строки User.department/company и подтянул company_unit.
+        for user in UserModel.objects.filter(pk__in=to_add):
+            user.department_unit = instance
+            user.save()
+        for user in UserModel.objects.filter(pk__in=to_remove):
+            user.department_unit = None
+            user.save()
 
 
 @admin.register(Country)

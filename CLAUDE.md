@@ -360,4 +360,4 @@ See `.env.example`. Key variables:
 | 5.1 | Metadata-driven фильтры | ✅ Готово — MetadataMixin, AutoFilters frontend, интеграция в OrgUnitsPage |
 | 6.1 | Модернизация ProfilePage | ✅ Готово — MyOrders, Activity, Settings (уведомления + смена пароля), Avatar upload, Quick stats |
 
-EDO module: разрабатывается отдельным разработчиком. Legacy: `/home/serj/PyCharm/Projects/marketing` (модуль edo).
+EDO module: разрабатывается в этом же репозитории (`apps/edo/`) тем же разработчиком, что и весь Bresler ERP. Legacy-эталон: `/home/serj/PyCharm/Projects/marketing` (старый Django-модуль edo, для сверки логики).
