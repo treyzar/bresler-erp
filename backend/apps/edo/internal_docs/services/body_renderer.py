@@ -169,9 +169,16 @@ def _build_context(
     field_values: dict,
     author,
     document=None,
+    assignment=None,
     extra: dict | None = None,
 ) -> dict[str, Any]:
-    """Собирает context для Template.render с гидрированными значениями."""
+    """Собирает context для Template.render с гидрированными значениями.
+
+    `assignment` — штатное назначение, в контексте которого подаётся документ.
+    Передаётся в шаблон как переменная `assignment`. Если автор подаёт
+    документ от имени совмещения, шаблон может выводить должность/компанию
+    именно этого назначения, а не primary'.
+    """
     hydrated: dict[str, Any] = {}
 
     for spec in field_schema or []:
@@ -223,6 +230,7 @@ def _build_context(
         **hydrated,
         "fields": hydrated,
         "author": author,
+        "assignment": assignment,
         "today": timezone.localdate(),
         "document": document,
     }
@@ -237,9 +245,16 @@ def render_body(
     field_values: dict | None,
     author,
     document=None,
+    assignment=None,
     extra_context: dict | None = None,
 ) -> str:
-    """Главная точка: возвращает отрендеренный текст. Auto-escape Django включён."""
+    """Главная точка: возвращает отрендеренный текст. Auto-escape Django включён.
+
+    `assignment` (опц.) — контекст подачи. Передаётся в шаблон как `assignment`
+    наряду с `author`. Шаблоны EDO должны обращаться к должности через
+    `{{ assignment.position }}`, к компании — через `{{ assignment.company.name }}`,
+    чтобы корректно работать при совмещении.
+    """
     if not template_str:
         return ""
     ctx = _build_context(
@@ -247,6 +262,7 @@ def render_body(
         field_values or {},
         author,
         document=document,
+        assignment=assignment,
         extra=extra_context,
     )
     tpl = Template(template_str)
@@ -264,4 +280,5 @@ def render_for_document(document, template_field: str = "body_template") -> str:
         document.field_values or {},
         author=document.author,
         document=document,
+        assignment=document.author_assignment,
     )

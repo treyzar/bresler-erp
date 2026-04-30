@@ -1,6 +1,12 @@
 """ChainResolver — резолв `role_key` строк из ApprovalChainTemplate.steps в конкретных User'ов.
 
-Синтаксис и семантика — ТЗ §3.4 + §15.0:
+Семантика после Assignment-рефакторинга: документ подаётся в КОНТЕКСТЕ конкретной
+штатной позиции автора (`Assignment`). Этот контекст определяет, кто его «руководитель»
+(`dept_head:self`), что считать его компанией (`company_head`) и в каком дереве
+подразделений искать `dept_head:up(N)`. Если у автора несколько Assignment'ов
+(совмещение), резолверы привязаны к выбранному, а не к user в целом.
+
+Синтаксис role_key — ТЗ §3.4 + §15.0:
     supervisor
     author
     dept_head:self | dept_head:parent | dept_head:up(N)
@@ -10,10 +16,11 @@
     fixed_user:<id>
     field_user:<field_name>
     field_dept_head:<field_name>
+    field_user_supervisor:<field_name>
+    dept_head_type:<unit_type>
 
-Все резолверы детерминированы: при прочих равных возвращают сотрудника с
-ранней фамилией (order_by last_name, first_name, id). Это важно, чтобы
-chain_snapshot не менялся между попытками submit'а.
+Все резолверы детерминированы: при прочих равных — сотрудник с ранней фамилией
+(order_by last_name, first_name, id), чтобы chain_snapshot не менялся между submit'ами.
 """
 
 from __future__ import annotations
@@ -40,6 +47,7 @@ class ResolveError(Exception):
 @dataclass
 class ResolveContext:
     author: Any  # User instance
+    assignment: Any  # Assignment instance — контекст подачи
     field_values: dict[str, Any]
 
 
@@ -58,11 +66,18 @@ def register(prefix: str) -> Callable[[Resolver], Resolver]:
     return _wrap
 
 
-def resolve(role_key: str, author, field_values: dict | None = None):
-    """Возвращает `User` или `None`. Неизвестный префикс → ResolveError."""
+def resolve(role_key: str, author, assignment=None, field_values: dict | None = None):
+    """Возвращает `User` или `None`. Неизвестный префикс → ResolveError.
+
+    `assignment` — контекст подачи. Если не передан, используется
+    `author.primary_assignment` (default «как раньше», без необходимости
+    переписывать каждый вызов).
+    """
     if not role_key or not isinstance(role_key, str):
         raise ResolveError(f"role_key must be a non-empty string, got {role_key!r}")
-    ctx = ResolveContext(author=author, field_values=field_values or {})
+    if assignment is None:
+        assignment = author.primary_assignment
+    ctx = ResolveContext(author=author, assignment=assignment, field_values=field_values or {})
     prefix, _, args = role_key.partition(":")
     prefix = prefix.strip()
     args = args.strip()
@@ -72,12 +87,46 @@ def resolve(role_key: str, author, field_values: dict | None = None):
     return handler(ctx, args)
 
 
+# ========== вспомогательные функции для запросов по Assignment ==========
+
+
+def _head_user_in_department(node, exclude_user_id):
+    """Найти head того же department, исключая указанного user'а."""
+    return (
+        User.objects.filter(
+            assignments__department=node,
+            assignments__is_head=True,
+            assignments__is_active=True,
+            is_active=True,
+        )
+        .exclude(pk=exclude_user_id)
+        .order_by("last_name", "first_name", "pk")
+        .first()
+    )
+
+
+def _head_user_at_company_level(company_id, exclude_user_id):
+    """Найти head компании (department=NULL, is_head=True), исключая user'а."""
+    return (
+        User.objects.filter(
+            assignments__company_id=company_id,
+            assignments__department__isnull=True,
+            assignments__is_head=True,
+            assignments__is_active=True,
+            is_active=True,
+        )
+        .exclude(pk=exclude_user_id)
+        .order_by("last_name", "first_name", "pk")
+        .first()
+    )
+
+
 # ========== концретные резолверы ==========
 
 
 @register("supervisor")
 def _supervisor(ctx: ResolveContext, _args: str):
-    return ctx.author.resolve_supervisor()
+    return ctx.author.resolve_supervisor(assignment=ctx.assignment)
 
 
 @register("author")
@@ -87,51 +136,33 @@ def _author(ctx: ResolveContext, _args: str):
 
 @register("company_head")
 def _company_head(ctx: ResolveContext, _args: str):
-    """Директор компании автора. Двухступенчатый резолв:
+    """Директор компании автора (по контексту assignment).
 
-    1. Primary: `User.is_department_head=True` + `department_unit IS NULL`
-       — пользователь, явно сидящий «на уровне компании», без подразделения.
-    2. Fallback: head корневого Department в этой компании. Это покрывает
-       типовую org-структуру, где директор сидит в Department «Руководство»
-       (или равнозначном) на верхушке дерева, а не вне дерева вовсе.
-
-    Если ни первый, ни второй вариант не дают результата — возвращает None,
-    и шаг с `action=approve/sign` упадёт с ResolveError при submit'е.
+    1. Primary: assignment с `is_head=True` + `department IS NULL` в той же компании.
+    2. Fallback: head корневого Department в этой компании. Покрывает структуры,
+       где директор сидит в Department «Руководство».
     """
-    if not ctx.author.company_unit_id:
+    if ctx.assignment is None or not ctx.assignment.company_id:
         return None
+    company_id = ctx.assignment.company_id
 
-    # 1) Primary: company-level head (department_unit=NULL).
-    head = (
-        User.objects.filter(
-            company_unit_id=ctx.author.company_unit_id,
-            department_unit__isnull=True,
-            is_department_head=True,
-            is_active=True,
-        )
-        .exclude(pk=ctx.author.pk)
-        .order_by("last_name", "first_name", "pk")
-        .first()
-    )
+    head = _head_user_at_company_level(company_id, ctx.author.pk)
     if head is not None:
         return head
 
-    # 2) Fallback: head корневого (depth=1) Department в этой компании.
-    # MP_Node treebeard: roots имеют depth=1.
     from apps.directory.models import Department
 
     root_dept_ids = list(
-        Department.objects.filter(company_id=ctx.author.company_unit_id, depth=1, is_active=True).values_list(
-            "pk", flat=True
-        )
+        Department.objects.filter(company_id=company_id, depth=1, is_active=True).values_list("pk", flat=True),
     )
     if not root_dept_ids:
         return None
     return (
         User.objects.filter(
-            company_unit_id=ctx.author.company_unit_id,
-            department_unit_id__in=root_dept_ids,
-            is_department_head=True,
+            assignments__company_id=company_id,
+            assignments__department_id__in=root_dept_ids,
+            assignments__is_head=True,
+            assignments__is_active=True,
             is_active=True,
         )
         .exclude(pk=ctx.author.pk)
@@ -145,7 +176,9 @@ def _dept_head(ctx: ResolveContext, args: str):
     """args: 'self' | 'parent' | 'up(N)'. Ищет head начиная с указанного узла,
     рекурсивно поднимаясь по дереву, если head в нём не нашёлся.
     """
-    dept = ctx.author.department_unit
+    if ctx.assignment is None:
+        return None
+    dept = ctx.assignment.department
     if dept is None:
         return None
 
@@ -168,35 +201,23 @@ def _dept_head(ctx: ResolveContext, args: str):
             node = node.get_parent()
         target = node
 
-    # Если target = None (up(N) вышел за корень) — сразу fallback на company.
     if target is None:
         return _company_head(ctx, "")
 
-    # Ищем head начиная с target, поднимаясь по дереву.
     node = target
     while node is not None:
-        head = (
-            User.objects.filter(
-                department_unit=node,
-                is_department_head=True,
-                is_active=True,
-            )
-            .exclude(pk=ctx.author.pk)
-            .order_by("last_name", "first_name", "pk")
-            .first()
-        )
+        head = _head_user_in_department(node, ctx.author.pk)
         if head is not None:
             return head
         node = node.get_parent()
 
-    # Дошли до корня дерева Department — fallback на head компании.
     return _company_head(ctx, "")
 
 
 @register("group")
 def _group(ctx: ResolveContext, args: str):
     """args: 'name' или 'name@company'. Scope @company ограничивает пользователем
-    той же компании, что и автор.
+    той же компании, что и assignment автора.
     """
     name, _, scope = args.partition("@")
     name = name.strip()
@@ -204,33 +225,37 @@ def _group(ctx: ResolveContext, args: str):
         raise ResolveError("group: requires group name")
     qs = User.objects.filter(groups__name=name, is_active=True).exclude(pk=ctx.author.pk)
     if scope == "company":
-        if not ctx.author.company_unit_id:
+        if ctx.assignment is None or not ctx.assignment.company_id:
             return None
-        qs = qs.filter(company_unit_id=ctx.author.company_unit_id)
+        qs = qs.filter(
+            assignments__company_id=ctx.assignment.company_id,
+            assignments__is_active=True,
+        ).distinct()
     return qs.order_by("last_name", "first_name", "pk").first()
 
 
 @register("group_head")
 def _group_head(ctx: ResolveContext, args: str):
-    """Member группы с флагом is_department_head=True."""
+    """Member группы, у которого есть Assignment с is_head=True."""
     name, _, scope = args.partition("@")
     name = name.strip()
     if not name:
         raise ResolveError("group_head: requires group name")
     qs = User.objects.filter(
         groups__name=name,
-        is_department_head=True,
+        assignments__is_head=True,
+        assignments__is_active=True,
         is_active=True,
     ).exclude(pk=ctx.author.pk)
     if scope == "company":
-        if not ctx.author.company_unit_id:
+        if ctx.assignment is None or not ctx.assignment.company_id:
             return None
-        qs = qs.filter(company_unit_id=ctx.author.company_unit_id)
-    return qs.order_by("last_name", "first_name", "pk").first()
+        qs = qs.filter(assignments__company_id=ctx.assignment.company_id)
+    return qs.distinct().order_by("last_name", "first_name", "pk").first()
 
 
 @register("fixed_user")
-def _fixed_user(ctx: ResolveContext, args: str):
+def _fixed_user(_ctx: ResolveContext, args: str):
     try:
         pk = int(args)
     except (TypeError, ValueError) as e:
@@ -240,7 +265,7 @@ def _fixed_user(ctx: ResolveContext, args: str):
 
 @register("field_user")
 def _field_user(ctx: ResolveContext, args: str):
-    """Резолв User из field_values[field_name]. Значение может быть int или str(int)."""
+    """Резолв User из field_values[field_name]. Значение — int или str(int)."""
     if not args:
         raise ResolveError("field_user requires field name")
     val = ctx.field_values.get(args)
@@ -256,36 +281,17 @@ def _field_user(ctx: ResolveContext, args: str):
 @register("dept_head_type")
 def _dept_head_type(ctx: ResolveContext, args: str):
     """Head ближайшего Department с заданным `unit_type`, поднимаясь от
-    `author.department_unit` вверх по дереву.
-
-    args — это значение `Department.UnitType` (management / division / service /
-    department / sector / bureau / group / site / laboratory / branch / other).
-
-    В отличие от `dept_head:up(N)`, не зависит от глубины автора: всегда
-    находит «ближайший вверх» узел нужного типа. Удобно для цепочек уровня
-    «директор управления / дирекции / службы», которые могут быть на разной
-    высоте у разных авторов.
-
-    Если в дереве нет узла нужного типа или у него нет head'а — None.
+    `assignment.department` вверх по дереву.
     """
     if not args:
         raise ResolveError("dept_head_type requires unit_type argument")
-    if not ctx.author.department_unit_id:
+    if ctx.assignment is None or ctx.assignment.department_id is None:
         return None
 
-    node = ctx.author.department_unit
+    node = ctx.assignment.department
     while node is not None:
         if node.unit_type == args:
-            head = (
-                User.objects.filter(
-                    department_unit=node,
-                    is_department_head=True,
-                    is_active=True,
-                )
-                .exclude(pk=ctx.author.pk)
-                .order_by("last_name", "first_name", "pk")
-                .first()
-            )
+            head = _head_user_in_department(node, ctx.author.pk)
             if head is not None:
                 return head
         node = node.get_parent()
@@ -297,8 +303,7 @@ def _field_user_supervisor(ctx: ResolveContext, args: str):
     """Непосредственный руководитель пользователя, на которого указывает FK-поле `args`.
 
     Используется в обратных потоках (vacation_notification): автор —
-    бухгалтерия, employee — отдельное поле формы; нужно уведомить именно
-    руководителя сотрудника, а не автора.
+    бухгалтерия, employee — отдельное поле формы.
     """
     if not args:
         raise ResolveError("field_user_supervisor requires field name")
@@ -335,16 +340,7 @@ def _field_dept_head(ctx: ResolveContext, args: str):
         return None
     node = dept
     while node is not None:
-        head = (
-            User.objects.filter(
-                department_unit=node,
-                is_department_head=True,
-                is_active=True,
-            )
-            .exclude(pk=ctx.author.pk)
-            .order_by("last_name", "first_name", "pk")
-            .first()
-        )
+        head = _head_user_in_department(node, ctx.author.pk)
         if head is not None:
             return head
         node = node.get_parent()
@@ -356,28 +352,25 @@ def _field_dept_head(ctx: ResolveContext, args: str):
 NON_BLOCKING_ACTIONS = {"inform", "notify_only"}
 
 
-# Объяснения для админа: что нужно настроить, чтобы конкретный role_key начал
-# резолвиться. Сообщения добавляются к ResolveError при submit'е документа.
 _RESOLVE_HINTS: dict[str, str] = {
     "supervisor": (
         "Назначьте автору непосредственного руководителя: либо явно через "
-        "User.supervisor (Django admin), либо проставьте кому-то в его "
-        "department_unit (или родительском) флаг is_department_head=True."
+        "User.supervisor (Django admin), либо проставьте в Assignment у "
+        "кого-то в его подразделении (или родительском) флаг is_head=True."
     ),
     "company_head": (
         "Не найден директор компании. Варианты: "
-        "(а) создать пользователя с company_unit=<компания>, department_unit=NULL, "
-        "is_department_head=True; "
-        "(б) проставить is_department_head=True пользователю в корневом Department "
-        "компании (например, в «Руководство»)."
+        "(а) Assignment с company=<компания>, department=NULL, is_head=True; "
+        "(б) Assignment с is_head=True в корневом Department компании "
+        "(например, в «Руководство»)."
     ),
     "dept_head": (
-        "В дереве Department автора нет ни одного пользователя с is_department_head=True. "
+        "В дереве Department автора нет ни одного Assignment с is_head=True. "
         "Проставьте флаг руководителю подразделения через Django admin."
     ),
     "dept_head_type": (
         "В дереве Department автора нет узла указанного unit_type, либо у этого узла нет "
-        "head-пользователя. Проверьте дерево подразделений и проставьте is_department_head."
+        "head-Assignment'а. Проверьте дерево подразделений и проставьте is_head=True."
     ),
 }
 
@@ -402,27 +395,30 @@ class ResolvedStep:
     action: str
     sla_hours: int | None
     parallel_group: str
-    parallel_mode: str  # "and" | "or" (игнорируется, если parallel_group=="")
+    parallel_mode: str  # "and" | "or"
     approver: Any | None  # User or None (for non-blocking unresolvable)
 
 
 def build_approval_steps(
     chain_steps: list[dict],
     author,
+    assignment=None,
     field_values: dict | None = None,
     *,
     dedupe: bool = True,
 ) -> list[ResolvedStep]:
-    """Резолвит всю цепочку согласования.
+    """Резолвит всю цепочку согласования в контексте assignment.
 
+    - `assignment` — контекст подачи (выбран на UI или = author.primary_assignment).
     - Раскрывает каждый шаг в `ResolvedStep(approver=User|None)`.
     - Если `dedupe=True`, скипает шаги, где approver уже встречался выше
-      (кроме параллельных групп — там все независимы).
+      (кроме параллельных групп).
     - Для обязательных шагов (action=approve/sign) с approver=None → ResolveError.
-    - Для inform/notify_only шагов approver=None разрешён — информационный
-      шаг просто не создаётся.
+    - Для inform/notify_only шагов approver=None разрешён — шаг просто не создаётся.
     """
     field_values = field_values or {}
+    if assignment is None:
+        assignment = author.primary_assignment
     result: list[ResolvedStep] = []
     seen_approvers: set[int] = set()
 
@@ -438,13 +434,13 @@ def build_approval_steps(
         parallel_mode = str(raw.get("parallel_mode") or "and").lower()
         if parallel_mode not in ("and", "or"):
             raise ResolveError(
-                f"chain step {order} has invalid parallel_mode={parallel_mode!r} (must be 'and' or 'or')"
+                f"chain step {order} has invalid parallel_mode={parallel_mode!r} (must be 'and' or 'or')",
             )
 
         if not role_key:
             raise ResolveError(f"chain step {order} is missing role_key")
 
-        user = resolve(role_key, author, field_values)
+        user = resolve(role_key, author, assignment, field_values)
 
         if user is None:
             if action in NON_BLOCKING_ACTIONS:
@@ -476,7 +472,7 @@ def build_approval_steps(
                 parallel_group=parallel_group,
                 parallel_mode=parallel_mode,
                 approver=user,
-            )
+            ),
         )
 
     return result

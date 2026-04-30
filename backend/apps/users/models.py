@@ -64,38 +64,21 @@ class GroupProfile(models.Model):
 
 
 class User(AbstractUser):
-    """Custom user model with additional fields for ERP system."""
+    """Custom user model. Штатные данные (компания, отдел, должность) живут
+    в `Assignment` — у одного пользователя их может быть несколько (совмещение,
+    работа в разных юрлицах группы, руководитель нескольких отделов).
+
+    Свойства `company_unit/department_unit/is_department_head/position/...`
+    оставлены как read-only @property над primary_assignment — для совместимости
+    с шаблонами и кодом, читающим их как простые атрибуты. ORM-фильтры по этим
+    «полям» не работают (они не в БД); использовать `User.assignments__company`,
+    `User.assignments__is_head` и т.д.
+    """
 
     patronymic = models.CharField("Отчество", max_length=150, blank=True)
     phone = models.CharField("Телефон", max_length=50, blank=True)
     extension_number = models.CharField("Внутренний номер", max_length=20, blank=True)
-    position = models.CharField("Должность", max_length=150, blank=True)
-    department = models.CharField("Отдел", max_length=150, blank=True)
-    company = models.CharField("Компания", max_length=150, blank=True)
     avatar = models.ImageField("Аватар", upload_to="avatars/", blank=True, null=True)
-    is_department_head = models.BooleanField(
-        "Руководитель отдела",
-        default=False,
-        help_text="Руководитель своего department_unit (или company_unit, если сидит на уровне компании)",
-    )
-    company_unit = models.ForeignKey(
-        "directory.OrgUnit",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="internal_employees",
-        verbose_name="Компания",
-        help_text="Юрлицо (OrgUnit с business_role='internal'), в котором сотрудник оформлен",
-    )
-    department_unit = models.ForeignKey(
-        "directory.Department",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="employees",
-        verbose_name="Подразделение",
-        help_text="Служба/отдел/сектор внутри company_unit. Пусто, если сотрудник прямо на уровне компании",
-    )
     supervisor = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,
@@ -103,7 +86,7 @@ class User(AbstractUser):
         blank=True,
         related_name="subordinates",
         verbose_name="Непосредственный руководитель",
-        help_text="Явный override. Если не задан — определяется по дереву department_unit",
+        help_text="Явный override. Если не задан — определяется по дереву department у assignment.",
     )
     substitute_user = models.ForeignKey(
         "self",
@@ -154,57 +137,175 @@ class User(AbstractUser):
             return f"{last} {initials}"
         return last or initials or (self.username or "")
 
+    # ===== Assignment-derived shims (read-only) =====
+    # Совместимость с шаблонами и кодом, читающим эти атрибуты по-старому.
+    # Возвращают данные primary_assignment. Не используются в ORM-фильтрах.
+
+    @property
+    def primary_assignment(self):
+        return (
+            self.assignments.filter(is_primary=True)
+            .select_related("company", "department")
+            .first()
+        )
+
+    @property
+    def position(self) -> str:
+        a = self.primary_assignment
+        return a.position if a else ""
+
+    @property
+    def department(self) -> str:
+        """Имя подразделения primary-assignment (для шаблонов)."""
+        a = self.primary_assignment
+        if a and a.department_id:
+            return a.department.name
+        return ""
+
+    @property
+    def company(self) -> str:
+        """Имя компании primary-assignment (для шаблонов)."""
+        a = self.primary_assignment
+        return a.company.name if a else ""
+
+    @property
+    def company_unit(self):
+        """OrgUnit primary-assignment'а (для кода, ожидающего объект)."""
+        a = self.primary_assignment
+        return a.company if a else None
+
+    @property
+    def company_unit_id(self):
+        a = self.primary_assignment
+        return a.company_id if a else None
+
+    @property
+    def department_unit(self):
+        """Department primary-assignment'а (для кода, ожидающего объект)."""
+        a = self.primary_assignment
+        return a.department if a else None
+
+    @property
+    def department_unit_id(self):
+        a = self.primary_assignment
+        return a.department_id if a else None
+
+    @property
+    def is_department_head(self) -> bool:
+        a = self.primary_assignment
+        return bool(a and a.is_head)
+
     @property
     def company_root(self):
-        """Компания сотрудника: company_unit (если задан) или company_unit из department_unit."""
-        if self.company_unit_id:
-            return self.company_unit
-        if self.department_unit_id and self.department_unit.company_id:
-            return self.department_unit.company
-        return None
+        """Компания primary-assignment'а — alias к company_unit."""
+        return self.company_unit
 
-    def resolve_supervisor(self):
-        """Резолв непосредственного руководителя по §3.3 ТЗ.
+    # ===== Multi-assignment helpers =====
 
-        1. supervisor FK (если задан явно).
-        2. is_department_head того же department_unit (кроме себя).
-        3. Рекурсивно вверх по дереву подразделений.
-        4. Если дошли до уровня компании — head of company_unit (is_department_head+company_unit, department_unit=NULL).
+    def active_assignments(self, on_date=None):
+        """Assignment'ы, активные на указанную дату (по умолчанию — сегодня).
+
+        Активность: `is_active=True` + (`from_date` IS NULL OR `<=` дата) +
+        (`to_date` IS NULL OR `>=` дата).
+        """
+        if on_date is None:
+            from django.utils import timezone
+
+            on_date = timezone.localdate()
+        return self.assignments.filter(
+            Q(is_active=True),
+            Q(from_date__isnull=True) | Q(from_date__lte=on_date),
+            Q(to_date__isnull=True) | Q(to_date__gte=on_date),
+        )
+
+    def head_of_departments(self):
+        """QuerySet[Department] — где user руководитель."""
+        from apps.directory.models import Department
+
+        dept_ids = self.assignments.filter(
+            is_head=True, is_active=True, department__isnull=False,
+        ).values_list("department_id", flat=True)
+        return Department.objects.filter(pk__in=dept_ids)
+
+    def head_of_companies(self):
+        """QuerySet[OrgUnit] — где user руководитель company-уровня (department=NULL)."""
+        from apps.directory.models import OrgUnit
+
+        company_ids = self.assignments.filter(
+            is_head=True, is_active=True, department__isnull=True,
+        ).values_list("company_id", flat=True)
+        return OrgUnit.objects.filter(pk__in=company_ids)
+
+    def companies(self):
+        """QuerySet[OrgUnit] — все юрлица, где у user есть active assignment."""
+        from apps.directory.models import OrgUnit
+
+        ids = self.assignments.filter(is_active=True).values_list("company_id", flat=True)
+        return OrgUnit.objects.filter(pk__in=ids).distinct()
+
+    def departments(self):
+        """QuerySet[Department] — все подразделения, где user числится."""
+        from apps.directory.models import Department
+
+        ids = self.assignments.filter(
+            is_active=True, department__isnull=False,
+        ).values_list("department_id", flat=True)
+        return Department.objects.filter(pk__in=ids).distinct()
+
+    def resolve_supervisor(self, *, assignment=None):
+        """Резолв непосредственного руководителя.
+
+        1. `User.supervisor` (явный override) — приоритет всегда.
+        2. Иначе — `assignment` (или primary, если не передан) определяет контекст:
+           ищем `is_head=True` начиная с `assignment.department`, поднимаемся
+           по дереву Department до корня.
+        3. Если дошли до уровня компании — `is_head=True` + `department=NULL`
+           в той же компании.
+        4. Иначе — None.
         """
         if self.supervisor_id:
             return self.supervisor
 
+        if assignment is None:
+            assignment = self.primary_assignment
+        if assignment is None:
+            return None
+
         User = type(self)
 
-        if self.department_unit_id:
-            node = self.department_unit
+        if assignment.department_id:
+            node = assignment.department
             while node is not None:
-                head = (
+                head_user = (
                     User.objects.filter(
-                        department_unit=node,
-                        is_department_head=True,
+                        assignments__department=node,
+                        assignments__is_head=True,
+                        assignments__is_active=True,
                         is_active=True,
                     )
                     .exclude(pk=self.pk)
+                    .order_by("last_name", "first_name", "pk")
                     .first()
                 )
-                if head is not None:
-                    return head
+                if head_user is not None:
+                    return head_user
                 node = node.get_parent()
 
-        if self.company_unit_id:
-            head = (
+        if assignment.company_id:
+            head_user = (
                 User.objects.filter(
-                    company_unit=self.company_unit_id,
-                    department_unit__isnull=True,
-                    is_department_head=True,
+                    assignments__company_id=assignment.company_id,
+                    assignments__department__isnull=True,
+                    assignments__is_head=True,
+                    assignments__is_active=True,
                     is_active=True,
                 )
                 .exclude(pk=self.pk)
+                .order_by("last_name", "first_name", "pk")
                 .first()
             )
-            if head is not None:
-                return head
+            if head_user is not None:
+                return head_user
 
         return None
 

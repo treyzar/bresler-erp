@@ -60,7 +60,10 @@ class DocumentTypeViewSet(viewsets.ReadOnlyModelViewSet):
             if ir == DocumentType.InitiatorResolver.AUTHOR:
                 allowed_codes.append(dt.code)
             elif ir == DocumentType.InitiatorResolver.DEPARTMENT_HEAD:
-                if user.is_department_head:
+                # Если в любой штатной позиции user — руководитель, тип ему доступен.
+                # Конкретное право решить именно этим assignment'ом проверяется
+                # в create_draft при выборе контекста подачи.
+                if user.assignments.filter(is_head=True, is_active=True).exists():
                     allowed_codes.append(dt.code)
             elif ir.startswith("group:"):
                 group_name = ir.split(":", 1)[1]

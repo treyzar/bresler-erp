@@ -47,17 +47,32 @@ def create_draft(
     field_values: dict | None = None,
     title: str | None = None,
     addressee=None,
+    author_assignment=None,
 ) -> Document:
-    """Создаёт Document в статусе draft. Проверяет инициатора по DocumentType.initiator_resolver."""
+    """Создаёт Document в статусе draft.
+
+    `author_assignment` — штатная позиция, с которой автор подаёт документ.
+    Если у автора несколько Assignment'ов, UI должен дать ему выбрать; здесь —
+    дефолт = primary. Если ни одного assignment у автора нет — author_assignment
+    остаётся NULL (документ можно сохранить, но при submit резолвить chain
+    будет нечего; пробросится ResolveError).
+    """
     if not doc_type.is_active:
         raise DocumentServiceError(f"Type {doc_type.code!r} is not active")
+
+    if author_assignment is None:
+        author_assignment = author.primary_assignment
+    elif author_assignment.user_id != author.pk:
+        raise DocumentServiceError("author_assignment.user должен совпадать с author")
 
     # Проверка прав на инициирование данного типа.
     is_admin = author.groups.filter(name="admin").exists()
     if not is_admin:
         ir = doc_type.initiator_resolver
         if ir == DocumentType.InitiatorResolver.DEPARTMENT_HEAD:
-            if not author.is_department_head:
+            # «Руководитель подразделения» = выбранный assignment должен быть с is_head=True.
+            is_head = bool(author_assignment and author_assignment.is_head)
+            if not is_head:
                 raise PermissionDenied(f"Тип {doc_type.code!r} может создавать только руководитель подразделения")
         elif ir.startswith("group:"):
             group_name = ir.split(":", 1)[1]
@@ -67,6 +82,7 @@ def create_draft(
     doc = Document.objects.create(
         type=doc_type,
         author=author,
+        author_assignment=author_assignment,
         title=title or "",
         field_values=field_values or {},
         addressee=addressee,
@@ -101,18 +117,18 @@ def update_draft(document: Document, *, field_values=None, title=None, addressee
 # ========== submit (draft → pending) ==========
 
 
-def _build_header_snapshot(author) -> dict:
+def _build_header_snapshot(assignment) -> dict:
     """Снимает «шапку» документа: компания + директор на момент submit.
 
-    Директор берётся из OrgUnitHead-справочника по active_for(today). Если
-    запись не найдена — оставляем пустые строки; PDF в таком случае не
-    показывает блок «Кому».
+    Берёт компанию из переданного assignment'а (контекст подачи). Директор —
+    из OrgUnitHead-справочника по active_for(today). Если запись не найдена,
+    остаются пустые строки; PDF в таком случае не показывает блок «Кому».
     """
     from apps.directory.models import OrgUnitHead
 
-    company = author.company_unit or (author.department_unit.company if author.department_unit_id else None)
-    if company is None:
+    if assignment is None or assignment.company_id is None:
         return {}
+    company = assignment.company
     head = OrgUnitHead.active_for(company)
     return {
         "company_name": company.name,
@@ -152,12 +168,24 @@ def submit(document: Document, user) -> Document:
     if not doc_type.is_active:
         raise DocumentServiceError(f"Type {doc_type.code!r} is inactive")
 
+    # 0. Контекст подачи: assignment, выбранный при создании черновика.
+    # Если не выставлен (старый черновик до рефакторинга) — берём primary автора.
+    assignment = document.author_assignment
+    if assignment is None:
+        assignment = document.author.primary_assignment
+    if assignment is None:
+        raise DocumentServiceError(
+            "У автора нет ни одного штатного назначения (Assignment). "
+            "Невозможно подать документ — некому быть его руководителем/директором.",
+        )
+
     # 1. Резолвим цепочку.
     chain_template = doc_type.default_chain
     try:
         resolved = build_approval_steps(
             chain_template.steps or [],
             author=document.author,
+            assignment=assignment,
             field_values=document.field_values or {},
         )
     except ResolveError as e:
@@ -166,12 +194,14 @@ def submit(document: Document, user) -> Document:
     if not resolved:
         raise DocumentServiceError("Цепочка согласования пуста — документ некому отправить")
 
-    # 2. Рендерим body_rendered и title.
+    # 2. Рендерим body_rendered и title. Передаём assignment отдельной переменной,
+    # чтобы шаблоны могли обращаться к должности/компании именно контекста подачи.
     body_rendered = render_body(
         doc_type.body_template,
         doc_type.field_schema or [],
         document.field_values or {},
         author=document.author,
+        assignment=assignment,
         document=document,
     )
     title_rendered = render_body(
@@ -179,11 +209,12 @@ def submit(document: Document, user) -> Document:
         doc_type.field_schema or [],
         document.field_values or {},
         author=document.author,
+        assignment=assignment,
         document=document,
     )
 
-    # 3. Снимок шапки.
-    header_snapshot = _build_header_snapshot(document.author)
+    # 3. Снимок шапки (по контексту assignment, а не primary).
+    header_snapshot = _build_header_snapshot(assignment)
 
     # 4. Снимок цепочки (то, что было в template, для будущих справок).
     chain_snapshot = list(chain_template.steps or [])
@@ -191,14 +222,16 @@ def submit(document: Document, user) -> Document:
     # 5. Генерируем номер.
     number = NamingService.generate(doc_type.numbering_sequence.name)
 
-    # 6. Обновляем документ.
+    # 6. Обновляем документ. author_company_unit/author_department_unit —
+    # денормализация author_assignment для индексов видимости.
     document.number = number
     document.title = title_rendered.strip() or document.title
     document.body_rendered = body_rendered
     document.header_snapshot = header_snapshot
     document.chain_snapshot = chain_snapshot
-    document.author_company_unit = document.author.company_unit
-    document.author_department_unit = document.author.department_unit
+    document.author_assignment = assignment
+    document.author_company_unit = assignment.company
+    document.author_department_unit = assignment.department
     document.submitted_at = timezone.now()
     document.status = Document.Status.PENDING
     document.save()
@@ -296,6 +329,7 @@ def _get_user_pending_step(document: Document, user) -> ApprovalStep:
         return direct
 
     user_groups = set(user.groups.values_list("name", flat=True))
+    user_company_ids: set | None = None  # lazy: считаем только если встретим @company
     for s in pending:
         rk = s.role_key or ""
         if not rk.startswith("group:"):
@@ -303,10 +337,13 @@ def _get_user_pending_step(document: Document, user) -> ApprovalStep:
         group_name, _, scope = rk[len("group:") :].partition("@")
         if group_name not in user_groups:
             continue
-        if scope == "company" and (
-            not user.company_unit_id or document.author_company_unit_id != user.company_unit_id
-        ):
-            continue
+        if scope == "company":
+            if user_company_ids is None:
+                user_company_ids = set(
+                    user.assignments.filter(is_active=True).values_list("company_id", flat=True),
+                )
+            if document.author_company_unit_id not in user_company_ids:
+                continue
         if s.approver_id != user.pk:
             s.original_approver = s.original_approver or s.approver
             s.approver = user

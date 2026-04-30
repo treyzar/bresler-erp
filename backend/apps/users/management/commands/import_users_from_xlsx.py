@@ -24,7 +24,7 @@ from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.directory.models import Department, OrgUnit
-from apps.users.models import User
+from apps.users.models import Assignment, User
 
 DEFAULT_PASSWORD = "qwerty123"
 
@@ -165,10 +165,23 @@ class Command(BaseCommand):
             return dept, False
 
         def _apply_to_user(user: User, dept, company_level: bool):
-            if not dry_run:
-                user.company_unit = company
-                user.department_unit = None if company_level else dept
-                user.save(update_fields=["company_unit", "department_unit"])
+            """Создаёт/обновляет primary Assignment пользователя."""
+            if dry_run:
+                return
+            assignment = Assignment.objects.filter(user=user, is_primary=True).first()
+            if assignment is None:
+                Assignment.objects.create(
+                    user=user,
+                    company=company,
+                    department=None if company_level else dept,
+                    is_primary=True,
+                    is_active=True,
+                )
+            else:
+                assignment.company = company
+                assignment.department = None if company_level else dept
+                assignment.is_active = True
+                assignment.save(update_fields=["company", "department", "is_active", "updated_at"])
 
         # Идём по Excel — он источник истины.
         for email, info in excel.items():
@@ -184,8 +197,8 @@ class Command(BaseCommand):
                 if user.username in SKIP_USERNAMES:
                     skipped += 1
                     continue
-                # Уже есть в БД — обновляем FK.
-                if not force and (user.company_unit_id or user.department_unit_id):
+                # Уже есть в БД — обновляем primary assignment.
+                if not force and Assignment.objects.filter(user=user, is_primary=True).exists():
                     continue
                 dept, company_level = _resolve_dept(dept_raw)
                 _apply_to_user(user, dept, company_level)
@@ -203,7 +216,7 @@ class Command(BaseCommand):
             dept, company_level = _resolve_dept(dept_raw)
             self.stdout.write(
                 f"  + {prefix}NEW user {email!r} ({full_name}) "
-                f"→ {'company-level' if company_level else f'dept={dept.name!r}' if dept else 'dept=?'}"
+                f"→ {'company-level' if company_level else f'dept={dept.name!r}' if dept else 'dept=?'}",
             )
             if not dry_run:
                 u = User(
@@ -214,10 +227,15 @@ class Command(BaseCommand):
                     patronymic=patronymic,
                     is_active=True,
                     password=make_password(DEFAULT_PASSWORD),
-                    company_unit=company,
-                    department_unit=None if company_level else dept,
                 )
                 u.save()
+                Assignment.objects.create(
+                    user=u,
+                    company=company,
+                    department=None if company_level else dept,
+                    is_primary=True,
+                    is_active=True,
+                )
             created_users += 1
 
         self.stdout.write("")

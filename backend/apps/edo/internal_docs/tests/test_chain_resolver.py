@@ -302,7 +302,7 @@ def test_unresolved_step_error_message_has_hint(tree):
     msg = str(exc.value)
     assert "Шаг #1 «Директор»" in msg
     assert "Не найден директор компании" in msg
-    assert "is_department_head=True" in msg
+    assert "is_head=True" in msg
 
 
 # ---------- group / group_head ----------
@@ -355,8 +355,19 @@ def test_group_empty_name_raises():
 
 @pytest.mark.django_db
 def test_group_head_only_with_is_department_head(tree, accounting_group):
-    regular = UserFactory(last_name="Первый", is_department_head=False)
-    chief = UserFactory(last_name="Чиф", is_department_head=True)
+    # is_head=True требует контекста — даём обоим Assignment с разными значениями.
+    regular = UserFactory(
+        last_name="Первый",
+        company_unit=tree["company"],
+        department_unit=tree["dept2"],
+        is_department_head=False,
+    )
+    chief = UserFactory(
+        last_name="Чиф",
+        company_unit=tree["company"],
+        department_unit=tree["dept1"],
+        is_department_head=True,
+    )
     regular.groups.add(accounting_group)
     chief.groups.add(accounting_group)
     author = UserFactory()

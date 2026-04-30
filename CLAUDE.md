@@ -329,8 +329,10 @@ See `.env.example`. Key variables:
 
 ## Key models
 
-- **User** (AbstractUser) — patronymic, phone, position, department, company, avatar
+- **User** (AbstractUser) — patronymic, phone, supervisor, substitute_user, avatar. Штатные данные (компания/отдел/должность/руководитель) живут в `Assignment`. Свойства `user.position/company/department/company_unit/department_unit/is_department_head` — read-only `@property` над `primary_assignment` (для шаблонов и обратной совместимости; ORM-фильтры по этим полям не работают).
+- **Assignment** — штатное назначение пользователя: `(user, company, department, position, is_head, is_primary, is_active, from_date, to_date)`. У одного User может быть несколько (совмещение, работа в нескольких юрлицах группы, руководитель двух разных отделов). Constraints: ровно одно `is_primary=True` на user; `(user, company, department)` уникально; `department.company == company`. История через `simple_history`. Увольнение/перевод — через `is_active=False`, не удалением.
 - **OrgUnit** (MP_Node tree) — company/branch/division/department/site with business roles
+- **Department** (MP_Node tree) — внутренние подразделения внутри OrgUnit (business_role=internal). Произвольная глубина. Источник истины для штатной структуры (внутри Assignment.department).
 - **Contact** — persons linked M2M to OrgUnit
 - **Facility** — site/facility linked to OrgUnit
 - **Order** — order with workflow statuses (NEW/CONTRACT/PRODUCTION/ASSEMBLED/SHIPPED/ARCHIVED), FK to OrgUnit (customer, intermediary, designer), M2M to Contact, User (managers), Equipment
@@ -342,6 +344,15 @@ See `.env.example`. Key variables:
 - **NumberSequence** — configurable auto-numbering (prefix, pattern, yearly reset)
 - **ImportSession** — file upload, column mapping, validation, status tracking
 - **Reference entities** — Equipment, TypeOfWork, DeliveryType
+
+### EDO + Assignment
+
+EDO-документ создаётся в **контексте Assignment автора** (с какой штатной позиции он подаётся): `Document.author_assignment` — FK на конкретное назначение. Это определяет:
+- кто его «руководитель» (`dept_head:self` смотрит на `Assignment.department` контекста);
+- какая его компания (`company_head` смотрит на `Assignment.company`);
+- видимость документа (`for_user` учитывает все assignment'ы пользователя — head в любом subtree даёт доступ к документам этого поддерева).
+
+`Document.author_company_unit` / `author_department_unit` остаются как **денормализация** `author_assignment` — нужны для индексов горячих запросов видимости. Передача в шаблоны: `render_body(..., assignment=document.author_assignment)` — переменная `{{ assignment.position }}`/`{{ assignment.department.name }}` доступна наряду с `{{ author }}`.
 
 ## Current status (план plan_best_practices.md)
 

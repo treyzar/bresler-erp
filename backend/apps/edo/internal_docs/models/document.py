@@ -45,6 +45,19 @@ class Document(models.Model):
         related_name="authored_internal_docs",
         verbose_name="Автор",
     )
+    author_assignment = models.ForeignKey(
+        "users.Assignment",
+        on_delete=models.PROTECT,
+        related_name="authored_internal_docs",
+        verbose_name="Штатное назначение автора",
+        null=True,
+        blank=True,
+        help_text=(
+            "Контекст подачи документа: с какой штатной позиции (компания+отдел+должность) "
+            "автор подал документ. Влияет на резолв chain (dept_head, company_head и т.д.). "
+            "Фиксируется на submit; если запись помечена is_active=False, документ не теряется."
+        ),
+    )
     author_company_unit = models.ForeignKey(
         "directory.OrgUnit",
         on_delete=models.PROTECT,
@@ -52,7 +65,7 @@ class Document(models.Model):
         verbose_name="Компания автора (снепшот)",
         null=True,
         blank=True,
-        help_text="Фиксируется на момент submit для multi-tenant фильтрации",
+        help_text="Денормализация author_assignment.company для индексов видимости",
     )
     author_department_unit = models.ForeignKey(
         "directory.Department",
@@ -61,6 +74,7 @@ class Document(models.Model):
         verbose_name="Подразделение автора (снепшот)",
         null=True,
         blank=True,
+        help_text="Денормализация author_assignment.department для индексов видимости",
     )
     addressee = models.ForeignKey(
         settings.AUTH_USER_MODEL,

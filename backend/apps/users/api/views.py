@@ -359,20 +359,30 @@ def _get_manager_stats(user):
 def _can_view_manager(request_user, target_user):
     """Check if request_user can view target_user's data.
 
-    Preferred path: сравнение по User.department_unit FK (внутренняя структура).
-    Fallback на legacy-строку User.department, пока не все пользователи
-    перемигрированы на FK.
+    Семантика после Assignment-рефакторинга: admin видит всех; иначе —
+    request_user должен быть руководителем (`is_head=True`) хотя бы в одном
+    подразделении, в поддереве которого есть assignment у target_user.
     """
-    is_admin = request_user.groups.filter(name="admin").exists()
-    if is_admin:
+    if request_user.groups.filter(name="admin").exists():
         return True
-    if not request_user.is_department_head:
+
+    head_dept_ids = list(
+        request_user.assignments.filter(
+            is_head=True, is_active=True, department__isnull=False,
+        ).values_list("department_id", flat=True),
+    )
+    if not head_dept_ids:
         return False
-    if request_user.department_unit_id and target_user.department_unit_id:
-        return request_user.department_unit_id == target_user.department_unit_id
-    if request_user.department and target_user.department:
-        return request_user.department == target_user.department
-    return False
+
+    from apps.directory.models import Department
+
+    subtree_ids: set[int] = set()
+    for dept in Department.objects.filter(pk__in=head_dept_ids):
+        subtree_ids.update(Department.get_tree(dept).values_list("pk", flat=True))
+
+    return target_user.assignments.filter(
+        department_id__in=subtree_ids, is_active=True,
+    ).exists()
 
 
 class UserOrdersView(APIView):
@@ -458,6 +468,7 @@ class TeamPerformanceView(APIView):
     def get(self, request):
         from django.db.models import Count, Q, Sum
 
+        from apps.directory.models import Department
         from apps.orders.models import Order
 
         user = request.user
@@ -473,19 +484,21 @@ class TeamPerformanceView(APIView):
         manager_ids = Order.objects.values_list("managers", flat=True).distinct()
         managers = User.objects.filter(pk__in=manager_ids, is_active=True)
 
-        # Фильтрация по подразделению: FK-first, fallback на legacy-строку.
+        # Фильтрация по подразделению через Assignment.
         if is_admin:
             dept_unit_id = request.query_params.get("department_unit_id")
-            dept_filter = request.query_params.get("department")
             if dept_unit_id:
-                managers = managers.filter(department_unit_id=dept_unit_id)
-            elif dept_filter:
-                managers = managers.filter(department=dept_filter)
+                managers = managers.filter(
+                    assignments__department_id=dept_unit_id,
+                    assignments__is_active=True,
+                ).distinct()
         else:
-            if user.department_unit_id:
-                managers = managers.filter(department_unit_id=user.department_unit_id)
-            elif user.department:
-                managers = managers.filter(department=user.department)
+            primary = user.primary_assignment
+            if primary and primary.department_id:
+                managers = managers.filter(
+                    assignments__department_id=primary.department_id,
+                    assignments__is_active=True,
+                ).distinct()
             else:
                 managers = managers.none()
 
@@ -493,16 +506,14 @@ class TeamPerformanceView(APIView):
 
         # Список подразделений для admin-dropdown.
         department_units = list(
-            User.objects.filter(pk__in=manager_ids, is_active=True, department_unit__isnull=False)
-            .values("department_unit_id", "department_unit__name")
+            Department.objects.filter(
+                assignments__user__pk__in=manager_ids,
+                assignments__user__is_active=True,
+                is_active=True,
+            )
             .distinct()
-            .order_by("department_unit__name")
-        )
-        departments = list(
-            User.objects.filter(pk__in=manager_ids, is_active=True, department__gt="", department_unit__isnull=True)
-            .values_list("department", flat=True)
-            .distinct()
-            .order_by("department")
+            .values("pk", "name")
+            .order_by("name"),
         )
 
         rows = []
@@ -523,21 +534,18 @@ class TeamPerformanceView(APIView):
                     "current": agg["current"],
                     "shipped": agg["shipped"],
                     "total_amount": float(agg["total_amount"] or 0),
-                }
+                },
             )
 
         rows.sort(key=lambda r: -r["shipped"])
         return Response(
             {
                 "managers": rows,
-                "departments": departments,
-                "department_units": [
-                    {"id": du["department_unit_id"], "name": du["department_unit__name"]} for du in department_units
-                ],
+                "department_units": [{"id": du["pk"], "name": du["name"]} for du in department_units],
                 "is_admin": is_admin,
                 "my_department": user.department,
                 "my_department_unit_id": user.department_unit_id,
-            }
+            },
         )
 
 
@@ -560,32 +568,56 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(id__in=get_department_user_ids(me))
 
         # Только сотрудники моего поддерева подразделений (включая меня).
-        # Если у меня нет department_unit, но есть company_unit — все из моей компании.
+        # Если у primary нет department, но есть company — все из моей компании.
         if params.get("in_my_subtree"):
             qs = qs.filter(id__in=_subtree_user_ids(me))
 
         # Только сотрудники моей компании (любой уровень дерева, включая меня).
         if params.get("in_my_company"):
-            qs = qs.filter(company_unit_id=me.company_unit_id) if me.company_unit_id else qs.none()
+            primary = me.primary_assignment
+            if primary:
+                qs = qs.filter(
+                    assignments__company_id=primary.company_id,
+                    assignments__is_active=True,
+                ).distinct()
+            else:
+                qs = qs.none()
 
-        # Опциональный фильтр по флагу руководителя.
+        # Опциональный фильтр по флагу руководителя (любой assignment).
         if params.get("is_department_head") in ("true", "True", "1"):
-            qs = qs.filter(is_department_head=True)
+            qs = qs.filter(
+                assignments__is_head=True, assignments__is_active=True,
+            ).distinct()
 
         return qs
 
 
 def _subtree_user_ids(user) -> list[int]:
-    """ID пользователей в моём department_unit и всех узлах ниже по дереву.
-    Если department_unit нет — все из моей company_unit. Если и компании нет — только я."""
-    if user.department_unit_id:
+    """ID пользователей в primary department + всех узлах ниже по дереву.
+    Если department нет — все из primary company. Если и primary нет — только сам."""
+    primary = user.primary_assignment
+    if primary is None:
+        return [user.pk]
+    if primary.department_id:
         from apps.directory.models import Department
 
-        subtree = Department.get_tree(user.department_unit)
+        subtree = Department.get_tree(primary.department)
         dept_ids = list(subtree.values_list("pk", flat=True))
-        return list(User.objects.filter(is_active=True, department_unit_id__in=dept_ids).values_list("pk", flat=True))
-    if user.company_unit_id:
         return list(
-            User.objects.filter(is_active=True, company_unit_id=user.company_unit_id).values_list("pk", flat=True)
+            User.objects.filter(
+                is_active=True,
+                assignments__department_id__in=dept_ids,
+                assignments__is_active=True,
+            )
+            .distinct()
+            .values_list("pk", flat=True),
         )
-    return [user.pk]
+    return list(
+        User.objects.filter(
+            is_active=True,
+            assignments__company_id=primary.company_id,
+            assignments__is_active=True,
+        )
+        .distinct()
+        .values_list("pk", flat=True),
+    )

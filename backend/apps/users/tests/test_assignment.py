@@ -129,26 +129,13 @@ class TestAssignmentBackfill:
     через прямой ORM, чтобы зафиксировать инвариант.
     """
 
-    def test_backfill_logic_creates_primary_for_user_with_flat_fields(self, company_a, dept_a):
-        """Имитация: пользователь с flat company_unit/department_unit/is_department_head
-        должен получить ровно один Assignment(is_primary=True) с теми же значениями."""
+    def test_factory_creates_primary_when_company_or_department_passed(self, company_a, dept_a):
+        """UserFactory с convenience-kwargs должна создать Assignment(primary=True)."""
         u = UserFactory(
             company_unit=company_a,
             department_unit=dept_a,
             is_department_head=True,
             position="Начальник РЗА",
-        )
-
-        # Сама миграция уже отработала (pytest-django выполняет миграции),
-        # но фабрика создаёт юзеров после миграции — поэтому миграция их не
-        # увидела. Запускаем эквивалентную логику вручную:
-        Assignment.objects.create(
-            user=u,
-            company_id=u.company_unit_id,
-            department_id=u.department_unit_id,
-            position=u.position,
-            is_head=u.is_department_head,
-            is_primary=True,
         )
 
         primary = u.assignments.get(is_primary=True)

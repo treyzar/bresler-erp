@@ -3,7 +3,7 @@ import contextlib
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from apps.users.models import User
+from apps.users.models import Assignment, User
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -36,9 +36,44 @@ def _avatar_url(user) -> str | None:
     return None
 
 
+class AssignmentSerializer(serializers.ModelSerializer):
+    """Сериализатор штатного назначения. Используется в списке assignments
+    у пользователя."""
+
+    company_name = serializers.CharField(source="company.name", read_only=True)
+    department_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Assignment
+        fields = (
+            "id",
+            "company",
+            "company_name",
+            "department",
+            "department_name",
+            "position",
+            "is_head",
+            "is_primary",
+            "is_active",
+            "from_date",
+            "to_date",
+            "note",
+        )
+        read_only_fields = ("id", "company_name", "department_name")
+
+    def get_department_name(self, obj) -> str | None:
+        return obj.department.name if obj.department_id else None
+
+
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     avatar = serializers.SerializerMethodField()
+    # Поля ниже — read-only shims над primary_assignment, для совместимости
+    # со старыми потребителями API. Полная штатка отдаётся в `assignments`.
+    position = serializers.CharField(read_only=True)
+    department = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    assignments = AssignmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -55,6 +90,7 @@ class UserSerializer(serializers.ModelSerializer):
             "position",
             "department",
             "company",
+            "assignments",
             "avatar",
             "is_active",
         )
@@ -69,6 +105,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
     groups = serializers.StringRelatedField(many=True, read_only=True)
     allowed_modules = serializers.SerializerMethodField()
+    position = serializers.CharField(read_only=True)
+    department = serializers.CharField(read_only=True)
+    company = serializers.CharField(read_only=True)
+    is_department_head = serializers.BooleanField(read_only=True)
+    assignments = AssignmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -85,6 +126,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "position",
             "department",
             "company",
+            "assignments",
             "avatar",
             "is_department_head",
             "groups",

@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group
 
 from apps.directory.models import Department, OrgUnit
 
-from .models import GroupProfile, User
+from .models import Assignment, GroupProfile, User
 from .modules import module_choices
 
 
@@ -39,6 +39,32 @@ class GroupProfileInline(admin.StackedInline):
     fields = ("description", "allowed_modules")
 
 
+class AssignmentInline(admin.TabularInline):
+    """Штатные назначения пользователя.
+
+    Показывается на странице редактирования User'а. Здесь же выставляется
+    `is_primary` — основное место работы (ровно одно на пользователя; БД
+    запретит второе primary через UniqueConstraint).
+    """
+
+    model = Assignment
+    extra = 0
+    fk_name = "user"
+    fields = (
+        "company",
+        "department",
+        "position",
+        "is_head",
+        "is_primary",
+        "is_active",
+        "from_date",
+        "to_date",
+        "note",
+    )
+    autocomplete_fields = ("company", "department")
+    show_change_link = True
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = (
@@ -46,53 +72,38 @@ class UserAdmin(BaseUserAdmin):
         "last_name",
         "first_name",
         "patronymic",
-        "department_unit",
-        "company_unit",
-        "position",
-        "is_department_head",
+        "primary_company_display",
+        "primary_department_display",
+        "primary_position_display",
         "is_active",
     )
     list_filter = (
         "is_active",
         "is_staff",
-        "is_department_head",
-        "company_unit",
-        "department_unit",
+        "assignments__is_head",
+        "assignments__company",
+        "assignments__department",
     )
     search_fields = ("username", "first_name", "last_name", "patronymic", "email")
 
+    inlines = [AssignmentInline]
+
     fieldsets = BaseUserAdmin.fieldsets + (
-        (
-            "Организация",
-            {
-                "fields": (
-                    "company_unit",
-                    "department_unit",
-                    "supervisor",
-                    "is_department_head",
-                ),
-                "description": (
-                    "company_unit — наше юрлицо (OrgUnit с business_role=internal). "
-                    "department_unit — конкретное подразделение (Служба/Отдел/Сектор). "
-                    "supervisor — явное переопределение руководителя; если пусто, "
-                    "система ищет head по дереву department_unit автоматически."
-                ),
-            },
-        ),
         (
             "Замещение",
             {
                 "fields": (
+                    "supervisor",
                     "substitute_user",
                     "substitute_from",
                     "substitute_until",
                 ),
                 "description": (
-                    "Когда сотрудник в отпуске — все его новые EDO-шаги (WAITING → "
-                    "PENDING) автоматически переадресуются substitute_user в окне "
-                    "[substitute_from, substitute_until]. Уже PENDING-шаги "
-                    "не перерезолвятся — для них нужна ручная «Делегировать» в UI. "
-                    "Любая граница может быть пустой (бессрочное замещение)."
+                    "supervisor — явный override непосредственного руководителя; "
+                    "если пусто, система ищет head по дереву Department "
+                    "primary-assignment'а автоматически. "
+                    "Замещение: новые шаги EDO в окне [from, until] переадресуются "
+                    "substitute_user'у. Любая граница может быть пустой."
                 ),
             },
         ),
@@ -103,44 +114,69 @@ class UserAdmin(BaseUserAdmin):
                     "patronymic",
                     "phone",
                     "extension_number",
-                    "position",
                     "avatar",
                 ),
             },
         ),
-        (
-            "Legacy-поля (readonly shadow)",
-            {
-                "classes": ("collapse",),
-                "fields": ("department", "company"),
-                "description": (
-                    "Текстовые значения автоматически подтягиваются из "
-                    "department_unit/company_unit через pre_save сигнал. "
-                    "Не редактируй вручную — перезапишется при следующем save."
-                ),
-            },
-        ),
     )
-    readonly_fields = ("department", "company")
+
+    @admin.display(description="Компания (primary)")
+    def primary_company_display(self, obj):
+        a = obj.primary_assignment
+        return a.company.name if a else "—"
+
+    @admin.display(description="Подразделение (primary)")
+    def primary_department_display(self, obj):
+        a = obj.primary_assignment
+        if not a:
+            return "—"
+        return a.department.name if a.department_id else "(уровень компании)"
+
+    @admin.display(description="Должность (primary)")
+    def primary_position_display(self, obj):
+        a = obj.primary_assignment
+        return (a.position if a else "") or "—"
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "company_unit":
+        if db_field.name == "supervisor":
+            kwargs["queryset"] = User.objects.filter(is_active=True).order_by(
+                "last_name",
+                "first_name",
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(Assignment)
+class AssignmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "company",
+        "department",
+        "position",
+        "is_head",
+        "is_primary",
+        "is_active",
+    )
+    list_filter = ("is_head", "is_primary", "is_active", "company", "department")
+    search_fields = (
+        "user__username",
+        "user__first_name",
+        "user__last_name",
+        "position",
+    )
+    autocomplete_fields = ("user", "company", "department")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "company":
             kwargs["queryset"] = OrgUnit.objects.filter(
                 business_role="internal",
                 is_active=True,
             ).order_by("name")
-        elif db_field.name == "department_unit":
+        elif db_field.name == "department":
             kwargs["queryset"] = (
-                Department.objects.filter(
-                    is_active=True,
-                )
+                Department.objects.filter(is_active=True)
                 .select_related("company")
                 .order_by("company__name", "name")
-            )
-        elif db_field.name == "supervisor":
-            kwargs["queryset"] = User.objects.filter(is_active=True).order_by(
-                "last_name",
-                "first_name",
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 

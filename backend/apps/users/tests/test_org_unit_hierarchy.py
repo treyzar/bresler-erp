@@ -138,20 +138,6 @@ def test_legacy_fields_synced_from_company_unit_only(org_tree):
 
 
 @pytest.mark.django_db
-def test_legacy_fields_preserved_without_fks():
-    """Без FK сигнал не трогает — legacy-значения остаются."""
-    user = UserFactory(
-        company_unit=None,
-        department_unit=None,
-        department="Старый отдел",
-        company="Старая компания",
-    )
-    user.refresh_from_db()
-    assert user.department == "Старый отдел"
-    assert user.company == "Старая компания"
-
-
-@pytest.mark.django_db
 def test_department_unit_auto_fills_company_unit(org_tree):
     """Если указан только department_unit, сигнал дозаполняет company_unit из его .company."""
     user = UserFactory(department_unit=org_tree["sector"], company_unit=None)

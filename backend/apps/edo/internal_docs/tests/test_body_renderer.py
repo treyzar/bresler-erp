@@ -242,9 +242,19 @@ def test_fields_dict_accessible():
 @pytest.mark.django_db
 def test_memo_overtime_full_template(company, dept):
     author = UserFactory(last_name="Автор", first_name="А", patronymic="А", company_unit=company, department_unit=dept)
-    responsible = UserFactory(last_name="Петров", first_name="И", patronymic="С", position="Начальник отдела")
-    emp1 = UserFactory(last_name="Иванов", first_name="П", patronymic="А", position="Инженер")
-    emp2 = UserFactory(last_name="Сидоров", first_name="М", patronymic="В", position="Техник")
+    # position сохраняется на Assignment — даём всем company_unit, чтобы primary создалась.
+    responsible = UserFactory(
+        last_name="Петров", first_name="И", patronymic="С",
+        company_unit=company, position="Начальник отдела",
+    )
+    emp1 = UserFactory(
+        last_name="Иванов", first_name="П", patronymic="А",
+        company_unit=company, position="Инженер",
+    )
+    emp2 = UserFactory(
+        last_name="Сидоров", first_name="М", patronymic="В",
+        company_unit=company, position="Техник",
+    )
 
     schema = [
         {

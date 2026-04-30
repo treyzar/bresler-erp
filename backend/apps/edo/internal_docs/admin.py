@@ -66,7 +66,14 @@ class DocumentAdmin(admin.ModelAdmin):
     list_display = ("number", "type", "author", "status", "submitted_at", "closed_at")
     list_filter = ("status", "type", "submitted_at")
     search_fields = ("number", "title", "author__username", "author__last_name")
-    autocomplete_fields = ("type", "author", "addressee", "author_company_unit", "author_department_unit")
+    autocomplete_fields = (
+        "type",
+        "author",
+        "author_assignment",
+        "addressee",
+        "author_company_unit",
+        "author_department_unit",
+    )
     readonly_fields = (
         "number",
         "created_at",

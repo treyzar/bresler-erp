@@ -65,13 +65,20 @@ class TestTokenEndpoints:
 @pytest.mark.django_db
 class TestProfileEndpoint:
     def setup_method(self):
+        from apps.directory.models import Department, OrgUnit
+
         self.client = APIClient()
+        company = OrgUnit.add_root(
+            name="ACME", unit_type="company", business_role="internal", is_legal_entity=True,
+        )
+        dept = Department.add_root(name="IT", unit_type="department", company=company)
         self.user = UserFactory(
             username="profileuser",
             first_name="Иван",
             last_name="Иванов",
             patronymic="Иванович",
-            department="IT",
+            company_unit=company,
+            department_unit=dept,
         )
         self.client.force_authenticate(user=self.user)
 

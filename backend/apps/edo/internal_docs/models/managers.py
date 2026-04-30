@@ -1,4 +1,11 @@
-"""QuerySet + Manager для Document: правило видимости `for_user` по §5 + §3.5."""
+"""QuerySet + Manager для Document: правило видимости `for_user` по §5 + §3.5.
+
+Семантика после Assignment-рефакторинга: пользователь может иметь несколько
+штатных позиций (`Assignment`) в разных подразделениях/компаниях. Видимость
+документа считается по ВСЕМ его assignment'ам — например, человек, который
+числится в двух компаниях, видит документы обеих; руководитель двух разных
+отделов видит документы обоих поддеревьев.
+"""
 
 from __future__ import annotations
 
@@ -14,54 +21,71 @@ class DocumentQuerySet(models.QuerySet):
         - superuser / группа admin → все
         - автор видит свои
         - согласующий (в цепочке) видит тот документ, где он участник
-        - `is_department_head` видит документы сотрудников своего department_unit
-          (включая поддерево)
+        - руководитель отдела (Assignment.is_head=True) видит документы
+          сотрудников этого отдела и его поддерева
+        - руководитель company-уровня (is_head=True + department=NULL) видит
+          всё в этой компании
         - `DocumentType.visibility='department_visible'` — видят все сотрудники
-          department_unit автора (включая поддерево)
+          того же department (любой assignment) автора
         - `DocumentType.visibility='public'` — зависит от tenant-режима
         - Multi-tenant фильтр применяется поверх всех правил, кроме админа.
 
         Индексы, на которые опирается этот запрос (см. Document.Meta.indexes):
             (author, status), (author_company_unit, status),
-            (author_department_unit), (type, status)
-        и (approver, status), (original_approver), (status, role_key) на ApprovalStep.
-        Под нагрузкой 10k+ документов запрос остаётся в пределах 50ms на типичных
-        выборках (мерил руками EXPLAIN ANALYZE на dev-базе).
+            (author_department_unit), (type, status),
+            (approver, status), (original_approver), (status, role_key) на ApprovalStep.
         """
         if user is None or not user.is_authenticated:
             return self.none()
         if user.is_superuser or user.groups.filter(name="admin").exists():
             return self
 
+        from apps.directory.models import Department
+
         from .config import InternalDocFlowConfig
         from .document_type import DocumentType
+
+        # Собираем «контексты» пользователя из всех его активных assignment'ов.
+        active_assignments = list(
+            user.assignments.filter(is_active=True).values_list(
+                "company_id", "department_id", "is_head",
+            ),
+        )
+        user_company_ids: set[int] = {a[0] for a in active_assignments if a[0]}
+        user_dept_ids: set[int] = {a[1] for a in active_assignments if a[1]}
+        head_dept_ids: list[int] = [a[1] for a in active_assignments if a[2] and a[1]]
+        head_company_only_ids: set[int] = {a[0] for a in active_assignments if a[2] and not a[1]}
+
+        # Поддерево всех department, в которых user — head.
+        head_subtree_ids: set[int] = set()
+        if head_dept_ids:
+            for dept in Department.objects.filter(pk__in=head_dept_ids):
+                head_subtree_ids.update(Department.get_tree(dept).values_list("pk", flat=True))
 
         # Базовые условия: автор или участник цепочки.
         conditions = Q(author=user) | Q(steps__approver=user) | Q(steps__original_approver=user)
 
         # Если в шаге role_key=group:<NAME>[@company] и user в этой группе —
-        # видит документ как участник коллективного шага. Архив + текущий.
+        # видит документ как участник коллективного шага.
         for g_name in user.groups.values_list("name", flat=True):
             conditions |= Q(steps__role_key=f"group:{g_name}")
-            if user.company_unit_id:
+            if user_company_ids:
                 conditions |= Q(
                     steps__role_key=f"group:{g_name}@company",
-                    author_company_unit=user.company_unit_id,
+                    author_company_unit_id__in=user_company_ids,
                 )
 
-        # Руководитель видит документы своего department_unit и потомков.
-        if user.is_department_head and user.department_unit_id:
-            dept_ids = _descendant_department_ids(user.department_unit)
-            conditions |= Q(author_department_unit__in=dept_ids)
-            # Плюс сам department head на уровне компании видит всё company_unit.
-        elif user.is_department_head and user.company_unit_id and not user.department_unit_id:
-            conditions |= Q(author_company_unit=user.company_unit_id)
+        # Руководитель видит документы своего department и поддерева.
+        if head_subtree_ids:
+            conditions |= Q(author_department_unit_id__in=head_subtree_ids)
+        if head_company_only_ids:
+            conditions |= Q(author_company_unit_id__in=head_company_only_ids)
 
-        # department_visible: сотрудники того же department_unit.
-        if user.department_unit_id:
+        # department_visible: сотрудники того же department (любой assignment).
+        if user_dept_ids:
             conditions |= Q(
                 type__visibility=DocumentType.Visibility.DEPARTMENT_VISIBLE,
-                author_department_unit=user.department_unit_id,
+                author_department_unit_id__in=user_dept_ids,
             )
 
         # public: зависит от tenancy.
@@ -74,15 +98,14 @@ class DocumentQuerySet(models.QuerySet):
         if config.cross_company_scope == InternalDocFlowConfig.TenancyScope.COMPANY_ONLY:
             # company_only: публичные документы чужой компании скрываем,
             # если у DocumentType не стоит tenancy_override='group_wide'.
-            if user.company_unit_id:
+            if user_company_ids:
                 tenant_q = (
-                    Q(author_company_unit=user.company_unit_id)
+                    Q(author_company_unit_id__in=user_company_ids)
                     | Q(type__tenancy_override=DocumentType.TenancyOverride.GROUP_WIDE)
                     | Q(author=user)
                     | Q(steps__approver=user)
                 )
                 qs = qs.filter(tenant_q).distinct()
-            # Если у пользователя нет company_unit — оставляем только свои + где участвует.
             else:
                 qs = qs.filter(Q(author=user) | Q(steps__approver=user)).distinct()
 
@@ -91,22 +114,12 @@ class DocumentQuerySet(models.QuerySet):
     def inbox_for(self, user) -> DocumentQuerySet:
         """Документы, ожидающие решения от `user`.
 
-        В отличие от прежней реализации (через `current_step`), смотрим прямо
-        на ApprovalStep'ы со статусом PENDING — это нужно для параллельных
-        веток, где в одном batch'е сразу несколько активных согласующих и
-        указывать «текущим» можно только одного.
-
         Включает:
         - персональный inbox: PENDING active-шаг с `approver=user`;
         - групповой inbox: PENDING active-шаг с `role_key='group:NAME[@company]'`
-          и user в группе NAME (опционально с проверкой company_unit).
-
-        WAITING-шаги (ещё не активный batch) и закрытые шаги не показываются —
-        пользователь увидит документ ровно тогда, когда от него действительно
-        ждут решения.
+          и user в группе NAME; для @company — author_company должен быть
+          среди assignment-компаний user'а.
         """
-        from django.db.models import Q
-
         active_actions = ["approve", "sign"]
         direct_q = Q(
             steps__status="pending",
@@ -115,6 +128,9 @@ class DocumentQuerySet(models.QuerySet):
         )
 
         user_groups = set(user.groups.values_list("name", flat=True))
+        user_company_ids = set(
+            user.assignments.filter(is_active=True).values_list("company_id", flat=True),
+        )
         group_q = Q()
         for g in user_groups:
             group_q |= Q(
@@ -122,12 +138,12 @@ class DocumentQuerySet(models.QuerySet):
                 steps__action__in=active_actions,
                 steps__role_key=f"group:{g}",
             )
-            if user.company_unit_id:
+            if user_company_ids:
                 group_q |= Q(
                     steps__status="pending",
                     steps__action__in=active_actions,
                     steps__role_key=f"group:{g}@company",
-                    author_company_unit=user.company_unit_id,
+                    author_company_unit_id__in=user_company_ids,
                 )
 
         return self.filter(Q(status="pending") & (direct_q | group_q)).distinct()
