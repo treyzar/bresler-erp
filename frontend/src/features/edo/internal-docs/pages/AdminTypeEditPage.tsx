@@ -389,8 +389,16 @@ function AdminTypeEditHelp() {
           В <code>title_template</code> и <code>body_template</code> доступны:
         </p>
         <HelpItem label="author">
-          User: <code>author.full_name</code>, <code>author.position</code>,{" "}
-          <code>author.department_unit.name</code>.
+          User: <code>author.full_name</code>, <code>author.email</code>,{" "}
+          <code>author.phone</code>. ФИО в шаблонах берите отсюда.
+        </HelpItem>
+        <HelpItem label="assignment">
+          Штатное назначение, в контексте которого подаётся документ:{" "}
+          <code>assignment.position</code> (должность),{" "}
+          <code>assignment.company.name</code> (юрлицо),{" "}
+          <code>assignment.department.name</code> (подразделение). Используйте
+          ИХ для шапки, а не <code>author.position</code> — у автора может быть
+          несколько штатных позиций, и primary не всегда совпадает с контекстом.
         </HelpItem>
         <HelpItem label="today">
           Текущая дата (для <code>{`{{ today|date:"d.m.Y" }}`}</code>).

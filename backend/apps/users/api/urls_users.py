@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ActivityFeedView,
+    AssignmentViewSet,
     AvatarUploadView,
     ChangePasswordView,
     MyCustomersView,
@@ -17,6 +18,11 @@ from .views import (
 )
 
 app_name = "users"
+
+# Assignments router отдельно — иначе литерал "assignments" мог бы коллидировать
+# с pk-pattern UserViewSet. Регистрируем под /api/users/assignments/.
+assignment_router = DefaultRouter()
+assignment_router.register("", AssignmentViewSet, basename="assignment")
 
 router = DefaultRouter()
 router.register("", UserViewSet, basename="user")
@@ -33,5 +39,8 @@ urlpatterns = [
     path("team-performance/", TeamPerformanceView.as_view(), name="team-performance"),
     path("<int:pk>/orders/", UserOrdersView.as_view(), name="user-orders"),
     path("<int:pk>/stats/", UserStatsView.as_view(), name="user-stats"),
+    # Assignments — должно идти ДО router.urls, иначе UserViewSet pk-pattern
+    # (default regex `[^/.]+`) перехватит /assignments/ как user pk.
+    path("assignments/", include(assignment_router.urls)),
     path("", include(router.urls)),
 ]

@@ -167,4 +167,9 @@ export interface CreateDocumentPayload {
   field_values: Record<string, unknown>
   title?: string
   addressee?: number | null
+  /** Штатное назначение, в контексте которого подаётся документ.
+   * Если у автора одно назначение — необязательно (бэкенд возьмёт primary).
+   * Если несколько — обязательно: определяет, чьим «руководителем»
+   * считать `dept_head:self` и какая компания фиксируется в шапке. */
+  author_assignment?: number | null
 }

@@ -96,6 +96,7 @@ const navItems: NavNode[] = [
   { to: "/accounting", label: "Бухгалтерия" },
   { to: "/profile", label: "Профиль" },
   { to: "/manager-dashboard", label: "Руководитель", requireAccess: "dashboard" },
+  { to: "/staff", label: "Штатка", group: "admin" },
 ]
 
 

@@ -1,8 +1,12 @@
-"""Тесты модели Assignment: constraints, clean(), бэкфилл."""
+"""Тесты модели Assignment: constraints, clean(), бэкфилл, REST API permissions."""
 
 import pytest
+from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from apps.directory.models import Department, OrgUnit
 from apps.users.models import Assignment
@@ -148,3 +152,87 @@ class TestAssignmentBackfill:
         u = UserFactory(company_unit=None, department_unit=None)
         # По договорённости (вариант А) — таких не бэкфилим.
         assert u.assignments.count() == 0
+
+
+@pytest.fixture
+def admin_user(db):
+    g, _ = Group.objects.get_or_create(name="admin")
+    u = UserFactory(username="hr_admin")
+    u.groups.add(g)
+    return u
+
+
+@pytest.mark.django_db
+class TestAssignmentAPI:
+    """Smoke-тесты REST: чтение всем, запись только admin."""
+
+    def _list_url(self):
+        return reverse("users:assignment-list")
+
+    def _detail_url(self, pk):
+        return reverse("users:assignment-detail", args=[pk])
+
+    def test_anonymous_cannot_list(self):
+        client = APIClient()
+        resp = client.get(self._list_url())
+        assert resp.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+
+    def test_regular_user_can_list(self, company_a, dept_a):
+        user = UserFactory(company_unit=company_a, department_unit=dept_a)
+        client = APIClient()
+        client.force_authenticate(user=user)
+        resp = client.get(self._list_url())
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["count"] >= 1
+
+    def test_regular_user_cannot_create(self, company_a, dept_a):
+        author = UserFactory(company_unit=company_a)
+        target = UserFactory()
+        client = APIClient()
+        client.force_authenticate(user=author)
+        resp = client.post(
+            self._list_url(),
+            {
+                "user": target.pk,
+                "company": company_a.pk,
+                "department": dept_a.pk,
+                "position": "Тест",
+                "is_primary": True,
+            },
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_can_create_and_filter_by_user(self, admin_user, company_a, dept_a):
+        target = UserFactory()
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        resp = client.post(
+            self._list_url(),
+            {
+                "user": target.pk,
+                "company": company_a.pk,
+                "department": dept_a.pk,
+                "position": "Инженер",
+                "is_primary": True,
+                "is_active": True,
+            },
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_201_CREATED, resp.data
+
+        # Filter by user
+        resp = client.get(self._list_url() + f"?user={target.pk}")
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["count"] == 1
+        assert resp.data["results"][0]["position"] == "Инженер"
+
+    def test_admin_can_archive(self, admin_user, company_a, dept_a):
+        target = UserFactory(company_unit=company_a, department_unit=dept_a)
+        a = target.assignments.first()
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        resp = client.patch(self._detail_url(a.pk), {"is_active": False}, format="json")
+        assert resp.status_code == status.HTTP_200_OK
+        a.refresh_from_db()
+        assert a.is_active is False

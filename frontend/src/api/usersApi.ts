@@ -1,5 +1,30 @@
 import client from "./client"
-import type { ListParams, PaginatedResponse, User } from "./types"
+import type { Assignment, ListParams, PaginatedResponse, User } from "./types"
+
+export interface AssignmentListParams extends ListParams {
+  user?: number
+  company?: number
+  department?: number
+  is_active?: boolean
+  is_primary?: boolean
+  is_head?: boolean
+}
+
+export type AssignmentInput = Partial<
+  Pick<
+    Assignment,
+    | "user"
+    | "company"
+    | "department"
+    | "position"
+    | "is_head"
+    | "is_primary"
+    | "is_active"
+    | "from_date"
+    | "to_date"
+    | "note"
+  >
+>
 
 export interface MyOrderItem {
   id: number
@@ -109,4 +134,22 @@ export const usersApi = {
 
   activity: (limit = 20): Promise<{ results: ActivityItem[] }> =>
     client.get("/users/me/activity/", { params: { limit } }).then((r) => r.data),
+}
+
+/** CRUD над штатными назначениями. Read доступен любому, write — admin/superuser. */
+export const assignmentsApi = {
+  list: (params?: AssignmentListParams): Promise<PaginatedResponse<Assignment>> =>
+    client.get("/users/assignments/", { params }).then((r) => r.data),
+
+  retrieve: (id: number): Promise<Assignment> =>
+    client.get(`/users/assignments/${id}/`).then((r) => r.data),
+
+  create: (data: AssignmentInput): Promise<Assignment> =>
+    client.post("/users/assignments/", data).then((r) => r.data),
+
+  update: (id: number, data: AssignmentInput): Promise<Assignment> =>
+    client.patch(`/users/assignments/${id}/`, data).then((r) => r.data),
+
+  remove: (id: number) =>
+    client.delete(`/users/assignments/${id}/`),
 }

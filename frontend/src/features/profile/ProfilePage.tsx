@@ -27,6 +27,7 @@ import { OFFER_STATUSES } from "@/api/types"
 import { MyCustomersTab } from "./MyCustomersTab"
 import { MyStatsTab } from "./MyStatsTab"
 import { AvatarCropDialog } from "./AvatarCropDialog"
+import type { Assignment } from "@/api/types"
 
 // ── Schemas ──
 
@@ -37,6 +38,10 @@ const profileSchema = z.object({
   email: z.string().email("Некорректный email"),
   phone: z.string(),
   extension_number: z.string(),
+  // Унаследованные поля profileSchema (position/department/company) больше
+  // НЕ используются формой — штатка живёт в Assignment. Оставлены в схеме
+  // как опциональные read-only, чтобы не ломать импорты, но в ProfileFormCard
+  // не рендерятся.
   position: z.string(),
   department: z.string(),
   company: z.string(),
@@ -358,6 +363,8 @@ export function ProfilePage() {
             }}
           />
 
+          <AssignmentsCard assignments={user?.assignments ?? []} />
+
           {user && (
             <Card className="max-w-2xl">
               <CardHeader>
@@ -569,8 +576,6 @@ function ProfileFormCard({ user, onSave }: {
                   ["email", "Email"],
                   ["phone", "Телефон"],
                   ["extension_number", "Добавочный"],
-                  ["position", "Должность"],
-                  ["department", "Отдел"],
                 ] as const
               ).map(([name, label]) => (
                 <FormField
@@ -588,18 +593,11 @@ function ProfileFormCard({ user, onSave }: {
                   )}
                 />
               ))}
-              <FormField
-                control={form.control}
-                name="company"
-                render={({ field }) => (
-                  <FormItem className="col-span-2">
-                    <FormLabel>Компания</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+            <p className="text-xs text-muted-foreground pt-1">
+              Должность, отдел и компания управляются через штатные назначения (см. блок «Места работы» ниже).
+              Изменить может только администратор/HR.
+            </p>
             <div className="pt-2">
               <Button type="submit" disabled={saving}>
                 {saving ? "Сохранение..." : "Сохранить изменения"}
@@ -751,5 +749,72 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
+  )
+}
+
+function AssignmentsCard({ assignments }: { assignments: Assignment[] }) {
+  if (!assignments || assignments.length === 0) {
+    return (
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle>Места работы</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            У вас не настроено ни одного штатного назначения. Обратитесь к администратору
+            или HR — без назначения вы не сможете подавать документы в ЭДО.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Сортируем: primary сверху, дальше активные, в конце архивные.
+  const sorted = [...assignments].sort((a, b) => {
+    if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1
+    return (a.company_name ?? "").localeCompare(b.company_name ?? "")
+  })
+
+  return (
+    <Card className="max-w-2xl">
+      <CardHeader>
+        <CardTitle>Места работы</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Полная штатная сетка: компания, подразделение, должность. Источник истины для
+          модулей ЭДО, отчётов, видимости документов. Редактирует администратор.
+        </p>
+        <div className="space-y-2">
+          {sorted.map((a) => (
+            <div
+              key={a.id}
+              className={`rounded-md border p-3 ${a.is_active ? "" : "opacity-60"}`}
+            >
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="font-medium">{a.company_name}</span>
+                {a.department_name && (
+                  <span className="text-muted-foreground">/ {a.department_name}</span>
+                )}
+                {a.is_primary && <Badge variant="default">Основное</Badge>}
+                {a.is_head && <Badge variant="secondary">Руководитель</Badge>}
+                {!a.is_active && <Badge variant="outline">Архив</Badge>}
+              </div>
+              {a.position && (
+                <div className="text-sm text-muted-foreground mt-0.5">{a.position}</div>
+              )}
+              {(a.from_date || a.to_date) && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  {a.from_date && `с ${a.from_date}`}
+                  {a.from_date && a.to_date && " "}
+                  {a.to_date && `по ${a.to_date}`}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

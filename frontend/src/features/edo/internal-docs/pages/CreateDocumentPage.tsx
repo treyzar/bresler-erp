@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import type { AxiosError } from "axios"
@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import {
   HelpPanel, HelpSection, HelpSteps, HelpStep, HelpCallout,
 } from "@/components/shared/HelpPanel"
 import { Workflow, Lock, Sparkles } from "lucide-react"
@@ -15,6 +19,8 @@ import { DynamicField } from "../components/DynamicField"
 import { useAutoCompute } from "../hooks/useAutoCompute"
 import { internalDocsApi } from "../api/client"
 import type { FieldSpec } from "../api/types"
+import { useAuthStore } from "@/stores/useAuthStore"
+import { usersApi } from "@/api/usersApi"
 
 export function CreateDocumentPage() {
   const { code = "" } = useParams<{ code: string }>()
@@ -30,10 +36,37 @@ export function CreateDocumentPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   useAutoCompute(code, values, setValues)
 
+  // Текущий пользователь и его assignments — нужны для выбора контекста подачи.
+  // useAuthStore содержит свежие данные, но assignments могут быть не загружены —
+  // подстрахуемся через GET /users/me/.
+  const meStore = useAuthStore((s) => s.user)
+  const { data: me } = useQuery({
+    queryKey: ["users", "me", "create-doc"],
+    queryFn: () => usersApi.getMe(),
+    initialData: meStore ?? undefined,
+  })
+  const activeAssignments = useMemo(
+    () => (me?.assignments ?? []).filter((a) => a.is_active),
+    [me?.assignments],
+  )
+  const primaryAssignmentId = useMemo(
+    () => activeAssignments.find((a) => a.is_primary)?.id ?? null,
+    [activeAssignments],
+  )
+  const [selectedAssignment, setSelectedAssignment] = useState<number | null>(null)
+  // При первой загрузке me — выставляем primary как дефолт.
+  useEffect(() => {
+    if (selectedAssignment === null && primaryAssignmentId !== null) {
+      setSelectedAssignment(primaryAssignmentId)
+    }
+  }, [primaryAssignmentId, selectedAssignment])
+
   const create = useMutation({
     mutationFn: async (submitAfter: boolean) => {
       const doc = await internalDocsApi.createDocument({
-        type: code, field_values: values,
+        type: code,
+        field_values: values,
+        author_assignment: selectedAssignment,
       })
       if (submitAfter) {
         return await internalDocsApi.submitDocument(doc.id)
@@ -91,6 +124,12 @@ export function CreateDocumentPage() {
         <CreateHelp typeCode={code} typeName={type.name} description={type.description} />
       </div>
 
+      <AssignmentContextCard
+        assignments={activeAssignments}
+        selectedId={selectedAssignment}
+        onSelect={setSelectedAssignment}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Заполнить поля</CardTitle>
@@ -133,16 +172,102 @@ export function CreateDocumentPage() {
       </Card>
 
       <div className="flex items-center justify-end gap-2 sticky bottom-4 bg-background/80 backdrop-blur p-3 rounded-lg border shadow-sm">
-        <Button variant="outline" onClick={() => onSave(false)} disabled={create.isPending}>
+        <Button
+          variant="outline"
+          onClick={() => onSave(false)}
+          disabled={create.isPending || activeAssignments.length === 0}
+        >
           <Save className="mr-2 h-4 w-4" />
           Сохранить черновик
         </Button>
-        <Button onClick={() => onSave(true)} disabled={create.isPending}>
+        <Button
+          onClick={() => onSave(true)}
+          disabled={create.isPending || activeAssignments.length === 0}
+        >
           {create.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
           Отправить на согласование
         </Button>
       </div>
     </div>
+  )
+}
+
+// ── Селектор assignment-контекста ──
+
+function AssignmentContextCard({
+  assignments,
+  selectedId,
+  onSelect,
+}: {
+  assignments: import("@/api/types").Assignment[]
+  selectedId: number | null
+  onSelect: (id: number) => void
+}) {
+  // Случай 0: нет ни одного активного assignment'а — блокировка.
+  if (assignments.length === 0) {
+    return (
+      <Card className="border-destructive">
+        <CardContent className="py-4">
+          <p className="text-sm">
+            <strong>Нельзя подать документ:</strong> у вас не настроено ни одного штатного
+            назначения. Без него невозможно резолвить руководителя и компанию подачи.
+            Обратитесь к HR/администратору.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Случай 1: ровно один — показываем как inline-подсказку, без селектора.
+  if (assignments.length === 1) {
+    const a = assignments[0]
+    return (
+      <Card className="bg-muted/30">
+        <CardContent className="py-3 text-sm">
+          Подаётся от: <strong>{a.company_name}</strong>
+          {a.department_name && <> / <strong>{a.department_name}</strong></>}
+          {a.position && <span className="text-muted-foreground"> · {a.position}</span>}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Случай 2+: явный выбор контекста.
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">От какого имени подаём документ</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground mb-3">
+          У вас несколько штатных позиций. Выбор определяет, чья компания фиксируется в
+          шапке, кто считается вашим руководителем, и куда направятся шаги «директор отдела».
+        </p>
+        <Select
+          value={selectedId ? String(selectedId) : ""}
+          onValueChange={(v) => onSelect(Number(v))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Выберите штатную позицию" />
+          </SelectTrigger>
+          <SelectContent>
+            {assignments.map((a) => (
+              <SelectItem key={a.id} value={String(a.id)}>
+                <span className="flex items-center gap-2">
+                  <span>
+                    {a.company_name}
+                    {a.department_name ? ` / ${a.department_name}` : ""}
+                    {a.position ? ` · ${a.position}` : ""}
+                  </span>
+                  {a.is_primary && <Badge variant="default" className="text-[10px]">primary</Badge>}
+                  {a.is_head && <Badge variant="secondary" className="text-[10px]">head</Badge>}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -155,7 +280,7 @@ const TYPE_TIPS: Record<string, React.ReactNode> = {
         В <strong>списке сотрудников</strong> можно выбирать только тех, кто
         находится в вашем подразделении или его подчинённых секторах.
         Если нужного сотрудника нет — попросите администратора проверить
-        его <code>department_unit</code>.
+        его штатное назначение в разделе «Штатка».
       </p>
       <HelpCallout variant="info">
         Шаг <strong>«Бухгалтерия»</strong> в этой цепочке — на approve, не inform.
@@ -173,8 +298,8 @@ const TYPE_TIPS: Record<string, React.ReactNode> = {
         <strong>«Итого»</strong> пересчитывается автоматически.
       </p>
       <HelpCallout variant="warning" title="Только для руководителей">
-        Создавать этот тип может только руководитель подразделения
-        (<code>is_department_head=True</code>).
+        Создавать этот тип может только руководитель подразделения — пользователь
+        со штатным назначением, где включён флаг «Руководитель» (Assignment.is_head).
       </HelpCallout>
     </>
   ),

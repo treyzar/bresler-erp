@@ -1,5 +1,13 @@
 import apiClient from "./client"
-import type { BaseEntity, Facility, ListParams, OrgUnit, OrgUnitTreeNode, PaginatedResponse } from "./types"
+import type {
+  BaseEntity,
+  Department,
+  Facility,
+  ListParams,
+  OrgUnit,
+  OrgUnitTreeNode,
+  PaginatedResponse,
+} from "./types"
 
 export interface DirectoryApi<T extends BaseEntity> {
   list: (params?: ListParams) => Promise<PaginatedResponse<T>>
@@ -74,6 +82,20 @@ export const orgUnitsApi = {
     const queryString = ids.map((id) => `ids=${id}`).join("&")
     const { data } = await apiClient.get<{ id: number; name: string; org_unit_name: string }[]>(
       `/directory/orgunits/facilities-by-orgunits/?${queryString}`
+    )
+    return data
+  },
+}
+
+/**
+ * Read-only справочник Department (внутренние подразделения компании).
+ * Управление структурой — через Django admin (TreeAdmin).
+ */
+export const departmentsApi = {
+  list: async (params?: { company?: number; search?: string; page_size?: number }) => {
+    const { data } = await apiClient.get<PaginatedResponse<Department>>(
+      "/directory/departments/",
+      { params },
     )
     return data
   },

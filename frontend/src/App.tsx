@@ -20,6 +20,7 @@ import { OrderFormPage } from "@/features/orders/OrderFormPage"
 import { OrderDetailPage } from "@/features/orders/OrderDetailPage"
 import { ProfilePage } from "@/features/profile/ProfilePage"
 import { ManagerDashboard } from "@/features/profile/ManagerDashboard"
+import { StaffPage } from "@/features/staff/StaffPage"
 import { EdoHomePage } from "@/features/edo/pages/EdoHomePage"
 import Dashboard from "@/features/edo/pages/Dashboard"
 import MainEditor from "@/features/edo/pages/MainEditor"
@@ -114,6 +115,7 @@ function App() {
 
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/manager-dashboard" element={<ManagerDashboard />} />
+            <Route path="/staff" element={<StaffPage />} />
 
             <Route element={<ModuleGuard module="edo" />}>
               <Route path="/edo">

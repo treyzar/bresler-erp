@@ -9,9 +9,31 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from apps.users.models import User
+from apps.users.models import Assignment, User
 
-from .serializers import AvatarSerializer, ChangePasswordSerializer, ProfileSerializer, UserSerializer
+from .serializers import (
+    AssignmentSerializer,
+    AvatarSerializer,
+    ChangePasswordSerializer,
+    ProfileSerializer,
+    UserSerializer,
+)
+
+
+class IsAdminGroupOrReadOnly(permissions.BasePermission):
+    """Read для аутентифицированных, write — только для группы admin / superuser.
+
+    Используется для AssignmentViewSet: работники видят свою и чужую штатку
+    (нужно для UI Profile / EDO selector / справочников); правит её только
+    HR/админ.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user.is_superuser or request.user.groups.filter(name="admin").exists()
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -588,6 +610,50 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(
                 assignments__is_head=True, assignments__is_active=True,
             ).distinct()
+
+        return qs
+
+
+class AssignmentViewSet(viewsets.ModelViewSet):
+    """CRUD над штатными назначениями.
+
+    Чтение — любому аутентифицированному (нужно для UI: ProfilePage, EDO
+    селектор контекста, справочники). Запись — только группе admin или
+    superuser (через `IsAdminGroupOrReadOnly`).
+
+    Filters:
+        ?user=<id>           — все assignment'ы конкретного пользователя
+        ?company=<id>        — assignment'ы внутри компании
+        ?department=<id>     — assignment'ы конкретного подразделения
+        ?is_active=true|false
+        ?is_primary=true|false
+        ?is_head=true|false
+    """
+
+    serializer_class = AssignmentSerializer
+    permission_classes = [IsAdminGroupOrReadOnly]
+
+    def get_queryset(self):
+        qs = Assignment.objects.select_related("user", "company", "department").order_by(
+            "user__last_name",
+            "user__first_name",
+            "-is_primary",
+            "company__name",
+            "department__name",
+        )
+        params = self.request.query_params
+
+        if (user_id := params.get("user")):
+            qs = qs.filter(user_id=user_id)
+        if (company_id := params.get("company")):
+            qs = qs.filter(company_id=company_id)
+        if (department_id := params.get("department")):
+            qs = qs.filter(department_id=department_id)
+        for bool_field in ("is_active", "is_primary", "is_head"):
+            val = params.get(bool_field)
+            if val is None:
+                continue
+            qs = qs.filter(**{bool_field: val.lower() in ("true", "1", "yes")})
 
         return qs
 

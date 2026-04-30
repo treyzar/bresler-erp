@@ -1,5 +1,27 @@
 // Core types
 
+/**
+ * Штатное назначение пользователя. Один user может иметь несколько Assignment'ов
+ * (совмещение, работа в нескольких юрлицах группы, руководитель нескольких отделов).
+ * Ровно одно помечено `is_primary=true` — это «основное место работы».
+ */
+export interface Assignment {
+  id: number
+  user: number
+  user_full_name?: string
+  company: number
+  company_name: string
+  department: number | null
+  department_name: string | null
+  position: string
+  is_head: boolean
+  is_primary: boolean
+  is_active: boolean
+  from_date: string | null
+  to_date: string | null
+  note: string
+}
+
 export interface User {
   id: number
   username: string
@@ -10,16 +32,22 @@ export interface User {
   full_name: string
   phone: string
   extension_number: string
+  /** Should be derived from primary_assignment.position (read-only mirror). */
   position: string
+  /** Name of primary_assignment.department or "" (read-only mirror). */
   department: string
+  /** Name of primary_assignment.company or "" (read-only mirror). */
   company: string
   avatar: string | null
   is_active: boolean
+  /** True if primary_assignment.is_head — derived. */
   is_department_head: boolean
   last_login: string | null
   date_joined: string
   groups?: string[]
   allowed_modules?: string[]
+  /** Все штатные назначения. Источник истины для company/department/position/is_head. */
+  assignments?: Assignment[]
 }
 
 export interface TokenResponse {
@@ -79,6 +107,14 @@ export const ORG_UNIT_BUSINESS_ROLES: Record<string, string> = {
   buyer_branch: "Филиал-покупатель (Legacy)",
   shipment_site: "Площадка отгрузки (Legacy)",
   other: "Другое",
+}
+
+export interface Department extends BaseEntity {
+  name: string
+  full_name: string
+  unit_type: string
+  company: number
+  is_active: boolean
 }
 
 export interface OrgUnit extends BaseEntity {

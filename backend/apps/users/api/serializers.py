@@ -37,16 +37,20 @@ def _avatar_url(user) -> str | None:
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
-    """Сериализатор штатного назначения. Используется в списке assignments
-    у пользователя."""
+    """Сериализатор штатного назначения. Используется и в списке assignments
+    у пользователя (read), и в админ-CRUD (write через AssignmentViewSet).
+    """
 
     company_name = serializers.CharField(source="company.name", read_only=True)
     department_name = serializers.SerializerMethodField()
+    user_full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Assignment
         fields = (
             "id",
+            "user",
+            "user_full_name",
             "company",
             "company_name",
             "department",
@@ -59,10 +63,25 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "to_date",
             "note",
         )
-        read_only_fields = ("id", "company_name", "department_name")
+        read_only_fields = ("id", "company_name", "department_name", "user_full_name")
 
     def get_department_name(self, obj) -> str | None:
         return obj.department.name if obj.department_id else None
+
+    def get_user_full_name(self, obj) -> str:
+        return obj.user.get_full_name() or obj.user.username
+
+    def validate(self, attrs):
+        # Валидация department.company == company. Дублирует Assignment.clean(),
+        # но даёт DRF-friendly ошибку до save().
+        instance = self.instance
+        company = attrs.get("company") or (instance.company if instance else None)
+        department = attrs.get("department", instance.department if instance else None)
+        if department and company and department.company_id != company.pk:
+            raise serializers.ValidationError(
+                {"department": "Подразделение должно принадлежать выбранной компании."},
+            )
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):
